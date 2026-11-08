@@ -1225,72 +1225,25 @@ html,body{overflow-anchor:none}
 .bdw .tgdir.gear .tgd.on[data-k="F"]{color:#3ddc84;box-shadow:0 0 14px rgba(61,220,132,.5),inset 0 0 8px rgba(61,220,132,.2)}
 :root:not(#a) .bdw .tgdir.gear .tgd.on[data-k]{background:linear-gradient(#262c37,#12161c) padding-box,var(--rim) border-box!important;text-shadow:none}
 :root:not(#a) .bdw .tgdir.gear .tgd.on[data-k] i{text-shadow:0 0 10px currentColor}
-/* ===================== v2 shell · "Lakaran final" design system =====================
-   Colours have fixed meaning: yellow = active / selected / value, red = stop / danger
-   (E-Stop red only on the E-Stop), green = OK / low, orange = warning, blue = Bluetooth.
-   Touch >= 48dp, gap >= 8dp, E-Stop >= 56dp and always visible, one yellow primary action per screen. */
-:root{
-  --y:#FFD84A; --red:#E24B4A; --es:#C92A2A; --grn:#1D9E75; --org:#EF9F27; --blu:#1C6EA4;
-  --v2bg:#0D1014; --v2card:#1D222B; --v2card2:#161A21; --v2line:#2E3540; --v2fg:#F2F4F7; --v2mut:#8D97A5;
-  --v2f:Inter,'Segoe UI',Roboto,system-ui,-apple-system,sans-serif;
-  --nav-h:68px;
-}
-:root[data-theme="light"]{--v2bg:#EEF0F3;--v2card:#FFFFFF;--v2card2:#F4F6F8;--v2line:#D5DAE0;--v2fg:#14181D;--v2mut:#5D6773}
-html[data-v] body{background:var(--v2bg)!important;font-family:var(--v2f);color:var(--v2fg)}
-:root[data-skin="studs"][data-v] body{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.018) 0 6px,transparent 6px 12px)!important}
-
-/* ---------- top bar: MK6 · status · Bluetooth · E-Stop ---------- */
-html:not(#a)[data-v] .bar{background:var(--v2bg)!important;border-bottom:1px solid var(--v2line)!important;box-shadow:none!important}
-html:not(#a)[data-v] .bar-in{gap:10px;padding-block:8px;min-height:72px}
-html:not(#a)[data-v] .brand{display:flex;align-items:center;gap:10px;min-width:0}
-html:not(#a)[data-v] .brand h1{font-family:var(--v2f);font-size:24px;font-weight:800;letter-spacing:.01em;color:var(--y);text-transform:none}
-html:not(#a)[data-v] .brand h1 b{color:var(--y)}
-html:not(#a)[data-v] .brand .bw,html:not(#a)[data-v] .brand .cap{display:none}
-html:not(#a)[data-v] .hubstat{display:inline-flex!important;align-items:center;gap:6px;margin:0;padding:0;background:none!important;border:0!important;
-  font:600 13px/1.2 var(--v2f)!important;color:var(--v2fg)!important;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis;text-transform:none;letter-spacing:0}
-html:not(#a)[data-v] .hubstat i{width:9px;height:9px;border-radius:50%;background:var(--v2mut)!important;flex:none;box-shadow:none!important}
-html:not(#a)[data-v] .hubstat i::after{display:none!important}
-html:not(#a)[data-v] .hubstat[data-st=on] i{background:var(--grn)!important}
-html:not(#a)[data-v] .hubstat[data-st=busy] i{background:var(--y)!important;animation:v2pulse 1s ease-in-out infinite}
-html:not(#a)[data-v] .hubstat .hbat{font:600 13px var(--v2f)!important;opacity:1;color:var(--v2fg)}
-html:not(#a)[data-v] .hubstat .hbat.low{color:var(--org)!important}
-@keyframes v2pulse{50%{opacity:.35}}
-html:not(#a)[data-v] .bar .hubbtn{display:none!important}
-html:not(#a)[data-v] .bar .btb{width:44px!important;height:44px!important;border-radius:50%!important;box-shadow:none!important;
-  background:var(--blu) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 7l10 10-5 4V3l5 4L7 17' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/22px no-repeat!important}
-html:not(#a)[data-v] .bar .btb[data-bt=off]{background-color:#3A414C!important}
-html:not(#a)[data-v] .bar .btb::after{width:14px!important;height:14px!important;right:-2px!important;top:-2px!important;border-width:2px!important;border-color:var(--v2bg)!important;background-size:8px!important}
-html:not(#a)[data-v] .bar .btb[data-bt=on]::after{display:none}
-html:not(#a)[data-v] .bar .estop,html:not(#a)[data-v] .bar .estop[aria-pressed]{flex:none;width:60px!important;height:60px!important;min-height:0!important;padding:0!important;border-radius:50%!important;
-  font-size:0!important;color:transparent!important;outline:0!important;animation:none;transform:none;
-  border:3px solid #F58C8C!important;box-shadow:0 0 0 3px rgba(201,42,42,.25),0 4px 12px rgba(0,0,0,.5)!important;
-  background:var(--es) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='5' y='5' width='14' height='14' rx='3' fill='%23fff'/%3E%3C/svg%3E") center/30px no-repeat!important}
-html:not(#a)[data-v] .bar .estop::before,html:not(#a)[data-v] .bar .estop::after{display:none!important}
-html:not(#a)[data-v] .bar .estop:active{transform:scale(.95)!important}
-html:not(#a)[data-v] .bar .estop[aria-pressed="true"]{background:var(--v2card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='5' y='5' width='14' height='14' rx='3' fill='%23E24B4A'/%3E%3C/svg%3E") center/30px no-repeat!important;
-  border-color:var(--red)!important;animation:v2es 1s ease-in-out infinite!important}
-@keyframes v2es{50%{box-shadow:0 0 0 6px rgba(226,75,74,.45),0 0 18px rgba(226,75,74,.6)}}
-html:not(#a)[data-v] .bar-banner,html[data-v] #lostBanner{background:var(--red)!important;color:#fff;font:600 13px var(--v2f)}
-
-/* ---------- page area ---------- */
-html[data-v]:not(.dash) main{max-width:640px;padding-bottom:calc(var(--nav-h) + 28px + env(safe-area-inset-bottom,0px))}
+/* ===================== Layout shell ("Lakaran final"): arrangement only =====================
+   No new colours or graphics: every piece uses the app's own .card / .btn / .seg / .check styles and theme variables.
+   This block only decides which section shows on which tab and where it sits. */
+:root{--nav-h:64px}
+html[data-v]:not(.dash) main{padding-bottom:calc(var(--nav-h) + 28px + env(safe-area-inset-bottom,0px))}
 html[data-v]:not(.dash) main > *{display:none!important}
 html[data-v]:not(.dash) main > #subHead:not([hidden]){display:flex!important}
 html[data-v=home]:not(.dash) main > #scrHome,
 html[data-v=models]:not(.dash) main > #scrModels,
 html[data-v=tpl]:not(.dash) main > #scrTpl,
 html[data-v=settings]:not(.dash) main > #scrSet,
-html[data-v=hub]:not(.dash) main > #scrHub{display:block!important}
+html[data-v=hub]:not(.dash) main > #scrHub,
+html[data-v=drive]:not(.dash) main > #dHead,
 html[data-v=medit]:not(.dash) main > section.model{display:block!important}
-html[data-v=drive]:not(.dash) main > #dHead{display:block!important}
 html[data-v=drive][data-dv=board]:not(.dash) main > #quickCard:not([hidden]),
 html[data-v=drive][data-dv=seq]:not(.dash) main > #quickCard:not([hidden]){display:block!important}
-/* cards inside the columns: show only what the current view needs */
 html[data-v]:not(.dash) main > #cols{display:block!important}
 html[data-v]:not(.dash) #cols > .card,html[data-v]:not(.dash) #cols .stack > .card{display:none!important}
-html[data-v=drive][data-dv=board]:not(.dash) #cols > #chCard:not([hidden]),
-html[data-v=drive][data-dv=board]:not(.dash) #cols > #boardCard:not([hidden]),
-html[data-v=drive][data-dv=board]:not(.dash) #cols .stack > #joyCard:not([hidden]),
+html[data-v]:not(.dash) #cols .stack{display:grid;gap:16px}
 html[data-v=drive][data-dv=rec]:not(.dash) #cols .stack > #recCard,
 html[data-v=drive][data-dv=seq]:not(.dash) #cols .stack > #seqCard,
 html[data-v=hub]:not(.dash) #cols .stack > #calCard,
@@ -1300,178 +1253,52 @@ html[data-v=m-tilt]:not(.dash) #cols .stack > #tiltCard,
 html[data-v=m-pad]:not(.dash) #cols .stack > #padCard,
 html[data-v=m-app]:not(.dash) #cols .stack > #appCard,
 html[data-v=m-log]:not(.dash) #cols .stack > #logCard{display:block!important}
-html[data-v=drive][data-dv=board]:not(.dash) main > #cols{display:flex!important;flex-direction:column;gap:12px}
+/* Drive · Board: the layout's own controls (joystick first in Joystick / Dual stick, board only in Board layout) */
+html[data-v=drive][data-dv=board]:not(.dash) main > #cols{display:flex!important;flex-direction:column;gap:16px}
 html[data-v=drive][data-dv=board]:not(.dash) #cols .stack{display:contents!important}
+html[data-v=drive][data-dv=board]:not(.dash) #cols > #chCard:not([hidden]),
+html[data-v=drive][data-dv=board]:not(.dash) #cols > #boardCard:not([hidden]),
+html[data-v=drive][data-dv=board]:not(.dash) #cols .stack > #joyCard:not([hidden]){display:block!important}
 html[data-v=drive][data-dv=board]:not(.dash) #cols.joy #joyCard,html[data-v=drive][data-dv=board]:not(.dash) #cols.dual #joyCard{order:-1}
 html[data-v=drive][data-dv=board]:not(.dash) #cols:not(.board) > #boardCard,
 html[data-v=drive][data-dv=board]:not(.dash) #cols.board > #chCard,
 html[data-v=drive][data-dv=board]:not(.dash) #cols.board #joyCard,
 html[data-v=drive][data-dv=board]:not(.dash) #cols:not(.joy):not(.dual) #joyCard{display:none!important}
-html[data-v]:not(.dash) #cols .stack{display:grid;gap:12px}
-html.dash .v2-scr,html.dash #dHead,html.dash #subHead,html.dash .v2-nav{display:none!important}
-html[data-v] main .card{background:var(--v2card)!important;border:2px solid var(--v2line)!important;border-radius:18px!important;box-shadow:none!important}
-html[data-v] main h2{color:var(--v2mut);border-left-color:var(--y)}
-html[data-v] .btn[aria-pressed="true"]{background:var(--y)!important;border-color:var(--y)!important;color:#14181D!important}
+html.dash .v2-scr,html.dash #subHead,html.dash .v2-nav{display:none!important}
+html[data-v]:not(.dash) main > * + *{margin-top:16px}
 
-/* ---------- shared pieces ---------- */
-.v2-scr{font-family:var(--v2f)}
-.v2-title{margin:4px 0 12px!important;padding:0!important;border:0!important;font:800 20px/1.2 var(--v2f)!important;letter-spacing:0!important;text-transform:none!important;color:var(--v2fg)!important}
-.v2-card{display:block;background:var(--v2card);border:2px solid var(--v2line);border-radius:18px;padding:14px 16px;color:var(--v2fg);margin-bottom:10px;text-align:left;font:inherit}
-.v2-sel{border-color:var(--y)!important;box-shadow:0 0 0 1px rgba(255,216,74,.25)}
-.v2-lbl{font:700 13px var(--v2f);color:var(--v2mut);margin:16px 2px 8px;display:flex;gap:8px;align-items:baseline}
-.v2-lbl small{font-weight:500;opacity:.8}
-.v2-btn{min-height:48px;padding:0 20px;border-radius:24px;border:2px solid var(--v2line);background:transparent;color:var(--v2fg);font:700 15px var(--v2f);cursor:pointer}
-.v2-btn.v2-pri{background:var(--y);border-color:var(--y);color:#14181D}
-.v2-btn.v2-sm{min-height:44px;padding:0 16px;font-size:14px}
-.v2-btn:active,.v2-tile:active,.v2-li:active,.v2-rowmain:active{transform:scale(.98)}
-.v2-wide{width:100%}
-.v2-two{display:flex;gap:10px;margin-top:12px}.v2-two>*{flex:1 1 0}
-.v2-row{display:flex;align-items:center;gap:12px;min-height:72px;padding:10px 12px}
-.v2-row-t{display:flex;flex-direction:column;min-width:0;flex:1 1 auto}
-.v2-row-t b{font:700 16px/1.25 var(--v2f);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.v2-row-t small{font:500 12.5px/1.3 var(--v2mut);color:var(--v2mut);margin-top:2px}
-.v2-knob{flex:none;width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#5B6473,#262B34 70%);box-shadow:0 2px 6px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12)}
-.v2-sub{display:flex;align-items:center;gap:6px;margin:0 0 6px}
-.v2-sub .v2-title{margin:0!important}
-.v2-back{width:48px;height:48px;margin-left:-10px;border:0;border-radius:50%;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M15 5l-7 7 7 7' fill='none' stroke='%23FFD84A' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/26px no-repeat;cursor:pointer}
-.v2-chip{min-height:40px;padding:0 18px;border-radius:20px;border:0;background:var(--y);color:#14181D;font:700 14px var(--v2f);cursor:pointer}
-
-/* ---------- 1 · Home ---------- */
-.v2-hero{display:flex;align-items:center;gap:12px;padding:18px}
-.v2-hero-txt{flex:1 1 auto;min-width:0}
-.v2-hero h3{margin:0;font:800 19px/1.2 var(--v2f)}
-.v2-st{margin:4px 0 14px;font:600 13.5px var(--v2f);color:var(--red)}
-.v2-st[data-st=on]{color:var(--grn)}.v2-st[data-st=busy]{color:var(--y)}
-.v2-hero .v2-btn{min-width:150px}
-.v2-ring{--rc:var(--red);flex:none;width:104px;height:104px;border-radius:50%;border:0;padding:9px;cursor:pointer;
-  background:repeating-conic-gradient(var(--rc) 0 7deg,transparent 7deg 12deg);
-  -webkit-mask:radial-gradient(circle,#000 0 100%);}
-.v2-ring>span{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;
-  background:radial-gradient(circle at 40% 30%,#3A414D,#1A1E25 70%);border:6px solid #0B0D11;box-shadow:inset 0 0 0 2px var(--rc)}
-.v2-ring b,.v2-ring i{font:900 14px/1 var(--v2f);font-style:normal;letter-spacing:.02em;color:#C9CED6}
-.v2-ring i{margin-top:3px;font-size:12px;color:var(--rc)}
-.v2-ring[data-st=on]{--rc:var(--y)}.v2-ring[data-st=on] b{color:var(--y);font-size:12px}.v2-ring[data-st=on] i{color:#fff;font-size:15px}
-.v2-ring[data-st=busy]{--rc:var(--y);animation:v2spin 2.4s linear infinite}
-@keyframes v2spin{to{transform:rotate(360deg)}}
-.v2-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
-.v2-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:84px;border-radius:16px;border:2px solid var(--v2line);background:var(--v2card);color:var(--v2fg);font:700 14px var(--v2f);cursor:pointer}
-.v2-tile i{width:16px;height:16px;border-radius:50%}
-.d-y{background:var(--y)}.d-r{background:var(--red)}.d-b{background:#4DA3E0}
-.v2-alerts{margin-bottom:6px}
-.v2-alert{display:flex;align-items:center;gap:12px}
-.v2-alert.a-red{border-color:var(--red);background:linear-gradient(180deg,rgba(226,75,74,.16),var(--v2card))}
-.v2-alert.a-red b{color:#FF8A89}
-.v2-alert.a-org{border-color:var(--org)}.v2-alert.a-org b{color:var(--org)}
-.v2-alert .v2-btn{flex:none}
-
-/* ---------- 4 · Drive header + segment ---------- */
-.v2-dhead{font-family:var(--v2f);margin-bottom:12px}
-.v2-dtitle{display:flex;align-items:center;justify-content:space-between}
-.v2-dtitle .v2-title{margin:2px 0 10px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.v2-pen{flex:none;width:48px;height:48px;border:0;border-radius:50%;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 20l4-1L19 8l-3-3L5 16zM14 7l3 3' fill='none' stroke='%23FFD84A' stroke-width='2.2' stroke-linejoin='round'/%3E%3C/svg%3E") center/24px no-repeat;cursor:pointer}
-.v2-seg{display:flex;padding:4px;border:2px solid var(--v2line);border-radius:26px;background:var(--v2card2)}
-.v2-seg button{flex:1 1 0;min-height:44px;border:0;border-radius:22px;background:transparent;color:var(--v2mut);font:700 14.5px var(--v2f);cursor:pointer}
-.v2-seg button[aria-selected=true]{background:var(--y);color:#14181D}
-
-/* ---------- 3 · Models ---------- */
-.v2-search{width:100%;min-height:48px;padding:0 18px;margin-bottom:12px;border-radius:24px;border:2px solid var(--v2line);background:var(--v2card2);color:var(--v2fg);font:500 15px var(--v2f)}
-.v2-search::placeholder{color:var(--v2mut)}
-.v2-search:focus{outline:none;border-color:var(--y)}
-.v2-list .v2-row{padding:6px 4px 6px 12px}
-.v2-rowmain{display:flex;align-items:center;gap:12px;flex:1 1 auto;min-width:0;min-height:60px;border:0;background:none;color:inherit;text-align:left;padding:0;cursor:pointer;font:inherit}
-.v2-more{flex:none;width:48px;height:48px;border:0;border-radius:50%;background:transparent;cursor:pointer;position:relative}
-.v2-more::before{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;background:var(--v2mut);box-shadow:-8px 0 0 var(--v2mut),8px 0 0 var(--v2mut)}
-.v2-empty{color:var(--v2mut);text-align:center;margin:20px 0}
-
-/* ---------- 12 · Templates ---------- */
-.v2-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.v2-tpl{display:flex;flex-direction:column;align-items:center;gap:6px;margin:0;padding:14px 10px;cursor:pointer;text-align:center}
-.v2-tpl b{font:700 14px var(--v2f)}.v2-tpl small{font:500 12px var(--v2f);color:var(--v2mut)}
-.tp{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;height:58px;border-radius:12px;background:var(--v2card2);border:2px solid var(--v2line)}
-.tp-joy i{width:30px;height:30px;border-radius:50%;border:3px solid #C9CED6}
-.tp-led{gap:4px}.tp-led i{width:9px;height:30px;border-radius:3px;background:var(--grn)}.tp-led i:nth-child(n+4){background:var(--org)}.tp-led i:nth-child(6){background:var(--y)}
-.tp-arc::before{content:"";width:40px;height:40px;border-radius:50%;background:conic-gradient(from 220deg,var(--grn) 0 150deg,var(--org) 150deg 200deg,transparent 200deg);
-  -webkit-mask:radial-gradient(circle,transparent 0 13px,#000 14px);mask:radial-gradient(circle,transparent 0 13px,#000 14px)}
-.tp-plus{font:400 30px var(--v2f);color:var(--y)}
-.v2-bk{margin-top:10px}.v2-bk b{font:700 15px var(--v2f)}
-
-/* ---------- 8 · Settings ---------- */
-.v2-grp{font:800 12px var(--v2f);letter-spacing:.06em;text-transform:uppercase;color:var(--y);margin:16px 2px 8px}
-.v2-li{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;margin-bottom:8px;padding:0 16px;border-radius:14px;border:2px solid var(--v2line);background:var(--v2card2);color:var(--v2fg);font:600 15px var(--v2f);text-align:left;cursor:pointer}
-.v2-li>span{flex:1 1 auto}
-.v2-li small{font:600 13px var(--v2f);color:var(--v2mut)}
-.v2-li:not(.v2-sw)::after{content:"";width:9px;height:9px;border-right:2.4px solid var(--v2mut);border-top:2.4px solid var(--v2mut);transform:rotate(45deg);margin-right:4px}
-.v2-sw i{flex:none;width:52px;height:30px;border-radius:15px;background:#3A414C;position:relative;transition:background .15s}
-.v2-sw i::after{content:"";position:absolute;left:4px;top:4px;width:22px;height:22px;border-radius:50%;background:#C9CED6;transition:transform .15s}
-.v2-sw[aria-checked=true] i{background:var(--y)}
-.v2-sw[aria-checked=true] i::after{transform:translateX(22px);background:#14181D}
-
-/* ---------- 2 · Hub / 11 · empty state ---------- */
-.v2-hubcard b{display:block;font:800 17px var(--v2f)}
-.v2-hubcard small{display:block;font:600 13px var(--v2f);color:var(--grn);margin-top:2px}
-.v2-meter{position:relative;height:14px;border-radius:7px;background:#3A414C;margin:14px 64px 0 0}
-.v2-meter i{position:absolute;left:0;top:0;bottom:0;border-radius:7px;background:var(--grn);transition:width .2s}
-.v2-meter i.mid{background:var(--org)}.v2-meter i.hi{background:var(--red)}
-.v2-meter em{position:absolute;right:-64px;top:-3px;font:700 13px var(--v2f);font-style:normal;white-space:nowrap}
-.v2-chtest{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
-.v2-ch{min-height:52px;border-radius:12px;border:2px solid var(--v2line);background:var(--v2card2);color:var(--y);font:800 15px var(--v2f);cursor:pointer;touch-action:none}
-.v2-ch.on{background:var(--y);color:#14181D;border-color:var(--y)}
-html:not(.v2-link-on) .v2-ch{color:var(--v2mut)}
-.v2-emptyhub{text-align:center;padding:26px 10px 10px}
-.v2-emptyhub b{display:block;font:800 18px var(--v2f);margin-top:18px}
-.v2-emptyhub p{color:var(--v2mut);margin:6px auto 18px;max-width:300px;font:500 14px/1.45 var(--v2f)}
-.v2-emptyhub .v2-btn{min-width:220px}
-.v2-q{width:110px;height:110px;margin:0 auto;border-radius:50%;border:4px dashed #5B6473;display:flex;align-items:center;justify-content:center;
-  font:800 34px var(--v2f);color:#8D97A5;background:radial-gradient(circle,#2A3039 0 38px,transparent 39px)}
-#hubSlots .set-row{background:var(--v2card2);border:2px solid var(--v2line);border-radius:14px;padding:12px;margin-bottom:8px}
-#hubSlots select,#hubSlots .txt{min-height:44px}
-
-/* ---------- 6 · Edit board: widget palette as a 4-column tile grid ---------- */
+/* arrangement helpers */
+.v2-sub{align-items:center;gap:10px}
+.v2-sub h2{margin:0}
+.v2-grow{flex:1 1 auto;min-width:0}
+.v2-last b{display:block}
+.v2-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+.v2-tiles .btn{min-height:64px}
+#hAlerts > .card{margin-bottom:16px}
+#scrModels .txt{margin-bottom:12px}
+.v2-list{display:grid;gap:10px;margin-bottom:12px}
+.v2-list .rec-row{margin:0;flex-wrap:nowrap}
+.v2-list .rec-row > .btn:not(.v2-pick){flex:none;width:56px;min-height:56px}
 html[data-v=drive]:not(.dash) #cols > .card,html[data-v=drive]:not(.dash) #cols .stack > .card{width:100%;max-width:none}
-html:not(#a)[data-v] #bdEditor .bd-types{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
-html:not(#a)[data-v] #bdEditor .bd-types .btn{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;height:auto!important;min-height:76px;padding:10px 4px 8px!important;
-  border-radius:14px!important;border:2px solid var(--v2line)!important;background:var(--v2card2)!important;color:var(--v2fg)!important;font:700 11.5px/1.15 var(--v2f)!important;text-align:center;white-space:normal;box-shadow:none!important}
-html:not(#a)[data-v] #bdEditor .bd-types .btn::before{content:"";flex:none;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#5B6473,#262B34 70%);box-shadow:0 2px 4px rgba(0,0,0,.5)}
-html:not(#a)[data-v] #bdEditor .bd-types .btn[aria-pressed=true]{border-color:var(--y)!important;background:rgba(255,216,74,.12)!important;color:var(--y)!important}
-html:not(#a)[data-v] #bdEditor .bd-types .btn[aria-pressed=true]::before{background:radial-gradient(circle at 35% 30%,#FFE58A,#C9A300 70%)}
-/* ---------- 5 · Drive landscape (dashboard): compact bar, E-Stop always reachable ---------- */
-html:not(#a)[data-v].dash-l .bar-in{min-height:0;padding-block:4px}
-html:not(#a)[data-v].dash-l .hubstat span,html:not(#a)[data-v].dash-l .hubstat .hbat{display:none!important}
-html:not(#a)[data-v].dash-l .brand h1{font-size:20px}
-html:not(#a)[data-v].dash-l .bar .estop{width:56px!important;height:56px!important}
-html:not(#a)[data-v].dash-l .bar .btb{width:40px!important;height:40px!important}
-/* ---------- bottom navigation (4 tabs, fixed) ---------- */
-.v2-nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;justify-content:space-around;gap:4px;
-  height:calc(var(--nav-h) + env(safe-area-inset-bottom,0px));padding:0 8px env(safe-area-inset-bottom,0px);
-  background:rgba(13,16,20,.96);border-top:1px solid var(--v2line);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
-:root[data-theme="light"] .v2-nav{background:rgba(255,255,255,.96)}
-:root:not(#a)[data-theme="light"][data-v] .brand h1,:root:not(#a)[data-theme="light"][data-v] .brand h1 b{color:#B07F00}
-.v2-nav button{position:relative;flex:1 1 0;max-width:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:0;background:none;color:var(--v2mut);font:700 12.5px var(--v2f);cursor:pointer;min-height:48px}
-.v2-nav button i{width:10px;height:10px;border-radius:50%;background:currentColor;opacity:.75}
-.v2-nav button[aria-current]{color:var(--y)}
-.v2-nav button[aria-current] i{width:14px;height:14px;opacity:1}
-.v2-nav button[aria-current]::before{content:"";position:absolute;top:0;left:50%;width:38px;height:4px;margin-left:-19px;border-radius:0 0 4px 4px;background:var(--y)}
-html:not([data-v]) .v2-nav{display:none}
-html[data-v] .toast{bottom:calc(var(--nav-h) + 16px + env(safe-area-inset-bottom,0px))!important}
+.v2-list .v2-pick{flex:1 1 auto;min-width:0;min-height:56px;text-align:left;display:flex;flex-direction:column;justify-content:center;align-items:flex-start}
+.v2-list .v2-pick small{opacity:.75}
+.v2-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.v2-grid2 .btn{min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.v2-grid2 .btn small{opacity:.75}
+.v2-li{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:48px;margin-bottom:8px;text-align:left}
+.v2-li small{opacity:.75}
+#scrSet h2{margin-top:14px}
+#scrSet .check{margin-bottom:8px}
+.v2-chtest{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.v2-chtest .btn{min-height:48px;touch-action:none}
+#scrHub .set-row{margin-top:14px}
 
-/* ---------- 10 · Welcome ---------- */
-.v2-welcome{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--v2bg);font-family:var(--v2f)}
-.v2-wbox{width:min(420px,100%);display:flex;flex-direction:column;align-items:center;text-align:center;position:relative}
-.v2-wbox h2{margin:8px 0 18px!important;font:800 22px var(--v2f)!important;color:var(--v2fg)!important;letter-spacing:0!important;text-transform:none!important;border:0!important;padding:0!important}
-.v2-wlang{position:fixed;right:16px;top:calc(16px + env(safe-area-inset-top,0px));display:flex;border:2px solid var(--v2line);border-radius:18px;padding:2px}
-.v2-wlang button{min-width:44px;min-height:32px;border:0;border-radius:15px;background:none;color:var(--v2mut);font:700 12px var(--v2f);cursor:pointer}
-.v2-wlang button[aria-pressed=true]{background:var(--y);color:#14181D}
-.v2-logo{width:150px;height:150px;border-radius:50%;padding:12px;background:repeating-conic-gradient(var(--y) 0 8deg,transparent 8deg 13deg),repeating-conic-gradient(from 180deg,#3A414C 0 8deg,transparent 8deg 13deg)}
-.v2-logo{background:conic-gradient(from 200deg,#3A414C 0 140deg,transparent 140deg),repeating-conic-gradient(var(--y) 0 8deg,transparent 8deg 13deg)}
-.v2-logo span{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 40% 30%,#3A414D,#1A1E25 70%);border:8px solid var(--v2bg)}
-.v2-logo b{font:900 26px var(--v2f);color:var(--y)}.v2-logo i{font:600 12px var(--v2f);font-style:normal;color:var(--v2mut)}
-.v2-checks{list-style:none;padding:0;margin:24px 0 18px;text-align:left;width:100%;max-width:320px}
-.v2-checks li{position:relative;padding-left:40px;margin-bottom:14px}
-.v2-checks li::before{content:"";position:absolute;left:0;top:2px;width:26px;height:26px;border-radius:50%;background:var(--grn) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 12.5l4 4 8-9' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px no-repeat}
-.v2-checks b{display:block;font:700 15px var(--v2f);color:var(--v2fg)}.v2-checks small{font:500 13px var(--v2f);color:var(--v2mut)}
-.v2-dots{display:flex;gap:8px;margin:4px 0 18px}.v2-dots i{width:12px;height:12px;border-radius:50%;background:#5B6473}.v2-dots i.on{background:var(--red)}
-.v2-link{margin-top:10px;min-height:44px;border:0;background:none;color:var(--v2mut);font:600 14px var(--v2f);text-decoration:underline;cursor:pointer}
-html:not(#a)[data-v] .bar::after{display:none!important}
+/* bottom navigation: 4 fixed tabs */
+.v2-nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;gap:8px;align-items:center;
+  height:calc(var(--nav-h) + env(safe-area-inset-bottom,0px));padding:0 max(12px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(12px,env(safe-area-inset-left,0px));
+  background:var(--panel);border-top:1px solid var(--line)}
+.v2-nav .btn{flex:1 1 0;min-height:48px}
+html:not([data-v]) .v2-nav{display:none}
 </style>
 </head>
 <body>
@@ -1517,119 +1344,100 @@ html:not(#a)[data-v] .bar::after{display:none!important}
 </div>
 
 <main>
-  <!-- ===== v2 shell: screens from "Lakaran final" ===== -->
+  <!-- ===== Layout shell from "Lakaran final" (uses the app's own card / button styles) ===== -->
   <div class="v2-sub" id="subHead" hidden>
-    <button class="v2-back" id="subBack" type="button" aria-label="Back"></button>
-    <h2 class="v2-title" id="subTitle"></h2>
+    <button class="btn" id="subBack" type="button">‹ Back</button>
+    <h2 id="subTitle"></h2>
     <span class="spacer"></span>
-    <button class="v2-chip" id="subDone" type="button" hidden>Done</button>
+    <button class="btn" id="subDone" type="button" aria-pressed="true" hidden>Done</button>
   </div>
 
   <!-- 1 · Home -->
   <section class="v2-scr" id="scrHome" aria-label="Home">
-    <div class="v2-alerts" id="hAlerts"></div>
-    <div class="v2-card v2-hero">
-      <div class="v2-hero-txt">
-        <h3 id="hName">Mould King 6.0</h3>
-        <p class="v2-st" id="hState" data-st="off">Not connected</p>
-        <button class="v2-btn v2-pri" id="hConn" type="button">Connect</button>
+    <div id="hAlerts"></div>
+    <section class="card">
+      <h2 id="hName">Mould King 6.0</h2>
+      <p class="rec-stat" id="hState">Not connected</p>
+      <div class="rec-row"><button class="btn" id="hConn" type="button">Connect</button></div>
+    </section>
+    <section class="card">
+      <h2>Reconnect</h2>
+      <div class="rec-row v2-last">
+        <span class="v2-grow"><b id="hLastName"></b><span class="note" id="hLastSub"></span></span>
+        <button class="btn" id="hOpen" type="button" aria-pressed="true">Open</button>
       </div>
-      <button class="v2-ring" id="hRing" type="button" data-st="off" aria-label="Connect hub"><span><b>START</b><i>STOP</i></span></button>
-    </div>
-    <div class="v2-lbl">Reconnect</div>
-    <div class="v2-card v2-row v2-sel" id="hLast">
-      <span class="v2-knob" aria-hidden="true"></span>
-      <span class="v2-row-t"><b id="hLastName"></b><small id="hLastSub">Active model</small></span>
-      <button class="v2-btn v2-pri v2-sm" id="hOpen" type="button">Open</button>
-    </div>
+    </section>
     <div class="v2-tiles">
-      <button class="v2-tile" type="button" data-go="drive/board"><i class="d-y"></i><span>Drive</span></button>
-      <button class="v2-tile" type="button" data-go="drive/rec"><i class="d-r"></i><span>Record</span></button>
-      <button class="v2-tile" type="button" data-go="drive/seq"><i class="d-b"></i><span>Sequences</span></button>
+      <button class="btn" type="button" data-go="drive/board">Drive</button>
+      <button class="btn" type="button" data-go="drive/rec">Record</button>
+      <button class="btn" type="button" data-go="drive/seq">Sequences</button>
     </div>
   </section>
 
   <!-- 4 · Drive header: model + Board · Record · Sequences -->
-  <div class="v2-dhead" id="dHead">
-    <div class="v2-dtitle"><h2 class="v2-title" id="dName"></h2><button class="v2-pen" id="dEdit" type="button" aria-label="Model settings"></button></div>
-    <div class="v2-seg" id="dSeg" role="tablist" aria-label="Drive">
-      <button type="button" role="tab" data-dv="board" aria-selected="true">Board</button>
-      <button type="button" role="tab" data-dv="rec" aria-selected="false">Record</button>
-      <button type="button" role="tab" data-dv="seq" aria-selected="false">Sequences</button>
+  <section class="card v2-scr" id="dHead" aria-label="Drive">
+    <div class="rec-row"><h2 class="v2-grow" id="dName"></h2><button class="btn" id="dEdit" type="button" aria-label="Model settings">✎</button></div>
+    <div class="seg" id="dSeg" role="group" aria-label="Drive">
+      <button class="btn" type="button" data-dv="board" aria-pressed="true">Board</button>
+      <button class="btn" type="button" data-dv="rec" aria-pressed="false">Record</button>
+      <button class="btn" type="button" data-dv="seq" aria-pressed="false">Sequences</button>
     </div>
-  </div>
+  </section>
 
   <!-- 3 · Models -->
-  <section class="v2-scr" id="scrModels" aria-label="My models">
-    <h2 class="v2-title">My models</h2>
-    <input class="v2-search" id="mSearch" type="search" placeholder="Search models…" autocomplete="off" aria-label="Search models">
-    <div class="v2-list" id="mList"></div>
-    <p class="v2-empty" id="mNone" hidden>No model matches your search.</p>
-    <div class="v2-two">
-      <button class="v2-btn v2-pri" id="mNew" type="button">New model</button>
-      <button class="v2-btn" id="mTpl" type="button">Templates &amp; backup</button>
+  <section class="card v2-scr" id="scrModels" aria-label="My models">
+    <h2>My models</h2>
+    <input class="txt" id="mSearch" type="search" placeholder="Search models…" autocomplete="off" aria-label="Search models">
+    <div id="mList" class="v2-list"></div>
+    <p class="note" id="mNone" hidden>No model matches your search.</p>
+    <div class="rec-row">
+      <button class="btn" id="mNew" type="button">New model</button>
+      <button class="btn" id="mTpl" type="button">Templates &amp; backup</button>
     </div>
   </section>
 
   <!-- 12 · Templates & backup -->
-  <section class="v2-scr" id="scrTpl" aria-label="Templates and backup">
+  <section class="card v2-scr" id="scrTpl" aria-label="Templates and backup">
+    <h2>Templates</h2>
     <div class="v2-grid2">
-      <button class="v2-card v2-tpl" type="button" data-wiz="car"><span class="tp tp-joy"><i></i><i></i></span><b>Car with steering</b><small>Drive + steer</small></button>
-      <button class="v2-card v2-tpl" type="button" data-wiz="digger"><span class="tp tp-led"><i></i><i></i><i></i><i></i><i></i><i></i></span><b>Digger or crane</b><small>Tracks, arm, bucket</small></button>
-      <button class="v2-card v2-tpl" type="button" data-wiz="tank"><span class="tp tp-arc"></span><b>Tracked vehicle</b><small>Two tracks</small></button>
-      <button class="v2-card v2-tpl" type="button" data-wiz="empty"><span class="tp tp-plus">+</span><b>Empty board</b><small>Build your own</small></button>
+      <button class="btn" type="button" data-wiz="car">Car with steering<small>Drive + steer</small></button>
+      <button class="btn" type="button" data-wiz="digger">Digger or crane<small>Tracks, arm, bucket</small></button>
+      <button class="btn" type="button" data-wiz="tank">Tracked vehicle<small>Two tracks</small></button>
+      <button class="btn" type="button" data-wiz="empty">Empty board<small>Build your own</small></button>
     </div>
-    <div class="v2-card v2-bk">
-      <b>Backup all models</b>
-      <div class="v2-two">
-        <button class="v2-btn v2-sm" id="tSave" type="button">Save</button>
-        <button class="v2-btn v2-sm" id="tLoad" type="button">Restore</button>
-      </div>
+    <h2 style="margin-top:16px">Backup all models</h2>
+    <div class="rec-row">
+      <button class="btn" id="tSave" type="button">Save</button>
+      <button class="btn" id="tLoad" type="button">Restore</button>
     </div>
   </section>
 
   <!-- 8 · Settings -->
-  <section class="v2-scr" id="scrSet" aria-label="Settings">
-    <h2 class="v2-title">Settings</h2>
-    <div class="v2-grp">Hub</div>
-    <button class="v2-li" type="button" data-go="hub"><span>Hub &amp; channel test</span><small id="sHubSt"></small></button>
-    <div class="v2-grp">Safety</div>
-    <button class="v2-li" type="button" data-go="safety"><span>Model safety profile</span></button>
-    <div class="v2-grp">Data</div>
-    <button class="v2-li" type="button" data-go="backup"><span>Backup &amp; restore</span></button>
-    <div class="v2-grp">Experience</div>
-    <button class="v2-li v2-val" type="button" id="sTheme"><span>Theme</span><small id="sThemeV">Dark</small></button>
-    <button class="v2-li v2-val" type="button" id="sLang"><span>Language</span><small id="sLangV">English</small></button>
-    <button class="v2-li v2-sw" type="button" id="sFb" role="switch" aria-checked="true"><span>Vibration &amp; sound</span><i></i></button>
-    <button class="v2-li v2-sw" type="button" id="sPrac" role="switch" aria-checked="false"><span>Practice mode (no hub)</span><i></i></button>
-    <div class="v2-grp">More</div>
-    <button class="v2-li" type="button" data-go="m-tilt"><span>Tilt steering</span></button>
-    <button class="v2-li" type="button" data-go="m-pad"><span>Gamepad</span></button>
-    <button class="v2-li" type="button" data-go="m-app"><span>App, guide &amp; player mode</span></button>
-    <button class="v2-li" type="button" data-go="m-log"><span>Frames sent</span></button>
+  <section class="card v2-scr" id="scrSet" aria-label="Settings">
+    <h2>Hub</h2>
+    <button class="btn v2-li" type="button" data-go="hub"><span>Hub &amp; channel test</span><small id="sHubSt"></small></button>
+    <h2>Safety</h2>
+    <button class="btn v2-li" type="button" data-go="safety"><span>Model safety profile</span></button>
+    <h2>Data</h2>
+    <button class="btn v2-li" type="button" data-go="backup"><span>Backup &amp; restore</span></button>
+    <h2>Experience</h2>
+    <label class="check" for="sPrac"><input id="sPrac" type="checkbox">Practice mode (no hub)</label>
+    <button class="btn v2-li" type="button" data-go="m-app"><span>Language, sound &amp; vibration</span></button>
+    <h2>More</h2>
+    <button class="btn v2-li" type="button" data-go="m-tilt"><span>Tilt steering</span></button>
+    <button class="btn v2-li" type="button" data-go="m-pad"><span>Gamepad</span></button>
+    <button class="btn v2-li" type="button" data-go="m-log"><span>Frames sent</span></button>
   </section>
 
-  <!-- 2 + 11 · Hub (connect + profile + channel test) / empty state -->
-  <section class="v2-scr" id="scrHub" aria-label="Hub">
-    <div class="v2-emptyhub" id="hubEmpty">
-      <div class="v2-q" aria-hidden="true">?</div>
-      <b>No hub connected</b>
-      <p>Turn the hub on, press its button for 2 seconds and hold it near the phone.</p>
-      <button class="v2-btn v2-pri" id="hubFind" type="button">Connect</button>
-    </div>
-    <div class="v2-card v2-sel v2-hubcard" id="hubCard">
-      <b id="hubTitle">Mould King 6.0</b>
-      <small id="hubSub"></small>
-      <div class="v2-meter"><i id="hubBar"></i><em id="hubPct"></em></div>
-      <div class="v2-two">
-        <button class="v2-btn v2-sm" id="hubName" type="button">Rename</button>
-        <button class="v2-btn v2-sm" id="hubOff" type="button">Disconnect</button>
-      </div>
-    </div>
-    <div class="v2-lbl">Channel test <small>hold to run</small></div>
+  <!-- 2 + 11 · Hub (connect + channel test) / empty state -->
+  <section class="card v2-scr" id="scrHub" aria-label="Hub">
+    <h2 id="hubTitle">Mould King 6.0</h2>
+    <p class="rec-stat" id="hubSub"></p>
+    <p class="note" id="hubHelp">Turn the hub on, press its button for 2 seconds and hold it near the phone.</p>
+    <div class="rec-row"><button class="btn" id="hubConn" type="button">Connect</button></div>
+    <h2 style="margin-top:16px">Channel test</h2>
+    <p class="note" style="margin-top:0">Hold a channel to run it at the test power.</p>
     <div class="v2-chtest" id="chTest"></div>
-    <div class="v2-lbl">Hubs on this model</div>
-    <div class="v2-list" id="hubSlots"></div>
   </section>
   <section class="card model" aria-label="Model">
     <div class="model-row">
@@ -1992,29 +1800,11 @@ html:not(#a)[data-v] .bar::after{display:none!important}
   </div>
 </main>
 <nav class="v2-nav" id="tabbar" aria-label="Main">
-  <button type="button" data-tab="home" aria-current="page"><i></i><span>Home</span></button>
-  <button type="button" data-tab="drive"><i></i><span>Drive</span></button>
-  <button type="button" data-tab="models"><i></i><span>Models</span></button>
-  <button type="button" data-tab="settings"><i></i><span>Settings</span></button>
+  <button class="btn" type="button" data-tab="home" aria-pressed="true">Home</button>
+  <button class="btn" type="button" data-tab="drive" aria-pressed="false">Drive</button>
+  <button class="btn" type="button" data-tab="models" aria-pressed="false">Models</button>
+  <button class="btn" type="button" data-tab="settings" aria-pressed="false">Settings</button>
 </nav>
-<!-- 10 · Welcome (first run) -->
-<div class="v2-welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="wTitle" hidden>
-  <div class="v2-wbox">
-    <div class="v2-wlang" id="wLang">
-      <button type="button" data-l="ms">BM</button><button type="button" data-l="en">EN</button>
-    </div>
-    <h2 id="wTitle">Welcome</h2>
-    <div class="v2-logo" aria-hidden="true"><span><b>MK6</b><i>Console</i></span></div>
-    <ul class="v2-checks">
-      <li><b>Control Mould King 6.0 hubs</b><small>straight from your phone</small></li>
-      <li><b>Your own widget board</b><small>laid out to fit each model</small></li>
-      <li><b>Safety first</b><small>E-Stop and automatic stop</small></li>
-    </ul>
-    <div class="v2-dots" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
-    <button class="v2-btn v2-pri v2-wide" id="wStart" type="button">Start</button>
-    <button class="v2-link" id="wTry" type="button">Try without a hub</button>
-  </div>
-</div>
 
 <script>
 (function(){
@@ -2324,7 +2114,7 @@ html:not(#a)[data-v] .bar::after{display:none!important}
     });
     return out;
   }
-  function cleanPrefs(p){p=(p&&typeof p==='object')?p:{};return {practice:p.practice===true,theme:p.theme==='light'?'light':'dark',sound:p.sound!==false,haptic:p.haptic!==false,lang:p.lang==='en'?'en':'ms',seen:p.seen===true,lock:p.lock===true,kidLimit:pickOf(p.kidLimit,[100,70,50,30],50),lim:cleanLim(p.lim),autoBackup:p.autoBackup!==false,full:p.full!==false,relink:p.relink!==false,fx:(p.fx==='full'||p.fx==='lite')?p.fx:'auto',lastBackup:Math.max(0,+p.lastBackup||0),tpls:cleanTpls(p.tpls)}}
+  function cleanPrefs(p){p=(p&&typeof p==='object')?p:{};return {practice:p.practice===true,sound:p.sound!==false,haptic:p.haptic!==false,lang:p.lang==='ms'?'ms':'en',seen:p.seen===true,lock:p.lock===true,kidLimit:pickOf(p.kidLimit,[100,70,50,30],50),lim:cleanLim(p.lim),autoBackup:p.autoBackup!==false,full:p.full!==false,relink:p.relink!==false,fx:(p.fx==='full'||p.fx==='lite')?p.fx:'auto',lastBackup:Math.max(0,+p.lastBackup||0),tpls:cleanTpls(p.tpls)}}
   var store={active:null,profiles:[],prefs:cleanPrefs()};
   try{
     var raw=localStorage.getItem('mk6v2');
@@ -3294,7 +3084,7 @@ html:not(#a)[data-v] .bar::after{display:none!important}
     refs.forEach(function(r,i){syncChannel(i)});
     syncSticks();syncSettings();syncLayout();syncProfiles();syncRec();paintAccent();paintLamps();syncSeq();syncSafety();syncApp();buildGpMap();syncSpeed();syncRecTools();bkPaint();syncBoard();syncTiltUi();
   }
-  var ACC=['#FF7A2F','#FF4B3E','#FFD84A'];
+  var ACC=['#FF7A2F','#FF4B3E','#F5B800'];
   var swBox=$('#swatches'),swBtns=ACC.map(function(c,n){
     var b=document.createElement('button');b.type='button';b.className='sw';b.style.setProperty('--c',c);b.setAttribute('aria-label','Colour '+(n+1));
     b.addEventListener('click',function(){C.accent=n;paintAccent();save()});
@@ -3623,7 +3413,7 @@ html:not(#a)[data-v] .bar::after{display:none!important}
   function paintLink(){
     link.setAttribute('aria-pressed',String(S.connected));
     paintLamps();
-    var t=RH()?(hubMsg||(S.connected?'Hub active':'Connect hub')):(S.connected?'Practice on':'Practice off');
+    var t=RH()?(hubMsg||(S.connected?'Hub active':'Connect hub')):(NB?(S.connected?'Practice on':'Practice off'):(S.connected?'Simulation on':'Simulation off'));
     $('#linkText').textContent=t;
     var hs=$('#hubStat');if(hs){hs.setAttribute('data-st',!S.connected?'off':(hubMsg==='Pairing…'?'busy':'on'));hs.querySelector('span').textContent=t}
     link.setAttribute('data-st',!S.connected?'off':(hubMsg==='Pairing…'?'busy':'on'));
@@ -6196,7 +5986,11 @@ html:not(#a)[data-v] .bar::after{display:none!important}
     [/^Output (\d+)%$/,function(m){return 'Keluaran '+m[1]+'%'}],
     [/^Phone battery low · (\d+)%$/,function(m){return 'Bateri telefon rendah · '+m[1]+'%'}],
     [/^(\d+) hubs · (.+)$/,function(m){return m[1]+' hub · '+(msLookup(m[2])||m[2])}]);
-  /* ---------- v2 shell (Lakaran final): top bar, 4 tabs, Home, Drive tabs, Models, Templates, Settings, Hub, Alerts, Welcome ---------- */
+  MS['Templates']='Templat';
+  MS_RE.push([/^(.+) · Output (\d+)%$/,function(m){return (msLookup(m[1])||m[1])+' · Keluaran '+m[2]+'%'}]);
+  MS['Language, sound & vibration']='Bahasa, bunyi & getaran';MS['Hold a channel to run it at the test power.']='Tahan saluran untuk menjalankannya pada kuasa ujian.';
+  MS['‹ Back']='‹ Kembali';MS['Mould King 6.0']='Mould King 6.0';
+  /* ---------- Layout shell ("Lakaran final"): 4 tabs and screens built from the app's own cards ---------- */
   var V2={v:'home',dv:'board'}, R2=document.documentElement;
   var V2PARENT={medit:'models',tpl:'models',hub:'settings',safety:'settings',backup:'settings','m-tilt':'settings','m-pad':'settings','m-app':'settings','m-log':'settings'};
   var V2TITLE={medit:'Model settings',tpl:'Templates & backup',hub:'Hub',safety:'Model safety profile',backup:'Backup & restore','m-tilt':'Tilt steering','m-pad':'Gamepad','m-app':'App','m-log':'Frames sent'};
@@ -6206,8 +6000,8 @@ html:not(#a)[data-v] .bar::after{display:none!important}
     if(dv) V2.dv=dv;
     V2.v=v;R2.setAttribute('data-v',v);R2.setAttribute('data-dv',V2.dv);
     var t=v2Tab(v);
-    Array.prototype.forEach.call(document.querySelectorAll('#tabbar [data-tab]'),function(b){if(b.dataset.tab===t) b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
-    Array.prototype.forEach.call(document.querySelectorAll('#dSeg [data-dv]'),function(b){b.setAttribute('aria-selected',String(b.dataset.dv===V2.dv))});
+    Array.prototype.forEach.call(document.querySelectorAll('#tabbar [data-tab]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.tab===t))});
+    Array.prototype.forEach.call(document.querySelectorAll('#dSeg [data-dv]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.dv===V2.dv))});
     var sub=!!V2PARENT[v];$('#subHead').hidden=!sub;if(sub) $('#subTitle').textContent=V2TITLE[v];
     $('#subDone').hidden=v!=='medit';
     try{window.scrollTo(0,0)}catch(_){}
@@ -6218,26 +6012,18 @@ html:not(#a)[data-v] .bar::after{display:none!important}
   }
   window.mk6Go=v2Go;
   function v2Click(sel,fn){var e=$(sel);if(e) e.addEventListener('click',fn)}
-  function v2Fire(el,ev){if(!el) return;try{el.dispatchEvent(new Event(ev||'change',{bubbles:true}))}catch(_){}}
-  function v2Busy(){return S.connected&&hubMsg==='Pairing…'}
   function v2Conn(){link.click()}
-
-  // Navigation
-  Array.prototype.forEach.call(document.querySelectorAll('#tabbar [data-tab]'),function(b){b.addEventListener('click',function(){v2Go(b.dataset.tab==='drive'?'drive':b.dataset.tab);feedback('ok')})});
+  Array.prototype.forEach.call(document.querySelectorAll('#tabbar [data-tab]'),function(b){b.addEventListener('click',function(){v2Go(b.dataset.tab)})});
   Array.prototype.forEach.call(document.querySelectorAll('[data-go]'),function(b){b.addEventListener('click',function(){v2Go(b.dataset.go)})});
   Array.prototype.forEach.call(document.querySelectorAll('#dSeg [data-dv]'),function(b){b.addEventListener('click',function(){v2Go('drive',b.dataset.dv)})});
   v2Click('#subBack',function(){v2Go(V2PARENT[V2.v]||'home')});
   v2Click('#subDone',function(){v2Go('drive/board')});
   v2Click('#dEdit',function(){v2Go('medit')});
   v2Click('#hOpen',function(){v2Go('drive/board')});
-  v2Click('#hConn',v2Conn);v2Click('#hRing',v2Conn);v2Click('#hubFind',v2Conn);
-  v2Click('#hubOff',function(){if(S.connected) v2Conn()});
-  v2Click('#hubName',function(){var n=$('#hubN0');if(n){try{n.focus();n.scrollIntoView({block:'center'})}catch(_){}}});
+  v2Click('#hConn',v2Conn);v2Click('#hubConn',v2Conn);
+  // Hub module numbers and names (existing rows) sit on the Hub screen
+  (function(){var box=$('#scrHub'),at=box&&box.querySelectorAll('h2')[1];['#hub0','#hubN0'].forEach(function(q){var el=$(q);var row=el&&el.closest('.set-row');if(row&&at) box.insertBefore(row,at)})})();
 
-  // Hub module / name rows live on the Hub screen
-  (function(){var box=$('#hubSlots');if(!box) return;['#hub0','#hubN0'].forEach(function(q){var el=$(q);var row=el&&el.closest('.set-row');if(row) box.appendChild(row)})})();
-
-  // Models
   function v2Sub(p){
     var c=p.cfg||{},h=(c.hubs||[]).filter(function(x){return x>=0}).length||1,w=(c.board||[]).length;
     return h+(h===1?' hub':' hubs')+' · '+w+(w===1?' widget':' widgets');
@@ -6247,14 +6033,12 @@ html:not(#a)[data-v] .bar::after{display:none!important}
     var q=($('#mSearch').value||'').trim().toLowerCase();box.innerHTML='';var n=0;
     store.profiles.forEach(function(p){
       var name=profLbl(p);if(q&&name.toLowerCase().indexOf(q)<0) return;n++;
-      var row=document.createElement('div');row.className='v2-card v2-row'+(p.id===store.active?' v2-sel':'');
-      var main=document.createElement('button');main.type='button';main.className='v2-rowmain';
-      var k=document.createElement('span');k.className='v2-knob';k.setAttribute('aria-hidden','true');
-      var t=document.createElement('span');t.className='v2-row-t';
+      var row=document.createElement('div');row.className='rec-row';
+      var main=document.createElement('button');main.type='button';main.className='btn v2-pick';main.setAttribute('aria-pressed',String(p.id===store.active));
       var b=document.createElement('b');b.textContent=name;var s=document.createElement('small');s.textContent=v2Sub(p);
-      t.appendChild(b);t.appendChild(s);main.appendChild(k);main.appendChild(t);
+      main.appendChild(b);main.appendChild(s);
       main.addEventListener('click',function(){if(p.id!==store.active) switchProfile(p.id);v2Go('drive/board')});
-      var more=document.createElement('button');more.type='button';more.className='v2-more';more.setAttribute('aria-label','Model settings');
+      var more=document.createElement('button');more.type='button';more.className='btn';more.textContent='⋯';more.setAttribute('aria-label','Model settings');
       more.addEventListener('click',function(){if(p.id!==store.active) switchProfile(p.id);v2Go('medit')});
       row.appendChild(main);row.appendChild(more);box.appendChild(row);
     });
@@ -6272,19 +6056,6 @@ html:not(#a)[data-v] .bar::after{display:none!important}
   v2Click('#tSave',function(){$('#exBtn').click()});
   v2Click('#tLoad',function(){$('#imBtn').click();if(!NB) v2Go('backup')});
 
-  // Settings
-  function v2Theme(){
-    var light=store.prefs.theme==='light';
-    R2.setAttribute('data-theme',light?'light':'dark');
-    if(light) R2.removeAttribute('data-skin');else R2.setAttribute('data-skin','studs');
-  }
-  v2Click('#sTheme',function(){store.prefs.theme=store.prefs.theme==='light'?'dark':'light';save();v2Theme();v2Paint()});
-  v2Click('#sLang',function(){var l=$('#lang');l.value=store.prefs.lang==='ms'?'en':'ms';v2Fire(l);v2Paint()});
-  v2Click('#sFb',function(){
-    var on=!(store.prefs.sound||store.prefs.haptic);
-    ['#optSound','#optHaptic'].forEach(function(q){var c=$(q);if(c&&c.checked!==on){c.checked=on;v2Fire(c)}});
-    store.prefs.sound=on;store.prefs.haptic=on;save();v2Paint();if(on) feedback('ok');
-  });
   function v2Practice(on){
     if(!!store.prefs.practice===on) return;
     if(S.connected) v2Conn();
@@ -6292,36 +6063,34 @@ html:not(#a)[data-v] .bar::after{display:none!important}
     store.prefs.practice=on;save();paintLink();v2Paint();
     toast(on?'Practice mode: no hub is used, outputs are only shown.':'Practice mode off.');
   }
-  v2Click('#sPrac',function(){v2Practice(!store.prefs.practice)});
+  (function(){var c=$('#sPrac');if(c) c.addEventListener('change',function(){v2Practice(c.checked)})})();
 
-  // Channel test (hold to run at the test power)
   var v2ChKey='';
   function v2ChTest(force){
     var box=$('#chTest');if(!box) return;
     var idx=activeIdx(),key=idx.join(',')+'|'+C.hubs.join(',');
     if(!force&&key===v2ChKey) return;v2ChKey=key;box.innerHTML='';
     idx.forEach(function(i){
-      var b=document.createElement('button');b.type='button';b.className='v2-ch';b.textContent=tagOf(i);b.title=C.ch[i].name;
+      var b=document.createElement('button');b.type='button';b.className='btn';b.textContent=tagOf(i);b.title=C.ch[i].name;b.setAttribute('aria-pressed','false');
       var on=false;
       var down=function(e){
         if(e&&e.preventDefault) e.preventDefault();
         if(!S.connected){toast(RH()?'Connect the hub first.':'Turn on Practice mode or connect the hub first.');return}
         if(S.estop){toast('Release E-Stop first.');return}
-        on=true;b.classList.add('on');noteInput();setT(i,C.testPwr||60,false);feedback('ok');
+        on=true;b.setAttribute('aria-pressed','true');noteInput();setT(i,C.testPwr||60,false);feedback('ok');
       };
-      var up=function(){if(!on) return;on=false;b.classList.remove('on');setT(i,0,false)};
+      var up=function(){if(!on) return;on=false;b.setAttribute('aria-pressed','false');setT(i,0,false)};
       b.addEventListener('pointerdown',down);['pointerup','pointercancel','pointerleave'].forEach(function(ev){b.addEventListener(ev,up)});
       box.appendChild(b);
     });
   }
 
-  // Alerts (one main action each)
-  function v2Alert(box,cls,title,sub,act,fn){
-    var d=document.createElement('div');d.className='v2-card v2-alert '+cls;
-    var t=document.createElement('div');t.className='v2-row-t';
-    var b=document.createElement('b');b.textContent=title;var s=document.createElement('small');s.textContent=sub;
-    t.appendChild(b);t.appendChild(s);d.appendChild(t);
-    if(act){var k=document.createElement('button');k.type='button';k.className='v2-btn v2-sm'+(cls==='a-red'?' v2-pri':'');k.textContent=act;k.addEventListener('click',fn);d.appendChild(k)}
+  // Alerts on Home: one main action each, using the app's own card and button
+  function v2Alert(box,title,sub,act,fn){
+    var d=document.createElement('section');d.className='card';
+    var h=document.createElement('h2');h.textContent=title;var p=document.createElement('p');p.className='note';p.style.marginTop='0';p.textContent=sub;
+    d.appendChild(h);d.appendChild(p);
+    if(act){var r=document.createElement('div');r.className='rec-row';var k=document.createElement('button');k.type='button';k.className='btn';k.textContent=act;k.addEventListener('click',fn);r.appendChild(k);d.appendChild(r)}
     box.appendChild(d);
   }
   var v2AlKey='';
@@ -6332,56 +6101,49 @@ html:not(#a)[data-v] .bar::after{display:none!important}
     var bad=!S.connected&&RH()&&hubMsg&&hubMsg!=='Pairing…'?hubMsg:'';
     var key=[S.estop,lost,S.bt,low,pct,bad,store.prefs.lang].join('|');if(key===v2AlKey) return;v2AlKey=key;
     box.innerHTML='';
-    if(S.estop) v2Alert(box,'a-red','E-Stop is on','Every channel is locked at 0','Release',function(){setEstop(false)});
-    if(lost) v2Alert(box,'a-red','Connection lost','Outputs were stopped automatically','Reconnect',function(){$('#lostBanner').hidden=true;if(!S.connected) v2Conn();v2Paint()});
-    if(S.bt===false) v2Alert(box,'a-grey','Bluetooth is off','Turn it on to reach the hub','Open',function(){$('#btBtn').click()});
-    else if(bad&&!lost) v2Alert(box,'a-grey',bad,'Check Bluetooth and the permission, then try again','Try again',v2Conn);
-    if(low) v2Alert(box,'a-org','Phone battery low · '+pct+'%','Charge it before driving','OK',function(){bat.classList.remove('low');v2AlKey='';v2Alerts()});
-    box.hidden=!box.firstChild;
+    if(S.estop) v2Alert(box,'E-Stop is on','Every channel is locked at 0','Release',function(){setEstop(false)});
+    if(lost) v2Alert(box,'Connection lost','Outputs were stopped automatically','Reconnect',function(){$('#lostBanner').hidden=true;if(!S.connected) v2Conn();v2Paint()});
+    if(S.bt===false) v2Alert(box,'Bluetooth is off','Turn it on to reach the hub','Open',function(){$('#btBtn').click()});
+    else if(bad&&!lost) v2Alert(box,bad,'Check Bluetooth and the permission, then try again','Try again',v2Conn);
+    if(low) v2Alert(box,'Phone battery low · '+pct+'%','Charge it before driving','OK',function(){bat.classList.remove('low');v2AlKey='';v2Alerts()});
   }
 
-  // Paint everything that mirrors app state
   function v2Paint(){
-    var st=!S.connected?'off':(v2Busy()?'busy':'on');
-    var real=RH();
-    var txt=real?(st==='busy'?'Pairing…':st==='on'?'Hub active':(hubMsg||'Not connected')):(S.connected?'Practice on':'Practice off');
-    var hs=$('#hState');hs.textContent=txt;hs.setAttribute('data-st',st);
+    var busy=S.connected&&hubMsg==='Pairing…', real=RH();
+    var txt=real?(busy?'Pairing…':S.connected?'Hub active':(hubMsg||'Not connected')):NB?(S.connected?'Practice on':'Practice off'):(S.connected?'Simulation on':'Simulation off');
     var nm=(C.hubNames&&C.hubNames[C.hubs[0]])||'', n=activeSlots().length;
-    $('#hName').textContent='Mould King 6.0'+(nm?' · '+nm:'')+(n>1?' ×'+n:'');
-    var hc=$('#hConn');hc.textContent=S.connected?'Disconnect':'Connect';hc.classList.toggle('v2-pri',!S.connected);
-    var ring=$('#hRing');ring.setAttribute('data-st',st);ring.setAttribute('aria-label',S.connected?'Disconnect hub':'Connect hub');
+    var title='Mould King 6.0 · M'+(C.hubs[0]+1)+(nm?' · '+nm:'')+(n>1?' (+'+(n-1)+')':'');
+    $('#hName').textContent=title;$('#hState').textContent=txt;
+    var cl=S.connected?'Disconnect':'Connect';$('#hConn').textContent=cl;$('#hubConn').textContent=cl;
+    $('#hConn').setAttribute('aria-pressed',String(!S.connected));
     $('#hLastName').textContent=profLbl(activeProfile());$('#hLastSub').textContent=v2Sub(activeProfile());
     $('#dName').textContent=profLbl(activeProfile());
-    // settings values
     $('#sHubSt').textContent=txt;
-    $('#sThemeV').textContent=store.prefs.theme==='light'?'Light mode':'Dark mode';
-    $('#sLangV').textContent=store.prefs.lang==='ms'?'Bahasa Melayu':'English';
-    $('#sFb').setAttribute('aria-checked',String(!!(store.prefs.sound||store.prefs.haptic)));
-    $('#sPrac').setAttribute('aria-checked',String(!!store.prefs.practice));
-    // hub screen
-    $('#hubEmpty').hidden=S.connected;$('#hubCard').hidden=!S.connected;
-    $('#hubTitle').textContent='Mould King 6.0 · M'+(C.hubs[0]+1)+(nm?' · '+nm:'');
-    $('#hubSub').textContent=real?((n>1?n+' hubs · ':'')+txt):'Practice mode: no hub is used';
-    var mx=0;activeIdx().forEach(function(i){mx=Math.max(mx,Math.abs(rt.o[i]||0))});mx=Math.round(mx);
-    var bar=$('#hubBar');bar.style.width=mx+'%';bar.className=mx>80?'hi':mx>55?'mid':'';
-    $('#hubPct').textContent='Output '+mx+'%';
+    var pc=$('#sPrac');if(pc) pc.checked=!!store.prefs.practice;
+    $('#hubTitle').textContent=title;
+    var mx=0;activeIdx().forEach(function(i){mx=Math.max(mx,Math.abs(rt.o[i]||0))});
+    $('#hubSub').textContent=txt+(S.connected?' · Output '+Math.round(mx)+'%':'');
+    $('#hubHelp').hidden=S.connected;
     if(V2.v==='hub') v2ChTest(false);
     v2Alerts();
-    R2.classList.toggle('v2-link-on',!!S.connected);
   }
   setInterval(v2Paint,250);
 
-  // Welcome (first run) replaces the old guide on first start
-  function v2WelcomeLang(){Array.prototype.forEach.call(document.querySelectorAll('#wLang [data-l]'),function(b){b.setAttribute('aria-pressed',String(store.prefs.lang===b.dataset.l))})}
-  Array.prototype.forEach.call(document.querySelectorAll('#wLang [data-l]'),function(b){b.addEventListener('click',function(){var l=$('#lang');l.value=b.dataset.l;v2Fire(l);v2WelcomeLang()})});
-  function v2WelcomeDone(){$('#welcome').hidden=true;store.prefs.seen=true;save()}
-  v2Click('#wStart',function(){v2WelcomeDone();v2Go('hub')});
-  v2Click('#wTry',function(){v2WelcomeDone();v2Practice(true);if(!S.connected) v2Conn();v2Go('drive/board')});
+  // Guide (first run) keeps its look; page 1 also offers "Try without a hub"
+  (function(){
+    var orig=guideRender;
+    guideRender=function(){
+      orig();
+      if(gIdx!==0) return;
+      var b=document.createElement('button');b.type='button';b.className='btn';b.textContent='Try without a hub';
+      b.addEventListener('click',function(){guideClose();v2Practice(true);if(!S.connected) v2Conn();v2Go('drive/board')});
+      $('#gExtra').appendChild(b);
+    };
+  })();
 
-  v2Theme();
   v2Go('home');
   applyLang();
-  if(!store.prefs.seen){$('#welcome').hidden=false;v2WelcomeLang()}
+  if(!store.prefs.seen) guideOpen();
 
   setInterval(tick,50);
 })();
