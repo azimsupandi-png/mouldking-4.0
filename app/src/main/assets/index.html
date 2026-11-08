@@ -954,7 +954,7 @@ html,body{overflow-anchor:none}
 .bdw-h .bdw-lbl{position:absolute;left:0;right:0;top:-2px;z-index:9;height:36px;min-height:36px;padding:0 12px;font-size:14px;border-radius:18px;box-sizing:border-box}
 :root.dash .dw .bdw-h .bdw-lbl{left:-4px;right:-4px;top:-2px}
 .wsf[hidden]{display:none}
-.bdw .psb{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;flex:1 1 auto;min-height:0;padding:0;border:0;background:none;color:inherit;touch-action:manipulation;user-select:none;-webkit-user-select:none;cursor:pointer}
+.bdw .psb{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;flex:1 1 auto;min-height:0;padding:0;border:0;background:none;color:inherit;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
 .bdw .pssvg{display:block;width:100%;height:100%;max-height:100%;min-height:0}
 .bdw .psb .psc{transition:transform .08s}
 .bdw .psb.dn g:nth-of-type(2){transform:scale(.96);transform-origin:60px 58px}
@@ -1272,8 +1272,6 @@ html[data-v]:not(.dash) main > * + *{margin-top:16px}
 .v2-sub h2{margin:0}
 .v2-grow{flex:1 1 auto;min-width:0}
 .v2-last b{display:block}
-.v2-tiles{display:flex;gap:12px;margin-top:16px}.v2-tiles .btn{flex:1 1 0}
-.v2-tiles .btn{min-height:64px}
 #hAlerts > .card{margin-bottom:16px}
 #scrModels .txt{margin-bottom:12px}
 .v2-list{display:grid;gap:10px;margin-bottom:12px}
@@ -1296,7 +1294,7 @@ html[data-v=drive]:not(.dash) #cols > .card,html[data-v=drive]:not(.dash) #cols 
 /* lock mode: keep the app's own lock rules in charge of what is hidden */
 html:not(#a)[data-lock] #cols .stack > #recCard,html:not(#a)[data-lock] #cols .stack > #seqCard,html:not(#a)[data-lock] #cols .stack > #setCard,
 html:not(#a)[data-lock] #cols .stack > #calCard,html:not(#a)[data-lock] #cols .stack > #padCard,html:not(#a)[data-lock] #cols .stack > #tiltCard,
-html[data-lock] #dSeg [data-dv=rec],html[data-lock] #dSeg [data-dv=seq],html[data-lock] .v2-tiles [data-go="drive/rec"],html[data-lock] .v2-tiles [data-go="drive/seq"],
+html[data-lock] #dMenu [data-dv=rec],html[data-lock] #dMenu [data-dv=seq],
 html[data-lock] #scrSet .v2-lk,html[data-lock] #scrSet [data-go=safety],html[data-lock] #scrSet [data-go=m-tilt],html[data-lock] #scrSet [data-go=m-pad],html[data-lock] #scrSet label[for=sPrac],
 html[data-lock] .v2-nav [data-tab=models],html[data-lock] #scrModels .rec-row > .btn:not(.v2-pick),html[data-lock] #mNew,html[data-lock] #mTpl,html[data-lock] #dEdit,html[data-lock] #scrHub .set-row{display:none!important}
 /* model settings: the Models tab already picks the model, so the duplicate picker row is not shown here */
@@ -1330,6 +1328,22 @@ html[data-v]:not(.dash) .toast{bottom:calc(var(--nav-h) + 16px + env(safe-area-i
 section.model details.adv{margin-top:14px}
 .v2-advrow{margin-top:10px}
 .v2-grid2 .v2-span{grid-column:1/-1;min-height:56px}
+/* spacing: every box on a screen sits 16px apart */
+html[data-v=home]:not(.dash) main > #scrHome{display:flex!important;flex-direction:column;gap:16px}
+#scrHome > *{margin:0!important}
+#hAlerts{display:flex;flex-direction:column;gap:16px}#hAlerts:empty{display:none}#hAlerts > .card{margin:0}
+#dHead .rec-row{margin:0;align-items:center}#dHead h2{margin:0 0 4px}#dHead .rec-stat{margin:0}
+/* Drive menu: Board / Record / Sequences, opens above the Drive tab */
+.v2-dmenu{position:fixed;z-index:32;left:50%;transform:translateX(-50%);bottom:calc(var(--nav-h) + 10px + env(safe-area-inset-bottom,0px));
+  display:flex;gap:6px;padding:10px 12px;border-radius:18px;background:var(--panel);border:1px solid var(--line);box-shadow:0 10px 26px rgba(0,0,0,.55);animation:v2pop .14s ease-out}
+.v2-dmenu button{min-width:84px;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:0;background:none;color:var(--fg);font:600 12px var(--f-body);cursor:pointer;padding:4px 6px}
+.v2-dmenu button[aria-pressed=true]{color:var(--acc)}
+.v2-dmenu button[aria-pressed=true] .v2-ico{background:radial-gradient(circle at 38% 28%,#fff1a8,#ffd84a 55%,#c99a00);box-shadow:0 3px 0 #7a5c00,inset 0 1px 0 rgba(255,255,255,.5)}
+.v2-dmenu button[aria-pressed=true] .v2-ico svg{stroke:#1b1b1b}
+.v2-dmenu .v2-ico svg circle[fill]{fill:#e8eaee}.v2-dmenu button[aria-pressed=true] .v2-ico svg circle[fill]{fill:#1b1b1b}
+.v2-dmback{position:fixed;inset:0;z-index:31;background:rgba(0,0,0,.35)}
+@keyframes v2pop{from{opacity:0;transform:translate(-50%,8px)}}
+html.dash .v2-dmenu,html.dash .v2-dmback{display:none!important}
 /* tab change: short slide (150 ms) */
 main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s ease-out}
 @keyframes v2inR{from{opacity:.4;transform:translateX(14px)}}@keyframes v2inL{from{opacity:.4;transform:translateX(-14px)}}
@@ -1407,21 +1421,11 @@ html:not([data-v]) .v2-nav{display:none}
       </div>
       <button class="v2-prev" id="hPrev" type="button" data-go="drive/board" aria-label="Open the board" hidden></button>
     </section>
-    <div class="v2-tiles">
-      <button class="btn" type="button" data-go="drive/board">Drive</button>
-      <button class="btn" type="button" data-go="drive/rec">Record</button>
-      <button class="btn" type="button" data-go="drive/seq">Sequences</button>
-    </div>
   </section>
 
   <!-- 4 · Drive header: model + Board · Record · Sequences -->
   <section class="card v2-scr" id="dHead" aria-label="Drive">
-    <div class="rec-row"><h2 class="v2-grow" id="dName"></h2><button class="btn" id="dEdit" type="button" aria-label="Model settings">✎</button></div>
-    <div class="seg" id="dSeg" role="group" aria-label="Drive">
-      <button class="btn" type="button" data-dv="board" aria-pressed="true">Board</button>
-      <button class="btn" type="button" data-dv="rec" aria-pressed="false">Record</button>
-      <button class="btn" type="button" data-dv="seq" aria-pressed="false">Sequences</button>
-    </div>
+    <div class="rec-row"><div class="v2-grow"><h2 id="dName"></h2><span class="rec-stat" id="dSub">Board</span></div><button class="btn" id="dEdit" type="button" aria-label="Model settings">✎</button></div>
   </section>
 
   <!-- 3 · Models -->
@@ -1843,6 +1847,12 @@ html:not([data-v]) .v2-nav{display:none}
     </div>
   </div>
 </main>
+<div class="v2-dmenu" id="dMenu" role="menu" aria-label="Drive menu" hidden>
+  <button type="button" role="menuitem" data-dv="board" aria-pressed="false"><i class="v2-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x='4' y='4' width='7' height='7' rx='1.5'/><rect x='13' y='4' width='7' height='7' rx='1.5'/><rect x='4' y='13' width='7' height='7' rx='1.5'/><rect x='13' y='13' width='7' height='7' rx='1.5'/></svg></i><span>Board</span></button>
+  <button type="button" role="menuitem" data-dv="rec" aria-pressed="false"><i class="v2-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx='12' cy='12' r='8'/><circle cx='12' cy='12' r='3.5' fill='currentColor'/></svg></i><span>Record</span></button>
+  <button type="button" role="menuitem" data-dv="seq" aria-pressed="false"><i class="v2-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d='M5 6h9M5 12h9M5 18h9'/><path d='M17 9l3 3-3 3'/></svg></i><span>Sequences</span></button>
+</div>
+<div class="v2-dmback" id="dMenuBack" hidden></div>
 <nav class="v2-nav" id="tabbar" aria-label="Main">
   <button type="button" data-tab="home" aria-pressed="true"><i class="v2-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d='M4 11l8-7 8 7v9h-5v-6H9v6H4z'/></svg></i><span>Home</span></button>
   <button type="button" data-tab="drive" aria-pressed="false"><i class="v2-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx='12' cy='12' r='8'/><circle cx='12' cy='12' r='2.5'/><path d='M12 4v5.5M4.5 14.5l5.2-1.4M19.5 14.5l-5.2-1.4'/></svg></i><span>Drive</span></button>
@@ -6040,7 +6050,7 @@ html:not([data-v]) .v2-nav{display:none}
    ['My model','Model saya'],['Car / Truck','Kereta / Trak'],['Excavator / crane','Jengkaut / kren'],['Dual stick car','Kereta dua joystick'],['Robot (4 motors)','Robot (4 motor)'],
    ['My board','Papan saya'],['Advanced','Lanjutan'],['Control layout','Susun atur kawalan'],['Sliders, lights, Turbo, winch','Gelangsar, lampu, Turbo, win'],
    ['Tracks + double joystick','Trek + joystick berkembar'],['Two joysticks','Dua joystick'],['Four meters + joystick','Empat meter + joystick'],['Start from nothing','Mula dari kosong'],
-   ['Pick a template','Pilih templat']].forEach(function(x){MS[x[0]]=x[1]});
+   ['Pick a template','Pilih templat'],['Hold the button for half a second.','Tahan butang selama setengah saat.'],['Drive menu','Menu pandu']].forEach(function(x){MS[x[0]]=x[1]});
   MS['Settings are locked']='Tetapan dikunci';MS['Only driving is available']='Hanya pemanduan dibenarkan';MS['Unlock']='Buka kunci';
   MS_RE.push([/^(.+) · Output (\d+)%$/,function(m){return (msLookup(m[1])||m[1])+' · Keluaran '+m[2]+'%'}]);
   MS['Language, sound & vibration']='Bahasa, bunyi & getaran';MS['Hold a channel to run it at the test power.']='Tahan saluran untuk menjalankannya pada kuasa ujian.';
@@ -6058,7 +6068,8 @@ html:not([data-v]) .v2-nav{display:none}
     if(v!=='drive'&&bdEditing){var be=$('#bdEdit');if(be) be.click()}
     if(t!==v2LastTab) v2Motion(t);
     Array.prototype.forEach.call(document.querySelectorAll('#tabbar [data-tab]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.tab===t))});
-    Array.prototype.forEach.call(document.querySelectorAll('#dSeg [data-dv]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.dv===V2.dv))});
+    Array.prototype.forEach.call(document.querySelectorAll('#dMenu [data-dv]'),function(b){b.setAttribute('aria-pressed',String(v==='drive'&&b.dataset.dv===V2.dv))});
+    var dsub=$('#dSub');if(dsub) dsub.textContent=V2.dv==='rec'?'Record':V2.dv==='seq'?'Sequences':'Board';
     var sub=!!V2PARENT[v];$('#subHead').hidden=!sub;if(sub) $('#subTitle').textContent=V2TITLE[v];
     $('#subDone').hidden=v!=='medit';
     try{window.scrollTo(0,0)}catch(_){}
@@ -6071,6 +6082,7 @@ html:not([data-v]) .v2-nav{display:none}
   window.mk6Go=v2Go;
   // Android back button: close an open dialog, then go up one screen, then Home; only then leave the app
   window.mk6Back=function(){
+    if(!$('#dMenu').hidden){v2Menu(false);return true}
     var dl=['#dashTpl','#jcDlg','#lxDlg'].map(function(q){return $(q)}).filter(function(e){return e&&!e.hidden});
     if(dl.length){dl[0].hidden=true;return true}
     if(!$('#guide').hidden){guideClose();return true}
@@ -6108,7 +6120,19 @@ html:not([data-v]) .v2-nav{display:none}
     var pt2=sv('text',{x:60,y:71,'text-anchor':'middle','font-size':10,'font-weight':900,fill:'#E24B4A'},pcap);pt2.textContent='STOP';
     var pst=sv('text',{x:60,y:62,'text-anchor':'middle','font-size':11,'font-weight':900,fill:'#E24B4A'},psv);
     v2PS={k:'ps',it:{md:0},b:pb,ring:pring,glow:pglw,glowg:pglow,cap:pcap,ic:pic,t1:pt1,t2:pt2,st:pst,col:[],tgt:'',ai:0,t:0};
-    pb.addEventListener('click',function(){v2Conn();feedback('ok')});
+    // same behaviour as the START/STOP widget on the board: hold for 0.5 s; a short tap only shows a hint
+    var hdT=0,hdDn=false,hdFired=false;
+    pb.addEventListener('pointerdown',function(e){
+      e.preventDefault();try{pb.setPointerCapture(e.pointerId)}catch(_){}
+      hdDn=true;hdFired=false;pb.classList.add('dn');clearTimeout(hdT);
+      hdT=setTimeout(function(){if(!hdDn) return;hdFired=true;feedback('ok');v2Conn()},500);
+    });
+    ['pointerup','pointercancel','lostpointercapture'].forEach(function(ev){pb.addEventListener(ev,function(e){
+      var was=hdDn;hdDn=false;clearTimeout(hdT);pb.classList.remove('dn');
+      if(ev==='pointerup'&&was&&!hdFired) toast('Hold the button for half a second.',2000);
+    })});
+    pb.addEventListener('contextmenu',function(e){e.preventDefault()});
+    pb.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();v2Conn()}});
     el.appendChild(pb);box.appendChild(el);
     setInterval(function(){if(V2.v==='home'&&!document.hidden) paintVw(v2PS)},50);
   })();
@@ -6131,9 +6155,13 @@ html:not([data-v]) .v2-nav{display:none}
     m.classList.remove('v2-in-r','v2-in-l');void m.offsetWidth;m.classList.add('v2-in-'+dir);
   }
   function v2Tick(){if(store.prefs.haptic&&NB&&NB.haptic){try{NB.haptic('dial')}catch(_){}}}
-  Array.prototype.forEach.call(document.querySelectorAll('#tabbar [data-tab]'),function(b){b.addEventListener('click',function(){if(V2.v!==b.dataset.tab) v2Tick();v2Go(b.dataset.tab)})});
+  function v2Menu(on){var m=$('#dMenu');if(!m) return;m.hidden=!on;$('#dMenuBack').hidden=!on;var d=document.querySelector('#tabbar [data-tab=drive]');if(d) d.setAttribute('aria-expanded',String(!!on))}
+  Array.prototype.forEach.call(document.querySelectorAll('#tabbar [data-tab]'),function(b){b.addEventListener('click',function(){
+    if(b.dataset.tab==='drive'){v2Tick();v2Menu($('#dMenu').hidden);return}
+    v2Menu(false);if(V2.v!==b.dataset.tab) v2Tick();v2Go(b.dataset.tab)})});
+  Array.prototype.forEach.call(document.querySelectorAll('#dMenu [data-dv]'),function(b){b.addEventListener('click',function(){v2Menu(false);v2Go('drive',b.dataset.dv)})});
+  v2Click('#dMenuBack',function(){v2Menu(false)});
   Array.prototype.forEach.call(document.querySelectorAll('[data-go]'),function(b){b.addEventListener('click',function(){v2Go(b.dataset.go)})});
-  Array.prototype.forEach.call(document.querySelectorAll('#dSeg [data-dv]'),function(b){b.addEventListener('click',function(){v2Go('drive',b.dataset.dv)})});
   v2Click('#subBack',function(){v2Go(V2PARENT[V2.v]||'home')});
   v2Click('#subDone',function(){v2Go('drive/board')});
   v2Click('#dEdit',function(){v2Go('medit')});
