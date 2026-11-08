@@ -1228,7 +1228,7 @@ html,body{overflow-anchor:none}
 /* ===================== Layout shell ("Lakaran final"): arrangement only =====================
    No new colours or graphics: every piece uses the app's own .card / .btn / .seg / .check styles and theme variables.
    This block only decides which section shows on which tab and where it sits. */
-:root{--nav-h:64px}
+:root{--nav-h:70px}
 html[data-v]:not(.dash) main{padding-bottom:calc(var(--nav-h) + 28px + env(safe-area-inset-bottom,0px))}
 html[data-v]:not(.dash) main > *{display:none!important}
 html[data-v]:not(.dash) main > #subHead:not([hidden]){display:flex!important}
@@ -1303,11 +1303,37 @@ html[data-lock] #scrModels .rec-row > .btn:not(.v2-pick),html[data-lock] #mNew,h
 html[data-v=medit] section.model .model-row:first-child > label:first-child{display:none}
 /* toasts sit above the tab bar */
 html[data-v]:not(.dash) .toast{bottom:calc(var(--nav-h) + 16px + env(safe-area-inset-bottom,0px))}
-/* bottom navigation: 4 fixed tabs */
-.v2-nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;gap:8px;align-items:center;
-  height:calc(var(--nav-h) + env(safe-area-inset-bottom,0px));padding:0 max(12px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(12px,env(safe-area-inset-left,0px));
-  background:var(--panel);border-top:1px solid var(--line)}
-.v2-nav .btn{flex:1 1 0;min-height:48px}
+/* bottom navigation: 4 fixed tabs, round raised icons in the style of the top-bar buttons */
+.v2-nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;gap:4px;align-items:center;justify-content:space-around;
+  height:calc(var(--nav-h) + env(safe-area-inset-bottom,0px));padding:0 max(8px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(8px,env(safe-area-inset-left,0px));
+  background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -6px 18px rgba(0,0,0,.35)}
+.v2-nav button{flex:1 1 0;max-width:110px;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  border:0;background:none;padding:0;color:var(--muted);font:600 11.5px var(--f-body);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.v2-ico{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;
+  background:radial-gradient(circle at 38% 28%,#6a7384,#3a414d 62%,#22272f);box-shadow:0 3px 0 #15181d,inset 0 1px 0 rgba(255,255,255,.18);transition:transform .12s}
+.v2-ico svg{width:19px;height:19px;fill:none;stroke:#e8eaee;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.v2-nav button[aria-pressed=true]{color:var(--acc)}
+.v2-nav button[aria-pressed=true] .v2-ico{background:radial-gradient(circle at 38% 28%,#fff1a8,#ffd84a 55%,#c99a00);box-shadow:0 3px 0 #7a5c00,inset 0 1px 0 rgba(255,255,255,.5)}
+.v2-nav button[aria-pressed=true] .v2-ico svg{stroke:#1b1b1b}
+.v2-nav button:active .v2-ico{transform:translateY(2px);box-shadow:0 1px 0 #15181d}
+/* Home: start/stop widget beside the hub status, still preview of the board */
+.v2-hero{display:flex;align-items:center;gap:12px}
+.v2-psbox{flex:none;width:132px}
+.v2-ps.bdw{height:132px;padding:4px;display:flex}
+.v2-ps .psb{display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:0;border:0;background:none;cursor:pointer}
+.v2-ps .pssvg{width:100%;height:100%}
+.v2-prev{display:block;width:100%;height:178px;margin-top:12px;padding:0;overflow:hidden;position:relative;border:1px solid var(--line);border-radius:12px;background:var(--well);cursor:pointer}
+.v2-prev::after{content:"";position:absolute;left:0;right:0;bottom:0;height:46px;background:linear-gradient(transparent,var(--well));pointer-events:none}
+.v2-previn{zoom:.5;width:100%;padding:12px;pointer-events:none}
+/* Advanced groups (the app's own details.adv) */
+.v2-advlist{margin-top:10px}
+section.model details.adv{margin-top:14px}
+.v2-advrow{margin-top:10px}
+.v2-grid2 .v2-span{grid-column:1/-1;min-height:56px}
+/* tab change: short slide (150 ms) */
+main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s ease-out}
+@keyframes v2inR{from{opacity:.4;transform:translateX(14px)}}@keyframes v2inL{from{opacity:.4;transform:translateX(-14px)}}
+@media (prefers-reduced-motion:reduce){main.v2-in-r,main.v2-in-l{animation:none}}
 html:not([data-v]) .v2-nav{display:none}
 </style>
 </head>
@@ -1365,10 +1391,13 @@ html:not([data-v]) .v2-nav{display:none}
   <!-- 1 · Home -->
   <section class="v2-scr" id="scrHome" aria-label="Home">
     <div id="hAlerts"></div>
-    <section class="card">
-      <h2 id="hName">Mould King 6.0</h2>
-      <p class="rec-stat" id="hState">Not connected</p>
-      <div class="rec-row"><button class="btn" id="hConn" type="button">Connect</button></div>
+    <section class="card v2-hero">
+      <div class="v2-grow">
+        <h2 id="hName">Mould King 6.0</h2>
+        <p class="rec-stat" id="hState">Not connected</p>
+        <div class="rec-row"><button class="btn" id="hConn" type="button">Connect</button></div>
+      </div>
+      <div class="v2-psbox" id="hPS"></div>
     </section>
     <section class="card">
       <h2>Reconnect</h2>
@@ -1376,6 +1405,7 @@ html:not([data-v]) .v2-nav{display:none}
         <span class="v2-grow"><b id="hLastName"></b><span class="note" id="hLastSub"></span></span>
         <button class="btn" id="hOpen" type="button" aria-pressed="true">Open</button>
       </div>
+      <button class="v2-prev" id="hPrev" type="button" data-go="drive/board" aria-label="Open the board" hidden></button>
     </section>
     <div class="v2-tiles">
       <button class="btn" type="button" data-go="drive/board">Drive</button>
@@ -1408,12 +1438,13 @@ html:not([data-v]) .v2-nav{display:none}
 
   <!-- 12 · Templates & backup -->
   <section class="card v2-scr" id="scrTpl" aria-label="Templates and backup">
-    <h2>Templates</h2>
+    <h2>Pick a template</h2>
     <div class="v2-grid2">
-      <button class="btn" type="button" data-wiz="car">Car with steering<small>Drive + steer</small></button>
-      <button class="btn" type="button" data-wiz="digger">Digger or crane<small>Tracks, arm, bucket</small></button>
-      <button class="btn" type="button" data-wiz="tank">Tracked vehicle<small>Two tracks</small></button>
-      <button class="btn" type="button" data-wiz="empty">Empty board<small>Build your own</small></button>
+      <button class="btn" type="button" data-wiz="car">Car / Truck<small>Sliders, lights, Turbo, winch</small></button>
+      <button class="btn" type="button" data-wiz="exc">Excavator / crane<small>Tracks + double joystick</small></button>
+      <button class="btn" type="button" data-wiz="dual">Dual stick car<small>Two joysticks</small></button>
+      <button class="btn" type="button" data-wiz="four">Robot (4 motors)<small>Four meters + joystick</small></button>
+      <button class="btn v2-span" type="button" data-wiz="empty">Empty board<small>Start from nothing</small></button>
     </div>
     <h2 style="margin-top:16px">Backup all models</h2>
     <div class="rec-row">
@@ -1433,10 +1464,13 @@ html:not([data-v]) .v2-nav{display:none}
     <h2>Experience</h2>
     <label class="check" for="sPrac"><input id="sPrac" type="checkbox">Practice mode (no hub)</label>
     <button class="btn v2-li" type="button" data-go="m-app"><span>Language, sound &amp; vibration</span></button>
-    <h2>More</h2>
-    <button class="btn v2-li" type="button" data-go="m-tilt"><span>Tilt steering</span></button>
-    <button class="btn v2-li" type="button" data-go="m-pad"><span>Gamepad</span></button>
-    <button class="btn v2-li" type="button" data-go="m-log"><span>Frames sent</span></button>
+    <details class="adv v2-lk"><summary>Advanced</summary>
+      <div class="v2-advlist">
+        <button class="btn v2-li" type="button" data-go="m-tilt"><span>Tilt steering</span></button>
+        <button class="btn v2-li" type="button" data-go="m-pad"><span>Gamepad</span></button>
+        <button class="btn v2-li" type="button" data-go="m-log"><span>Frames sent</span></button>
+      </div>
+    </details>
   </section>
 
   <!-- 2 + 11 · Hub (connect + channel test) / empty state -->
@@ -1810,10 +1844,10 @@ html:not([data-v]) .v2-nav{display:none}
   </div>
 </main>
 <nav class="v2-nav" id="tabbar" aria-label="Main">
-  <button class="btn" type="button" data-tab="home" aria-pressed="true">Home</button>
-  <button class="btn" type="button" data-tab="drive" aria-pressed="false">Drive</button>
-  <button class="btn" type="button" data-tab="models" aria-pressed="false">Models</button>
-  <button class="btn" type="button" data-tab="settings" aria-pressed="false">Settings</button>
+  <button type="button" data-tab="home" aria-pressed="true"><i class="v2-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d='M4 11l8-7 8 7v9h-5v-6H9v6H4z'/></svg></i><span>Home</span></button>
+  <button type="button" data-tab="drive" aria-pressed="false"><i class="v2-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx='12' cy='12' r='8'/><circle cx='12' cy='12' r='2.5'/><path d='M12 4v5.5M4.5 14.5l5.2-1.4M19.5 14.5l-5.2-1.4'/></svg></i><span>Drive</span></button>
+  <button type="button" data-tab="models" aria-pressed="false"><i class="v2-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d='M3 15l2-6h14l2 6v3H3z'/><circle cx='7.5' cy='18' r='2'/><circle cx='16.5' cy='18' r='2'/></svg></i><span>Models</span></button>
+  <button type="button" data-tab="settings" aria-pressed="false"><i class="v2-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx='12' cy='12' r='3'/><path d='M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1'/></svg></i><span>Settings</span></button>
 </nav>
 
 <script>
@@ -2108,11 +2142,13 @@ html:not([data-v]) .v2-nav{display:none}
     exc.s1.mode='tank';exc.layout='dual';exc.ch[4].kind='hold';exc.ch[4].max=60;exc.ch[5].kind='hold';exc.accent=2;
     car.seq=[{id:uid(),name:'Spin',loop:false,steps:[{ch:0,pwr:60,dur:1.5,par:false},{ch:1,pwr:-60,dur:1.5,par:true},{ch:-1,pwr:0,dur:0.5,par:false}]}];
     exc.seq=[{id:uid(),name:'Dig cycle',loop:false,steps:[{ch:2,pwr:-60,dur:2,par:false},{ch:3,pwr:60,dur:1.5,par:false},{ch:2,pwr:60,dur:2,par:false},{ch:4,pwr:40,dur:3,par:false}]}];
-    return [
-      {id:uid(),name:'Basic setup',cfg:baseCfg()},
-      {id:uid(),name:'2-motor car (example)',cfg:car},
-      {id:uid(),name:'Excavator (example)',cfg:exc}
-    ];
+    var mine=baseCfg(['Drive','Steering','Lights','Winch','Rear lights','Channel F']);
+    mine.ch[2].kind='light';mine.ch[4].kind='light';mine.layout='board';mine.dash=true;
+    mine.board=[{k:'s',c:0,w:1,v:true,g:[0,0,12,24]},{k:'l',c:2,w:1,g:[12,0,13,7]},{k:'b',c:0,w:1,g:[12,7,13,7]},
+      {k:'t',c:3,y:'dir',w:1,g:[25,0,14,7]},{k:'l',c:4,w:1,g:[25,7,14,7]},{k:'e',w:1,g:[39,0,9,14]},{k:'s',c:1,w:1,g:[12,14,36,10]}];
+    mine.board.forEach(function(o){o.gp=o.g.slice()});
+    void car;void exc;
+    return [{id:uid(),name:'My model',cfg:sanitizeCfg(mine)}];
   }
   function cleanLim(a){var D=[[40,80],[70,60],[100,40]];return D.map(function(d,i){var x=(Array.isArray(a)&&a[i]&&typeof a[i]==='object')?a[i]:{};return {l:Math.round(num(x.l,10,100,d[0])),r:Math.round(num(x.r,0,100,d[1]))}})}
   function cleanTpls(a){
@@ -5964,7 +6000,7 @@ html:not([data-v]) .v2-nav{display:none}
     }
   }
   function guideOpen(){gIdx=0;guideEl.hidden=false;guideRender()}
-  function guideClose(){guideEl.hidden=true;if(!store.prefs.seen){store.prefs.seen=true;save()}}
+  function guideClose(){guideEl.hidden=true;if(!store.prefs.seen){store.prefs.seen=true;save();if(window.mk6Go) window.mk6Go('tpl')}}
   $('#gNext').addEventListener('click',function(){if(gIdx>=GUIDE.length-1){guideClose();return}gIdx++;guideRender()});
   $('#gBack').addEventListener('click',function(){if(gIdx>0){gIdx--;guideRender()}});
   $('#gSkip').addEventListener('click',guideClose);
@@ -5997,6 +6033,14 @@ html:not([data-v]) .v2-nav{display:none}
     [/^Phone battery low · (\d+)%$/,function(m){return 'Bateri telefon rendah · '+m[1]+'%'}],
     [/^(\d+) hubs · (.+)$/,function(m){return m[1]+' hub · '+(msLookup(m[2])||m[2])}]);
   MS['Templates']='Templat';
+  [['Left wheel','Roda kiri'],['Right wheel','Roda kanan'],['Arm','Lengan'],['Scoop','Penyodok'],['Winch','Win'],['Lights','Lampu'],['Headlights','Lampu depan'],
+   ['Rear lights','Lampu belakang'],['Channel D','Saluran D'],['Channel E','Saluran E'],['Channel F','Saluran F'],['Left track','Trek kiri'],['Right track','Trek kanan'],
+   ['Bucket','Baldi'],['Swing','Putar'],['Steering','Stereng'],['Boom','Boom'],['Motor 1','Motor 1'],['Motor 2','Motor 2'],['Motor 3','Motor 3'],['Motor 4','Motor 4'],
+   ['Basic setup','Tetapan asas'],['2-motor car (example)','Kereta 2 motor (contoh)'],['Excavator (example)','Jentera (contoh)'],['Spin','Pusing'],['Dig cycle','Kitaran gali'],
+   ['My model','Model saya'],['Car / Truck','Kereta / Trak'],['Excavator / crane','Jengkaut / kren'],['Dual stick car','Kereta dua joystick'],['Robot (4 motors)','Robot (4 motor)'],
+   ['My board','Papan saya'],['Advanced','Lanjutan'],['Control layout','Susun atur kawalan'],['Sliders, lights, Turbo, winch','Gelangsar, lampu, Turbo, win'],
+   ['Tracks + double joystick','Trek + joystick berkembar'],['Two joysticks','Dua joystick'],['Four meters + joystick','Empat meter + joystick'],['Start from nothing','Mula dari kosong'],
+   ['Pick a template','Pilih templat']].forEach(function(x){MS[x[0]]=x[1]});
   MS['Settings are locked']='Tetapan dikunci';MS['Only driving is available']='Hanya pemanduan dibenarkan';MS['Unlock']='Buka kunci';
   MS_RE.push([/^(.+) · Output (\d+)%$/,function(m){return (msLookup(m[1])||m[1])+' · Keluaran '+m[2]+'%'}]);
   MS['Language, sound & vibration']='Bahasa, bunyi & getaran';MS['Hold a channel to run it at the test power.']='Tahan saluran untuk menjalankannya pada kuasa ujian.';
@@ -6011,12 +6055,14 @@ html:not([data-v]) .v2-nav{display:none}
     if(dv) V2.dv=dv;
     V2.v=v;R2.setAttribute('data-v',v);R2.setAttribute('data-dv',V2.dv);
     var t=v2Tab(v);
+    if(t!==v2LastTab) v2Motion(t);
     Array.prototype.forEach.call(document.querySelectorAll('#tabbar [data-tab]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.tab===t))});
     Array.prototype.forEach.call(document.querySelectorAll('#dSeg [data-dv]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.dv===V2.dv))});
     var sub=!!V2PARENT[v];$('#subHead').hidden=!sub;if(sub) $('#subTitle').textContent=V2TITLE[v];
     $('#subDone').hidden=v!=='medit';
     try{window.scrollTo(0,0)}catch(_){}
     if(v==='models') v2Models();
+    if(v==='home') v2Preview();
     if(v==='hub') v2ChTest(true);
     v2Paint();
     try{window.dispatchEvent(new Event('resize'))}catch(_){}
@@ -6034,7 +6080,56 @@ html:not([data-v]) .v2-nav{display:none}
   };
   function v2Click(sel,fn){var e=$(sel);if(e) e.addEventListener('click',fn)}
   function v2Conn(){link.click()}
-  Array.prototype.forEach.call(document.querySelectorAll('#tabbar [data-tab]'),function(b){b.addEventListener('click',function(){v2Go(b.dataset.tab)})});
+  var v2WasLive=!!S.connected;
+  function v2Live(){
+    var live=S.connected&&hubMsg!=='Pairing…';
+    if(live&&!v2WasLive&&(V2.v==='home'||V2.v==='hub')) v2Go('drive/board');
+    v2WasLive=live;
+  }
+  // Home start/stop: the app's own START/STOP widget graphic, driving the hub link
+  var v2PS=null;
+  (function(){
+    var box=$('#hPS');if(!box) return;
+    var el=document.createElement('div');el.className='bdw psw v2-ps';
+    var pb=document.createElement('button');pb.type='button';pb.className='psb';pb.setAttribute('aria-label','Connect hub');
+    var psv=sv('svg',{viewBox:'0 0 120 116',class:'pssvg'},pb);
+    var pdf=sv('defs',{},psv),pgr=sv('radialGradient',{id:'psgH',cx:'.35',cy:'.3',r:'.9'},pdf);
+    sv('stop',{offset:'0','stop-color':'#5a6376'},pgr);sv('stop',{offset:'.6','stop-color':'#2a303b'},pgr);sv('stop',{offset:'1','stop-color':'#14181f'},pgr);
+    var pglow=sv('g',{style:'filter:blur(4px)',opacity:.55},psv);
+    var pglw=ledRing(pglow,60,58,46.5,40,90,360,7), pring=ledRing(psv,60,58,46.5,40,90,360,7);
+    var pcap=sv('g',{},psv);
+    sv('circle',{cx:60,cy:58,r:39,fill:'#0d1015',stroke:'#6b7280','stroke-width':2},pcap);
+    sv('circle',{cx:60,cy:58,r:35,fill:'url(#psgH)',stroke:'#0d1015','stroke-width':2},pcap);
+    sv('ellipse',{cx:52,cy:42,rx:19,ry:8,fill:'#fff',opacity:.12},pcap);
+    var pic=sv('circle',{cx:60,cy:58,r:31,fill:'none','stroke-width':2.5,stroke:'#E24B4A'},pcap);
+    var pt1=sv('text',{x:60,y:58,'text-anchor':'middle','font-size':14,'font-weight':900,fill:'#e8e8ea'},pcap);pt1.textContent='START';
+    var pt2=sv('text',{x:60,y:71,'text-anchor':'middle','font-size':10,'font-weight':900,fill:'#E24B4A'},pcap);pt2.textContent='STOP';
+    var pst=sv('text',{x:60,y:62,'text-anchor':'middle','font-size':11,'font-weight':900,fill:'#E24B4A'},psv);
+    v2PS={k:'ps',it:{md:0},b:pb,ring:pring,glow:pglw,glowg:pglow,cap:pcap,ic:pic,t1:pt1,t2:pt2,st:pst,col:[],tgt:'',ai:0,t:0};
+    pb.addEventListener('click',function(){v2Conn();feedback('ok')});
+    el.appendChild(pb);box.appendChild(el);
+    setInterval(function(){if(V2.v==='home'&&!document.hidden) paintVw(v2PS)},50);
+  })();
+  // Home preview: a still copy of the active model's board
+  function v2Preview(){
+    var box=$('#hPrev');if(!box) return;
+    box.textContent='';
+    var ok=C.layout==='board'&&C.board.length>0;box.hidden=!ok;if(!ok) return;
+    var g=$('#boardGrid');if(!g) return;
+    var c=g.cloneNode(true);c.removeAttribute('id');
+    Array.prototype.forEach.call(c.querySelectorAll('[id]'),function(e){e.removeAttribute('id')});
+    Array.prototype.forEach.call(c.querySelectorAll('button,input,select'),function(e){e.tabIndex=-1;e.disabled=true});
+    c.setAttribute('aria-hidden','true');
+    var w=document.createElement('div');w.className='v2-previn';w.appendChild(c);box.appendChild(w);
+  }
+  var V2ORD={home:0,drive:1,models:2,settings:3},v2LastTab='home';
+  function v2Motion(t){
+    var m=document.querySelector('main');if(!m) return;
+    var dir=(V2ORD[t]||0)>=(V2ORD[v2LastTab]||0)?'r':'l';v2LastTab=t;
+    m.classList.remove('v2-in-r','v2-in-l');void m.offsetWidth;m.classList.add('v2-in-'+dir);
+  }
+  function v2Tick(){if(store.prefs.haptic&&NB&&NB.haptic){try{NB.haptic('dial')}catch(_){}}}
+  Array.prototype.forEach.call(document.querySelectorAll('#tabbar [data-tab]'),function(b){b.addEventListener('click',function(){if(V2.v!==b.dataset.tab) v2Tick();v2Go(b.dataset.tab)})});
   Array.prototype.forEach.call(document.querySelectorAll('[data-go]'),function(b){b.addEventListener('click',function(){v2Go(b.dataset.go)})});
   Array.prototype.forEach.call(document.querySelectorAll('#dSeg [data-dv]'),function(b){b.addEventListener('click',function(){v2Go('drive',b.dataset.dv)})});
   v2Click('#subBack',function(){v2Go(V2PARENT[V2.v]||'home')});
@@ -6042,6 +6137,20 @@ html:not([data-v]) .v2-nav{display:none}
   v2Click('#dEdit',function(){v2Go('medit')});
   v2Click('#hOpen',function(){v2Go('drive/board')});
   v2Click('#hConn',v2Conn);v2Click('#hubConn',v2Conn);
+  // Model settings: layout choice, wizard and hub test go under Advanced (Board is the normal way to drive)
+  (function(){
+    var card=document.querySelector('section.model');if(!card) return;
+    var d=document.createElement('details');d.className='adv';var sm=document.createElement('summary');sm.textContent='Advanced';d.appendChild(sm);
+    var inner=document.createElement('div');inner.className='rec-row v2-advrow';d.appendChild(inner);
+    var lay=card.querySelector('.seg[aria-label="Layout"]');
+    var lbl=document.createElement('div');lbl.className='seglbl';lbl.textContent='Control layout';
+    if(lay){d.insertBefore(lbl,inner);d.insertBefore(lay,inner)}
+    ['#profWiz','#profTest'].forEach(function(q){var e=$(q);if(e) inner.appendChild(e)});
+    var note=$('#testNote'),wiz=$('#wizPanel');
+    var after=card.querySelector('.model-row:last-of-type')||card.lastChild;
+    card.insertBefore(d,after.nextSibling);
+    if(note) d.appendChild(note);if(wiz) d.appendChild(wiz);
+  })();
   // Hub module numbers and names (existing rows) sit on the Hub screen
   (function(){var box=$('#scrHub'),at=box&&box.querySelectorAll('h2')[1];['#hub0','#hubN0'].forEach(function(q){var el=$(q);var row=el&&el.closest('.set-row');if(row&&at) box.insertBefore(row,at)})})();
 
@@ -6068,12 +6177,24 @@ html:not([data-v]) .v2-nav{display:none}
   (function(){var s=$('#mSearch');if(s) s.addEventListener('input',v2Models)})();
   v2Click('#mNew',function(){$('#profNew').click();v2Go('medit')});
   v2Click('#mTpl',function(){v2Go('tpl')});
-  Array.prototype.forEach.call(document.querySelectorAll('[data-wiz]'),function(b){b.addEventListener('click',function(){
-    var w=b.dataset.wiz;
-    if(w==='empty'){$('#profNew').click();C.layout='board';C.board=[];syncAll();save();v2Go('drive/board');return}
-    var before=store.profiles.length;$('#wizType').value=w;$('#wizGo').click();
-    if(store.profiles.length>before) v2Go('drive/board');
-  })});
+  var V2TPL={
+    car:{name:'Car / Truck',ch:['Drive','Steering','Lights','Winch','Rear lights','Channel F'],light:[2,4]},
+    exc:{name:'Excavator / crane',ch:['Left track','Right track','Boom','Bucket','Swing','Arm'],light:[]},
+    dual:{name:'Dual stick car',ch:['Drive','Steering','Arm','Bucket','Lights','Channel F'],light:[4]},
+    four:{name:'Robot (4 motors)',ch:['Motor 1','Motor 2','Motor 3','Motor 4','Channel E','Channel F'],light:[]},
+    empty:{name:'My board',ch:null,light:[]}
+  };
+  function v2NewTpl(key){
+    var t=V2TPL[key];if(!t) return;
+    if(store.profiles.length>=MAX_MODELS){toast('Model list is full.');return}
+    var cfg=baseCfg(t.ch||undefined);t.light.forEach(function(i){cfg.ch[i].kind='light'});
+    cfg.layout='board';cfg.dash=true;cfg.board=[];cfg.hubs=C.hubs.slice();
+    var p={id:uid(),name:t.name,cfg:sanitizeCfg(cfg)};store.profiles.push(p);switchProfile(p.id);
+    if(DTPL[key]) dtplApply(DTPL[key],t.name);
+    v2Go('drive/board');
+    if(key==='empty'){var e=$('#bdEdit');if(e&&e.getAttribute('aria-pressed')!=='true') e.click()}
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-wiz]'),function(b){b.addEventListener('click',function(){v2NewTpl(b.dataset.wiz)})});
   v2Click('#tSave',function(){$('#exBtn').click()});
   v2Click('#tLoad',function(){$('#imBtn').click();if(!NB) v2Go('backup')});
 
@@ -6152,7 +6273,7 @@ html:not([data-v]) .v2-nav{display:none}
     if(store.prefs.lock&&(V2.dv!=='board'&&V2.v==='drive'||['safety','m-tilt','m-pad','tpl','medit'].indexOf(V2.v)>=0)) v2Go(V2.v==='drive'?'drive/board':(V2PARENT[V2.v]||'home'));
     v2Alerts();
   }
-  setInterval(v2Paint,250);
+  setInterval(function(){v2Paint();v2Live()},250);
 
   // Guide (first run) keeps its look; page 1 also offers "Try without a hub"
   (function(){
@@ -6166,6 +6287,8 @@ html:not([data-v]) .v2-nav{display:none}
     };
   })();
 
+  // the first syncAll() runs before the board is set up; draw the board once everything exists
+  try{syncBoard()}catch(_){}
   v2Go('home');
   applyLang();
   if(!store.prefs.seen) guideOpen();
