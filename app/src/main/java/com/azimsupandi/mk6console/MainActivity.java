@@ -224,6 +224,19 @@ public class MainActivity extends Activity {
         super.onDestroy();
     }
 
+    /** Back goes up one screen inside the app; it only leaves the app from Home. */
+    @Override
+    @SuppressWarnings("deprecation")
+    public void onBackPressed() {
+        if (web == null || !pageReady) {
+            super.onBackPressed();
+            return;
+        }
+        web.evaluateJavascript("(window.mk6Back&&window.mk6Back())?1:0", result -> {
+            if (!"1".equals(result)) super.onBackPressed();
+        });
+    }
+
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
