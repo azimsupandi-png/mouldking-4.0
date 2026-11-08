@@ -1298,7 +1298,7 @@ html:not(#a)[data-lock] #cols .stack > #recCard,html:not(#a)[data-lock] #cols .s
 html:not(#a)[data-lock] #cols .stack > #calCard,html:not(#a)[data-lock] #cols .stack > #padCard,html:not(#a)[data-lock] #cols .stack > #tiltCard,
 html[data-lock] #dSeg [data-dv=rec],html[data-lock] #dSeg [data-dv=seq],html[data-lock] .v2-tiles [data-go="drive/rec"],html[data-lock] .v2-tiles [data-go="drive/seq"],
 html[data-lock] #scrSet .v2-lk,html[data-lock] #scrSet [data-go=safety],html[data-lock] #scrSet [data-go=m-tilt],html[data-lock] #scrSet [data-go=m-pad],html[data-lock] #scrSet label[for=sPrac],
-html[data-lock] #scrModels .rec-row > .btn:not(.v2-pick),html[data-lock] #mNew,html[data-lock] #mTpl,html[data-lock] #dEdit,html[data-lock] #scrHub .set-row{display:none!important}
+html[data-lock] .v2-nav [data-tab=models],html[data-lock] #scrModels .rec-row > .btn:not(.v2-pick),html[data-lock] #mNew,html[data-lock] #mTpl,html[data-lock] #dEdit,html[data-lock] #scrHub .set-row{display:none!important}
 /* model settings: the Models tab already picks the model, so the duplicate picker row is not shown here */
 html[data-v=medit] section.model .model-row:first-child > label:first-child{display:none}
 /* toasts sit above the tab bar */
@@ -3451,7 +3451,7 @@ html:not([data-v]) .v2-nav{display:none}
     b.setAttribute('aria-label',S.bt?'Bluetooth on':'Bluetooth off');
     b.title=S.bt?'Bluetooth is on':'Bluetooth is off. Tap to open Bluetooth settings.';
   }
-  function readBt(){S.bt=(NB&&NB.btOn)?!!NB.btOn():true;paintBt()}
+  function readBt(){S.bt=(NB&&NB.btOn)?!!NB.btOn():true;if(S.bt&&typeof hubMsg==='string'&&!S.connected&&(hubMsg===HUB_TEXT.off||hubMsg===HUB_TEXT.btoff)){hubMsg='';paintLink()}paintBt()}
   (function(){var b=$('#btBtn');if(!b) return;b.addEventListener('click',function(){
     if(NB&&NB.btSettings){try{NB.btSettings()}catch(e){}}else toast(S.bt?'Bluetooth is on.':'Bluetooth is off.');
   })})();
@@ -3800,7 +3800,7 @@ html:not([data-v]) .v2-nav{display:none}
     if(ev==='notilt') toast('This phone has no tilt sensor.',5000);
     if(ev==='backupok'){store.prefs.lastBackup=Date.now();save();bkPaint();if(bkManual) toast('Backup saved to the Downloads folder.',4000);bkManual=false}
     if(ev==='backupfail'){if(bkManual) toast('Backup failed. Use Export models instead.',5000);bkManual=false}
-    if(ev==='bt1'){S.bt=true;paintBt();return}
+    if(ev==='bt1'){S.bt=true;if(!S.connected&&(hubMsg===HUB_TEXT.off||hubMsg===HUB_TEXT.btoff)){hubMsg='';paintLink()}paintBt();return}
     if(ev==='bt0'){S.bt=false;paintBt();return}
     if(ev==='resume') readBt();
     if(ev==='btoff'){
@@ -6055,6 +6055,7 @@ html:not([data-v]) .v2-nav{display:none}
     if(dv) V2.dv=dv;
     V2.v=v;R2.setAttribute('data-v',v);R2.setAttribute('data-dv',V2.dv);
     var t=v2Tab(v);
+    if(v!=='drive'&&bdEditing){var be=$('#bdEdit');if(be) be.click()}
     if(t!==v2LastTab) v2Motion(t);
     Array.prototype.forEach.call(document.querySelectorAll('#tabbar [data-tab]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.tab===t))});
     Array.prototype.forEach.call(document.querySelectorAll('#dSeg [data-dv]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.dv===V2.dv))});
@@ -6073,6 +6074,7 @@ html:not([data-v]) .v2-nav{display:none}
     var dl=['#dashTpl','#jcDlg','#lxDlg'].map(function(q){return $(q)}).filter(function(e){return e&&!e.hidden});
     if(dl.length){dl[0].hidden=true;return true}
     if(!$('#guide').hidden){guideClose();return true}
+    if(bdEditing){var be=$('#bdEdit');if(be) be.click();return true}
     if(!player.hidden) return true;
     if(V2PARENT[V2.v]){v2Go(V2PARENT[V2.v]);return true}
     if(V2.v!=='home'){v2Go('home');return true}
@@ -6202,7 +6204,7 @@ html:not([data-v]) .v2-nav{display:none}
     if(!!store.prefs.practice===on) return;
     if(S.connected) v2Conn();
     if(S.connected){S.connected=false;hubMsg=''}
-    store.prefs.practice=on;save();paintLink();v2Paint();
+    hubMsg='';store.prefs.practice=on;save();paintLink();v2Paint();
     toast(on?'Practice mode: no hub is used, outputs are only shown.':'Practice mode off.');
   }
   (function(){var c=$('#sPrac');if(c) c.addEventListener('change',function(){v2Practice(c.checked)})})();
@@ -6270,7 +6272,7 @@ html:not([data-v]) .v2-nav{display:none}
     v2T($('#hubSub'),txt+(S.connected?' · Output '+Math.round(mx)+'%':''));
     $('#hubHelp').hidden=S.connected;
     if(V2.v==='hub') v2ChTest(false);
-    if(store.prefs.lock&&(V2.dv!=='board'&&V2.v==='drive'||['safety','m-tilt','m-pad','tpl','medit'].indexOf(V2.v)>=0)) v2Go(V2.v==='drive'?'drive/board':(V2PARENT[V2.v]||'home'));
+    if(store.prefs.lock&&(V2.dv!=='board'&&V2.v==='drive'||['safety','m-tilt','m-pad','tpl','medit','models'].indexOf(V2.v)>=0)) v2Go(V2.v==='drive'?'drive/board':(V2PARENT[V2.v]||'home'));
     v2Alerts();
   }
   setInterval(function(){v2Paint();v2Live()},250);
