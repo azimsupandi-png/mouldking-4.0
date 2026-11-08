@@ -1333,17 +1333,15 @@ html[data-v=home]:not(.dash) main > #scrHome{display:flex!important;flex-directi
 #scrHome > *{margin:0!important}
 #hAlerts{display:flex;flex-direction:column;gap:16px}#hAlerts:empty{display:none}#hAlerts > .card{margin:0}
 #dHead .rec-row{margin:0;align-items:center}#dHead h2{margin:0 0 4px}#dHead .rec-stat{margin:0}
-/* Drive menu: Board / Record / Sequences, opens above the Drive tab */
-.v2-dmenu{position:fixed;z-index:32;left:50%;transform:translateX(-50%);bottom:calc(var(--nav-h) + 10px + env(safe-area-inset-bottom,0px));
-  display:flex;gap:6px;padding:10px 12px;border-radius:18px;background:var(--panel);border:1px solid var(--line);box-shadow:0 10px 26px rgba(0,0,0,.55);animation:v2pop .14s ease-out}
-.v2-dmenu button{min-width:84px;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:0;background:none;color:var(--fg);font:600 12px var(--f-body);cursor:pointer;padding:4px 6px}
-.v2-dmenu button[aria-pressed=true]{color:var(--acc)}
-.v2-dmenu button[aria-pressed=true] .v2-ico{background:radial-gradient(circle at 38% 28%,#fff1a8,#ffd84a 55%,#c99a00);box-shadow:0 3px 0 #7a5c00,inset 0 1px 0 rgba(255,255,255,.5)}
-.v2-dmenu button[aria-pressed=true] .v2-ico svg{stroke:#1b1b1b}
-.v2-dmenu .v2-ico svg circle[fill]{fill:#e8eaee}.v2-dmenu button[aria-pressed=true] .v2-ico svg circle[fill]{fill:#1b1b1b}
-.v2-dmback{position:fixed;inset:0;z-index:31;background:rgba(0,0,0,.35)}
-@keyframes v2pop{from{opacity:0;transform:translate(-50%,8px)}}
-html.dash .v2-dmenu,html.dash .v2-dmback{display:none!important}
+/* Drive: Board / Record / Sequences strip, fixed just above the tab bar (only on the Drive screen) */
+.v2-dbar{display:none;position:fixed;left:0;right:0;z-index:29;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px));
+  padding:8px max(12px,env(safe-area-inset-right,0px)) 8px max(12px,env(safe-area-inset-left,0px));background:var(--panel);border-top:1px solid var(--line)}
+.v2-dbar .seg{max-width:640px;margin:0 auto}
+.v2-dbar .btn{flex:1 1 0;min-height:44px}
+html[data-v=drive]:not(.dash) .v2-dbar{display:block}
+html[data-v=drive]:not(.dash) main{padding-bottom:calc(var(--nav-h) + 92px + env(safe-area-inset-bottom,0px))}
+html[data-v=drive]:not(.dash) .toast{bottom:calc(var(--nav-h) + 76px + env(safe-area-inset-bottom,0px))}
+html.dash .v2-dbar{display:none!important}
 /* tab change: short slide (150 ms) */
 main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s ease-out}
 @keyframes v2inR{from{opacity:.4;transform:translateX(14px)}}@keyframes v2inL{from{opacity:.4;transform:translateX(-14px)}}
@@ -1847,12 +1845,13 @@ html:not([data-v]) .v2-nav{display:none}
     </div>
   </div>
 </main>
-<div class="v2-dmenu" id="dMenu" role="menu" aria-label="Drive menu" hidden>
-  <button type="button" role="menuitem" data-dv="board" aria-pressed="false"><i class="v2-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x='4' y='4' width='7' height='7' rx='1.5'/><rect x='13' y='4' width='7' height='7' rx='1.5'/><rect x='4' y='13' width='7' height='7' rx='1.5'/><rect x='13' y='13' width='7' height='7' rx='1.5'/></svg></i><span>Board</span></button>
-  <button type="button" role="menuitem" data-dv="rec" aria-pressed="false"><i class="v2-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx='12' cy='12' r='8'/><circle cx='12' cy='12' r='3.5' fill='currentColor'/></svg></i><span>Record</span></button>
-  <button type="button" role="menuitem" data-dv="seq" aria-pressed="false"><i class="v2-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d='M5 6h9M5 12h9M5 18h9'/><path d='M17 9l3 3-3 3'/></svg></i><span>Sequences</span></button>
+<div class="v2-dbar" id="dMenu" role="group" aria-label="Drive">
+  <div class="seg">
+    <button class="btn" type="button" data-dv="board" aria-pressed="true">Board</button>
+    <button class="btn" type="button" data-dv="rec" aria-pressed="false">Record</button>
+    <button class="btn" type="button" data-dv="seq" aria-pressed="false">Sequences</button>
+  </div>
 </div>
-<div class="v2-dmback" id="dMenuBack" hidden></div>
 <nav class="v2-nav" id="tabbar" aria-label="Main">
   <button type="button" data-tab="home" aria-pressed="true"><i class="v2-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d='M4 11l8-7 8 7v9h-5v-6H9v6H4z'/></svg></i><span>Home</span></button>
   <button type="button" data-tab="drive" aria-pressed="false"><i class="v2-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx='12' cy='12' r='8'/><circle cx='12' cy='12' r='2.5'/><path d='M12 4v5.5M4.5 14.5l5.2-1.4M19.5 14.5l-5.2-1.4'/></svg></i><span>Drive</span></button>
@@ -6082,7 +6081,6 @@ html:not([data-v]) .v2-nav{display:none}
   window.mk6Go=v2Go;
   // Android back button: close an open dialog, then go up one screen, then Home; only then leave the app
   window.mk6Back=function(){
-    if(!$('#dMenu').hidden){v2Menu(false);return true}
     var dl=['#dashTpl','#jcDlg','#lxDlg'].map(function(q){return $(q)}).filter(function(e){return e&&!e.hidden});
     if(dl.length){dl[0].hidden=true;return true}
     if(!$('#guide').hidden){guideClose();return true}
@@ -6155,12 +6153,9 @@ html:not([data-v]) .v2-nav{display:none}
     m.classList.remove('v2-in-r','v2-in-l');void m.offsetWidth;m.classList.add('v2-in-'+dir);
   }
   function v2Tick(){if(store.prefs.haptic&&NB&&NB.haptic){try{NB.haptic('dial')}catch(_){}}}
-  function v2Menu(on){var m=$('#dMenu');if(!m) return;m.hidden=!on;$('#dMenuBack').hidden=!on;var d=document.querySelector('#tabbar [data-tab=drive]');if(d) d.setAttribute('aria-expanded',String(!!on))}
   Array.prototype.forEach.call(document.querySelectorAll('#tabbar [data-tab]'),function(b){b.addEventListener('click',function(){
-    if(b.dataset.tab==='drive'){v2Tick();v2Menu($('#dMenu').hidden);return}
-    v2Menu(false);if(V2.v!==b.dataset.tab) v2Tick();v2Go(b.dataset.tab)})});
-  Array.prototype.forEach.call(document.querySelectorAll('#dMenu [data-dv]'),function(b){b.addEventListener('click',function(){v2Menu(false);v2Go('drive',b.dataset.dv)})});
-  v2Click('#dMenuBack',function(){v2Menu(false)});
+    if(V2.v!==b.dataset.tab) v2Tick();v2Go(b.dataset.tab)})});
+  Array.prototype.forEach.call(document.querySelectorAll('#dMenu [data-dv]'),function(b){b.addEventListener('click',function(){if(V2.dv!==b.dataset.dv) v2Tick();v2Go('drive',b.dataset.dv)})});
   Array.prototype.forEach.call(document.querySelectorAll('[data-go]'),function(b){b.addEventListener('click',function(){v2Go(b.dataset.go)})});
   v2Click('#subBack',function(){v2Go(V2PARENT[V2.v]||'home')});
   v2Click('#subDone',function(){v2Go('drive/board')});
