@@ -1,0 +1,47 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Release signing: CI secrets if present, otherwise the project keystore in /keystore.
+def ksFile = file(System.getenv('MK6_KEYSTORE') ?: "${rootDir}/keystore/mk6-release.jks")
+def ksPass = System.getenv('MK6_KEYSTORE_PASSWORD') ?: 'mk6console'
+def ksAlias = System.getenv('MK6_KEY_ALIAS') ?: 'mk6'
+def ksKeyPass = System.getenv('MK6_KEY_PASSWORD') ?: ksPass
+
+android {
+    namespace 'com.azimsupandi.mk6console'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.azimsupandi.mk6console'
+        minSdk 26
+        targetSdk 34
+        versionCode((System.getenv('GITHUB_RUN_NUMBER') ?: '0').toInteger() + 300)
+        versionName '1.1'
+    }
+
+    signingConfigs {
+        release {
+            storeFile ksFile
+            storePassword ksPass
+            keyAlias ksAlias
+            keyPassword ksKeyPass
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+    }
+}
