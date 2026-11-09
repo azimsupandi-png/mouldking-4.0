@@ -36,7 +36,7 @@ jobs:
           pip install playwright
           python -m playwright install --with-deps chromium
 
-      - name: UI tests (fake Android bridge: clicks, hold, idle, graphics, sharing, 360 px)
+      - name: UI tests (fake Android bridge - clicks, hold, idle, graphics, sharing, 360 px)
         run: python tests/ui/test_ui.py
 
   build:
