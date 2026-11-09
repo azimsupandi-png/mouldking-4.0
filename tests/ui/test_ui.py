@@ -248,9 +248,9 @@ async def t_twelve(b):
     r = await pg.evaluate("(window.__last||'').split(',')[0]")
     check('1 trim: E-Stop sends 0 even with trim', r == '0', r)
     await pg.evaluate("document.getElementById('estop').click()")
-    # 2 expo is in the widget settings (stored on the channel)
-    r = await pg.evaluate("document.getElementById('bdEdit').click();[...document.querySelectorAll('#boardGrid .bdw[data-k=s] .bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Widget settings').click();var ok=[...document.querySelectorAll('#gEdit .wsl')].some(l=>l.textContent.startsWith('Fine control'));document.getElementById('gEdit').remove();document.getElementById('bdEdit').click();ok")
-    check('2 expo: fine control is in the slider settings', r, r)
+    # 2 response curve: editor in the slider settings; 'Fine' preset makes half stick = 22%
+    r = await pg.evaluate("document.getElementById('bdEdit').click();[...document.querySelectorAll('#boardGrid .bdw[data-k=s] .bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Widget settings').click();var ok=!!document.querySelector('#gEdit .cved-g');[...document.querySelectorAll('#gEdit .cved-c button')].find(b=>b.textContent==='Fine').click();[...document.querySelectorAll('#gEdit .gact button')].find(b=>b.textContent==='Save').click();document.getElementById('bdEdit').click();ok")
+    check('2 curve: the editor is in the slider settings', r, r)
     # 3 drive mode chips = Eco / Normal / Sport profiles
     await pg.evaluate("document.querySelector('#dMode [data-lp=\"0\"]').click()")
     await pg.wait_for_timeout(300)
@@ -319,6 +319,46 @@ async def t_migrate_and_limit(b):
     r = await pg.evaluate("[__calls.includes('stop'),[...document.querySelectorAll('#hAlerts h2')].map(h=>h.textContent).join('|')]")
     check('5 play time: when time is up the motors stop and Home says so', r[0] and 'Play time is up' in r[1], r)
     check('no JS errors (migration, play limit)', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
+async def t_three(b):
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'T3',cfg:{layout:'board',limit:100,ramp:100,
+      ch:[{expo:60},{},{},{},{kind:'light',la:1,ls:0}],
+      board:[{k:'s',c:0,w:1},{k:'l',c:4,w:1},{k:'k',c:0,w:2,cs:[1]}]}}],prefs:{seen:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML)
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.wait_for_timeout(300)
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};mk6Go('home');document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.wait_for_timeout(400)
+    SL = "document.querySelector('#boardGrid .bdw[data-k=s] input[type=range]')"
+    await pg.evaluate("var r="+SL+";r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=50;r.dispatchEvent(new Event('input',{bubbles:true}))")
+    await pg.wait_for_timeout(800)
+    r = await pg.evaluate("(window.__last||'').split(',').map(Number)")
+    check('2 curve: an old expo 60 becomes a curve, half stick = about 28%', 25 <= r[0] <= 31, r)
+    await pg.evaluate("var r="+SL+";r.value=0;r.dispatchEvent(new Event('input',{bubbles:true}));r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}))")
+    await pg.wait_for_timeout(500)
+    r1 = await pg.evaluate("(window.__last||'').split(',').map(Number)[4]")
+    await pg.wait_for_timeout(1800)
+    r2 = await pg.evaluate("(window.__last||'').split(',').map(Number)[4]")
+    check('4 brake light shines after channel A stops, then goes out', r1 > 0 and r2 == 0, [r1, r2])
+    await pg.evaluate("var r="+SL+";r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=-60;r.dispatchEvent(new Event('input',{bubbles:true}))")
+    r = await pg.evaluate("new Promise(function(res){setTimeout(function(){var s=document.querySelector('#boardGrid .bdw[data-k=k] svg.mtr'),b=s.getBoundingClientRect();s.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:b.left+b.width*0.9,clientY:b.top+b.height/2}));setTimeout(function(){var ls=[...s.querySelectorAll('polyline')].filter(p=>p.getAttribute('visibility')==='visible'&&p.getAttribute('stroke')==='#ffd84a').length;var tx=[...s.querySelectorAll('text')].map(t=>t.textContent).find(t=>/ s \u00b7 A/.test(t))||'';res([ls,tx])},300)},1500)})")
+    check('10 scope: second channel drawn, touching a paused graph reads A and B', r[0] == 1 and 'A -60' in r[1].replace('\u2212','-') and 'B 0' in r[1], r)
+    await pg.evaluate("var r="+SL+";r.value=0;r.dispatchEvent(new Event('input',{bubbles:true}));r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}))")
+    await pg.evaluate("document.getElementById('bdEdit')&&0")
+    r = await pg.evaluate("var lb=document.querySelector('#boardGrid .bdw[data-k=l] .lbtn');lb.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));new Promise(res=>setTimeout(()=>{var m=document.getElementById('lpMenu');res(m?[...m.querySelectorAll('button')].map(b=>b.textContent):[])},700))")
+    check('4 light long-press offers Hazard and Light settings', 'Hazard' in r and any(x.startswith('Light settings') for x in r), r)
+    await pg.evaluate("[...document.querySelectorAll('#lpMenu button')].find(b=>b.textContent==='Hazard').click()")
+    seen = set()
+    for _ in range(14):
+        await pg.wait_for_timeout(120)
+        seen.add(await pg.evaluate("(window.__last||'').split(',').map(Number)[4]>0"))
+    check('4 hazard: the light flashes on and off', seen == {True, False}, seen)
+    check('no JS errors (curve, lights, scope)', not pg.errors, pg.errors[:3])
     await ctx.close()
 
 async def t_lefty(b):
@@ -439,7 +479,7 @@ async def t_open_relink(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
