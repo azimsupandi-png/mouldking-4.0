@@ -70,6 +70,22 @@ final class Mk6Advertiser {
     private long lastFrameAt;
     private boolean liveNonZero;
 
+    // ---- diagnostics (read by the app's Hub screen) ----
+    private long statOk;
+    private long statFail;
+    private long statFrames;
+    private long statStartedAt;
+    private long statWatchdog;
+    private int statTxPower = Integer.MIN_VALUE;
+    private int statLastError;
+    private long statLastErrorAt;
+
+    private void noteFail(int status) {
+        statFail++;
+        statLastError = status;
+        statLastErrorAt = SystemClock.uptimeMillis();
+    }
+
     private int[] modules = {0};
     private int[][] latest = new int[1][CHANNELS];
     private final int[] sent = new int[MAX_HUBS * CHANNELS];
@@ -80,6 +96,12 @@ final class Mk6Advertiser {
         public void onAdvertisingSetStarted(AdvertisingSet advertisingSet, int txPower, int status) {
             handler.post(() -> {
                 starting = false;
+                if (status == ADVERTISE_SUCCESS) {
+                    statTxPower = txPower;
+                    statStartedAt = SystemClock.uptimeMillis();
+                } else {
+                    noteFail(status);
+                }
                 if (status == ADVERTISE_SUCCESS && !stopping) {
                     set = advertisingSet;
                     running = true;
@@ -102,9 +124,11 @@ final class Mk6Advertiser {
         public void onAdvertisingDataSet(AdvertisingSet advertisingSet, int status) {
             handler.post(() -> {
                 if (status == ADVERTISE_SUCCESS) {
+                    statOk++;
                     failCount = 0;
                     return;
                 }
+                noteFail(status);
                 if (!running || connecting || stopping) return;
                 failCount++;
                 if (failCount > MAX_FAILS) {
@@ -171,6 +195,7 @@ final class Mk6Advertiser {
                 for (int i = 0; i < modules.length; i++) Arrays.fill(latest[i], 0);
                 liveNonZero = false;
                 if (parallel || modules.length == 1) pushDirty(true);
+                statWatchdog++;
                 listener.onState("watchdog");
             }
             handler.postDelayed(this, WATCHDOG_CHECK_MS);
@@ -200,7 +225,11 @@ final class Mk6Advertiser {
         @Override
         public void onAdvertisingDataSet(AdvertisingSet advertisingSet, int status) {
             handler.post(() -> {
-                if (status == ADVERTISE_SUCCESS) return;
+                if (status == ADVERTISE_SUCCESS) {
+                    statOk++;
+                    return;
+                }
+                noteFail(status);
                 if (parallel && running && !connecting && !stopping) schedulePush();
             });
         }
@@ -256,6 +285,27 @@ final class Mk6Advertiser {
                 .setInterval(AdvertisingSetParameters.INTERVAL_LOW)
                 .setTxPowerLevel(AdvertisingSetParameters.TX_POWER_HIGH)
                 .build();
+    }
+
+    /** Link diagnostics as JSON text for the app's Hub screen. */
+    String stats() {
+        long now = SystemClock.uptimeMillis();
+        String mode = !running ? "off" : connecting ? "connecting"
+                : modules.length == 1 ? "single" : parallel ? "parallel" : "rotate";
+        StringBuilder b = new StringBuilder(200);
+        b.append("{\"mode\":\"").append(mode).append('"')
+                .append(",\"hubs\":").append(modules.length)
+                .append(",\"ok\":").append(statOk)
+                .append(",\"fail\":").append(statFail)
+                .append(",\"frames\":").append(statFrames)
+                .append(",\"watchdog\":").append(statWatchdog)
+                .append(",\"up\":").append(running && statStartedAt > 0 ? (now - statStartedAt) : 0)
+                .append(",\"lastFrameAgo\":").append(lastFrameAt > 0 ? (now - lastFrameAt) : -1)
+                .append(",\"tx\":").append(statTxPower == Integer.MIN_VALUE ? "null" : String.valueOf(statTxPower))
+                .append(",\"err\":").append(statLastError)
+                .append(",\"errAgo\":").append(statLastErrorAt > 0 ? (now - statLastErrorAt) : -1)
+                .append('}');
+        return b.toString();
     }
 
     boolean isActive() {
@@ -317,6 +367,7 @@ final class Mk6Advertiser {
 
     /** Flat frame: hub i channel j at index i*6+j, values -100..100. */
     void setFrame(int[] frame) {
+        statFrames++;
         lastFrameAt = SystemClock.uptimeMillis();
         boolean nz = false;
         for (int v : frame) {

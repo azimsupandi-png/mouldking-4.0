@@ -10,14 +10,14 @@ def ksKeyPass = System.getenv('MK6_KEY_PASSWORD') ?: ksPass
 
 android {
     namespace 'com.azimsupandi.mk6console'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId 'com.azimsupandi.mk6console'
         minSdk 26
-        targetSdk 34
+        targetSdk 35
         versionCode((System.getenv('GITHUB_RUN_NUMBER') ?: '0').toInteger() + 300)
-        versionName '1.1'
+        versionName '1.2'
     }
 
     signingConfigs {

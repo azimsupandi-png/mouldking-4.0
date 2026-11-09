@@ -54,6 +54,13 @@ public final class Mk6AdvertiserTest {
         m.setFrame(new int[6]); Handler.advance(5000);
         check("no watchdog when idle at zero", !states.contains("watchdog"));
 
+        // diagnostics for the Hub screen
+        String st = m.stats();
+        check("stats: single-hub mode while running", st.contains("\"mode\":\"single\""));
+        check("stats: counts frames from the page", st.matches(".*\"frames\":(2[0-9]|[3-9][0-9]|[1-9][0-9]{2,}),.*"));
+        check("stats: counts the watchdog stop", st.contains("\"watchdog\":1,"));
+        check("stats: last frame age known", !st.contains("\"lastFrameAgo\":-1"));
+
         // stop: neutral then stopped, watchdog off
         m.setFrame(drive); Handler.advance(100);
         m.stop(); Handler.advance(400);
@@ -61,6 +68,7 @@ public final class Mk6AdvertiserTest {
         check("neutral sent before stop", Arrays.asList(set.sent.toArray(new byte[0][])).stream().anyMatch(b -> Arrays.equals(b, neutral(0))));
         states.clear(); Handler.advance(3000);
         check("no watchdog after stop", !states.contains("watchdog"));
+        check("stats: mode off after stop", m.stats().contains("\"mode\":\"off\""));
 
         // two hubs on a phone with a single advertising set: rotation mode
         Handler.QUEUE.clear();

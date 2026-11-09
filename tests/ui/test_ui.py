@@ -14,7 +14,9 @@ window.__calls=[];window.__bt=true;
 window.MK6Bridge={start:function(m){__calls.push('start:'+m)},send:function(f){__calls.push('send')},stop:function(){__calls.push('stop')},
  haptic:function(k){__calls.push('haptic:'+k)},tilt:function(){},immersive:function(){},battery:function(){return 84},btOn:function(){return __bt},
  btSettings:function(){__calls.push('btSettings')},exportFile:function(){__calls.push('export')},importFile:function(){__calls.push('import')},
- pickWallpaper:function(){},autoBackup:function(){},pinModel:function(){},shortcuts:function(){}};"""
+ pickWallpaper:function(){},autoBackup:function(){},pinModel:function(){},shortcuts:function(){},
+ stats:function(){return JSON.stringify({mode:'single',hubs:1,ok:120,fail:2,frames:130,watchdog:0,up:65000,lastFrameAgo:40,tx:1,err:4,errAgo:5000})},
+ theme:function(l){__calls.push('theme:'+l)},textZoom:function(p){__calls.push('zoom:'+p)},shareFile:function(n,j,t){window.__share=[n,j];__calls.push('share')}};"""
 RESULTS = []
 def check(name, ok, info=''):
     RESULTS.append((name, bool(ok)))
@@ -29,7 +31,8 @@ async def page(b, w=390, h=844, touch=False):
     await pg.add_init_script(STUB)
     await pg.route('**/*', lambda r: r.abort() if r.request.url.startswith('http') else r.continue_())
     await pg.goto(HTML)
-    await pg.wait_for_timeout(600)
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.wait_for_timeout(300)
     await pg.evaluate("document.getElementById('gSkip').click()")
     return ctx, pg
 
@@ -144,7 +147,7 @@ async def t_features(b):
 
 async def t_graphics(b):
     ctx, pg = await page(b)
-    await pg.wait_for_timeout(500)
+    await pg.wait_for_timeout(900)
     check('splash is removed after start', await pg.evaluate("!document.getElementById('v2Splash')"))
     r = await pg.evaluate("mk6Go('drive');new Promise(r=>setTimeout(()=>r([document.documentElement.classList.contains('v2-nohub'),[...document.querySelectorAll('#boardGrid > .bdw.v2-es')].length]),400))")
     check('no hub: widgets dimmed, E-Stop widget kept bright', r[0] and r[1] >= 1, r)
@@ -162,16 +165,54 @@ async def t_graphics(b):
     r = await pg.evaluate("document.querySelector('#v2SeqEmptyW .btn').click();new Promise(r=>setTimeout(()=>r(document.getElementById('v2SeqEmptyW').hidden),400))")
     check('New sequence from the empty state creates one', r, r)
     await pg.evaluate("mk6Go('settings');document.getElementById('sLight').click()")
-    await pg.reload(); await pg.wait_for_timeout(700)
+    await pg.reload(); await pg.wait_for_function('window.mk6Ready===true', timeout=15000); await pg.wait_for_timeout(300)
     r = await pg.evaluate("[document.documentElement.dataset.ui,getComputedStyle(document.querySelector('.v2-nav')).backgroundColor]")
     check('light theme switch is kept after restart', r == ['light', 'rgb(255, 255, 255)'], r)
     check('no JS errors (graphics)', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_extras(b):
+    ctx, pg = await page(b)
+    await pg.evaluate("document.getElementById('hConn').click();onHubState('ready');mk6Go('hub');document.getElementById('hubDiag').open=true")
+    await pg.wait_for_timeout(400)
+    r = await pg.evaluate("[...document.querySelectorAll('#diagList dt')].map(e=>e.textContent).join('|')+' :: '+[...document.querySelectorAll('#diagList dd')].map(e=>e.textContent).join('|')")
+    check('diagnostics show send mode, counts and the last error', '1 hub' in r and '130' in r and 'internal Bluetooth error' in r and 'Error time' in r, r)
+    await pg.evaluate("__calls=[];mk6Go('settings');document.getElementById('sText').click();document.getElementById('sHC').click();document.getElementById('sLight').click()")
+    await pg.wait_for_timeout(400)
+    r = await pg.evaluate("[__calls.filter(c=>/^(zoom|theme)/.test(c)).join(','),document.documentElement.hasAttribute('data-hc'),document.getElementById('sTextV').textContent]")
+    check('text size, high contrast and status bar theme reach Android', 'zoom:115' in r[0] and 'theme:true' in r[0] and r[1] and r[2] == 'Large', r)
+    await pg.evaluate("document.getElementById('sLight').click();document.getElementById('sHC').click()")
+    r = await pg.evaluate("mk6Go('medit');document.getElementById('mShare').click();new Promise(r=>setTimeout(()=>{var s=window.__share;r(s?[s[0],JSON.parse(s[1]).profiles.length,!!JSON.parse(s[1]).profiles[0].cfg]:null)},300))")
+    check('Share model sends one model as a .mk6.json file', r and r[0].endswith('.mk6.json') and r[1] == 1 and r[2], r)
+    n0 = await pg.evaluate("document.querySelectorAll('#mList .v2-mcard:not(.v2-madd)').length||(mk6Go('models'),document.querySelectorAll('#mList .v2-mcard:not(.v2-madd)').length)")
+    await pg.evaluate("onSharedModel(window.__share[1])")
+    await pg.wait_for_timeout(400)
+    r = await pg.evaluate("[document.documentElement.dataset.v,[...document.querySelectorAll('#hAlerts h2')].map(h=>h.textContent).join('|')]")
+    check('a received model file shows an Add card on Home', r[0] == 'home' and 'Model received' in r[1], r)
+    await pg.evaluate("[...document.querySelectorAll('#hAlerts button')].find(b=>b.textContent==='Add to my models').click()")
+    await pg.wait_for_timeout(300)
+    n1 = await pg.evaluate("mk6Go('models');document.querySelectorAll('#mList .v2-mcard:not(.v2-madd)').length")
+    check('Add to my models imports it', n1 == n0 + 1, [n0, n1])
+    # a short recording, ticked as a quick button, replays from Quick actions
+    await pg.evaluate("mk6Go('drive');document.getElementById('recBtn').click()")
+    await pg.wait_for_timeout(200)
+    await pg.evaluate("var r=document.querySelector('#boardGrid input[type=range]');r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=60;r.dispatchEvent(new Event('input',{bubbles:true}))")
+    await pg.wait_for_timeout(500)
+    await pg.evaluate("var r=document.querySelector('#boardGrid input[type=range]');r.value=0;r.dispatchEvent(new Event('input',{bubbles:true}));r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}))")
+    await pg.wait_for_timeout(200)
+    await pg.evaluate("document.getElementById('recBtn').click()")
+    await pg.wait_for_timeout(200)
+    await pg.evaluate("var q=document.getElementById('recQuick');q.checked=true;q.dispatchEvent(new Event('change',{bubbles:true}))")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("(()=>{var b=document.querySelector('#quick .qrec');if(!b) return null;var vis=!document.getElementById('quickCard').hidden;b.click();return new Promise(r=>setTimeout(()=>r([vis,b.textContent,document.getElementById('playBtn').textContent]),150))})()")
+    check('recording ticked as a quick button shows and plays', r and r[0] and r[1].startswith('\u25a0') and r[2] == 'Stop', r)
+    check('no JS errors (extras)', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

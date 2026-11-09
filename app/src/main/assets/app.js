@@ -1,0 +1,5086 @@
+/* MK6 Console app code. Loaded with defer so the page (and its splash) can paint first.
+   Each block is wrapped on its own so one failing block cannot stop the others. */
+
+document.documentElement.classList.remove('booting');
+
+/* ---- block 1 ---- */
+try{
+(function(){
+  // Skip DOM writes that do not change anything: fewer style recalcs and repaints on slow phones
+  try{
+    var d=Object.getOwnPropertyDescriptor(Node.prototype,'textContent');
+    if(d&&d.set&&d.get) Object.defineProperty(Node.prototype,'textContent',{configurable:true,enumerable:d.enumerable,get:d.get,set:function(v){var n=v==null?'':String(v);if(this.nodeType===1&&this.childNodes.length===1&&this.firstChild.nodeType===3&&this.firstChild.data===n) return;if(this.nodeType===1&&n===''&&!this.firstChild) return;d.set.call(this,v)}});
+    var sa=Element.prototype.setAttribute;
+    Element.prototype.setAttribute=function(k,v){if(this.getAttribute(k)===String(v)) return;return sa.call(this,k,v)};
+    var h=Object.getOwnPropertyDescriptor(HTMLElement.prototype,'hidden');
+    if(h&&h.set&&h.get) Object.defineProperty(HTMLElement.prototype,'hidden',{configurable:true,enumerable:h.enumerable,get:h.get,set:function(v){if(!!h.get.call(this)===!!v) return;h.set.call(this,v)}});
+  }catch(_){}
+})();
+}catch(e){try{console.error(e)}catch(_){}}
+
+/* ---- block 2 ---- */
+try{
+(function(){
+  var NMAX=18, PER=6, L='ABCDEF';
+  var MAX_REC_MS=90000, MAX_PTS=1800, MAX_RECS=10, MAX_MODELS=30;
+  var NB=window.MK6Bridge||null;
+  if(typeof document.addEventListener==='function') document.addEventListener('contextmenu',function(e){var t=e.target&&e.target.tagName;if(t==='INPUT'&&e.target.type!=='range'&&e.target.type!=='checkbox')return;if(t==='TEXTAREA')return;e.preventDefault()});
+  var S={connected:!NB,estop:false,rec:null,play:null,loop:false,turbo:[]};
+  var $=function(s,r){return (r||document).querySelector(s)};
+  var clamp=function(v,a,b){return Math.max(a,Math.min(b,v))};
+  var fmt=function(n){return n>0?'+'+n:String(n)};
+  function fmtTime(ms){var s=Math.floor(ms/1000);return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2)}
+  function num(v,lo,hi,d){v=+v;return (v>=lo&&v<=hi)?v:d}
+  function uid(){return 'p'+Date.now().toString(36)+Math.floor(Math.random()*46656).toString(36)}
+
+  /* ---------- Models (profiles) ---------- */
+  var DEF=['Left wheel','Right wheel','Arm','Scoop','Winch','Lights'];
+  var TR={'Tetapan asas':'Basic setup','Kereta 2 motor (contoh)':'2-motor car (example)','Jentera (contoh)':'Excavator (example)',
+    'Roda kiri':'Left wheel','Roda kanan':'Right wheel','Lengan':'Arm','Penyodok':'Scoop','Lampu':'Lights','Lampu depan':'Headlights',
+    'Saluran D':'Channel D','Saluran E':'Channel E','Saluran F':'Channel F','Track kiri':'Left track','Track kanan':'Right track','Baldi':'Bucket','Putar':'Swing'};
+  function tr(s){return Object.prototype.hasOwnProperty.call(TR,s)?TR[s]:s}
+  function baseCfg(names){
+    var ch=[];
+    for(var i=0;i<NMAX;i++) ch.push({name:(names&&i<names.length)?names[i]:(i<PER?DEF[i]:'Channel '+L[i%PER]),inv:false,max:100,off:0,expo:0,kind:'slider',blink:'off',bright:100,stp:5});
+    return {ch:ch,limit:100,ramp:60,zone:100,testPwr:60,dash:false,dgv:2,hubNames:['','',''],spring:true,s1:{mode:'axis',a:0,b:1,hold:false},s2:{mode:'axis',a:2,b:3,hold:false},hubs:[0,-1,-1],layout:'std',speed:'fast',board:[],tilt:{on:false,sens:45,inv:false,all:false},accent:0,accentV:2,theme:'studs',pad:{on:true,dead:12,trig:-1,map:{}},safety:{idle:60,warn:30,run:0},seq:[],rec:[]};
+  }
+  function cleanHubs(h){
+    var out=[-1,-1,-1],s,t;
+    for(s=0;s<3;s++){var v=Math.round(+(h&&h[s]));out[s]=(v>=0&&v<=2)?v:-1}
+    for(s=1;s<3;s++) for(t=0;t<s;t++) if(out[s]>=0&&out[s]===out[t]) out[s]=-1;
+    if(out[0]<0){var m=0;while(out.indexOf(m)>=0) m++;out[0]=m}
+    return out;
+  }
+  var PAD_BTNS=[0,1,2,3,4,5,10,11,12,13,14,15];
+  function pickOf(v,list,def){v=+v;return list.indexOf(v)>=0?v:def}
+  var MAX_SEQ=10, MAX_STEPS=30;
+  function cleanSeqs(r){
+    var out=[];
+    if(!Array.isArray(r)) return out;
+    r.slice(0,MAX_SEQ).forEach(function(x){
+      if(!x||typeof x!=='object') return;
+      var steps=[];
+      (Array.isArray(x.steps)?x.steps:[]).slice(0,MAX_STEPS).forEach(function(q,n){
+        if(!q||typeof q!=='object') return;
+        steps.push({
+          ch:Math.round(num(q.ch,-1,NMAX-1,-1)),
+          pwr:Math.round(num(q.pwr,-100,100,50)),
+          dur:Math.round(num(q.dur,0.1,60,1)*10)/10,
+          par:n>0&&q.par===true
+        });
+      });
+      out.push({id:typeof x.id==='string'?x.id:uid(),name:String(x.name||'Sequence').slice(0,24),loop:x.loop===true,reps:pickOf(x.reps,[1,2,3,5,10],1),speed:pickOf(x.speed,[0.5,0.75,1,1.5,2],1),delay:pickOf(x.delay,[0,1,2,3,5,10],0),steps:steps});
+    });
+    return out;
+  }
+  // Turn a sequence into a recording-style timeline so the existing playback (E-Stop, locking, loop) runs it.
+  function compileSeq(sq){
+    var ev=[],t=0,lastStart=0;
+    sq.steps.forEach(function(st,n){
+      var start=(st.par&&n>0)?lastStart:t, end=start+Math.round(st.dur*1000/(sq.speed||1));
+      lastStart=start;
+      if(st.ch>=0){ev.push([start,1,st.ch,st.pwr]);ev.push([end,0,st.ch,0])}
+      t=Math.max(t,end);
+    });
+    var total=Math.min(t,MAX_REC_MS);
+    ev=ev.filter(function(e){return e[0]<=total});
+    ev.sort(function(a,b){return a[0]-b[0]||a[1]-b[1]});
+    var v=[],i,pts=[],k=0;
+    for(i=0;i<NMAX;i++) v.push(0);
+    pts.push([0].concat(v));
+    while(k<ev.length){
+      var tm=ev[k][0];
+      while(k<ev.length&&ev[k][0]===tm){v[ev[k][2]]=ev[k][3];k++}
+      if(tm===0) pts[0]=[0].concat(v); else pts.push([tm].concat(v));
+    }
+    if(pts[pts.length-1][0]<total) pts.push([total].concat(v.map(function(){return 0})));
+    if(pts.length<2) pts.push([Math.max(1,total)].concat(v.map(function(){return 0})));
+    return {id:sq.id,name:sq.name,dur:Math.max(1,total),pts:pts};
+  }
+  function cleanRecs(r){
+    var out=[];
+    if(!Array.isArray(r)) return out;
+    r.slice(0,MAX_RECS).forEach(function(x){
+      if(!x||!Array.isArray(x.pts)||x.pts.length<2) return;
+      var pts=[];
+      x.pts.slice(0,MAX_PTS).forEach(function(p){
+        if(!Array.isArray(p)||p.length<2) return;
+        var row=[Math.max(0,Math.round(+p[0])||0)];
+        for(var i=0;i<NMAX;i++) row.push(clamp(Math.round(+p[i+1])||0,-100,100));
+        pts.push(row);
+      });
+      if(pts.length<2) return;
+      var dur=pts[pts.length-1][0];
+      if(dur<=0) return;
+      out.push({id:typeof x.id==='string'?x.id:uid(),name:String(x.name||'Take').slice(0,24),dur:Math.min(dur,MAX_REC_MS),pts:pts,btn:x.btn===true});
+    });
+    return out;
+  }
+  var DG={x:48,y:24,k:'g'};
+  function dashLand(){return window.innerWidth>window.innerHeight}
+  function dashSetMode(){var l=dashLand();DG.x=l?48:24;DG.y=l?24:48;DG.k=l?'g':'gp';return l}
+  function dmin(it){if(it.k==='i'&&(it.hz||it.v)) return [10,5];if((it.k==='s'||it.k==='m')&&it.v) return [6,12];if(it.k==='y'&&it.sc) return [14,10];return DMIN[it.k]||[3,3]}
+  function cleanG(g,k,gx,gy,v){
+    if(!Array.isArray(g)||g.length!==4) return null;
+    g=g.map(function(q){return Math.round(+q)});
+    var mn=dmin({k:k,v:v});
+    if(!g.every(function(q){return isFinite(q)})||g[0]<0||g[1]<0||g[2]<mn[0]||g[3]<mn[1]||g[0]+g[2]>gx||g[1]+g[3]>gy) return null;
+    return g;
+  }
+  var DMIN={rs:[8,8],st:[8,8],lv:[6,12],dp:[10,10],s:[12,6],j:[10,12],d:[20,12],m:[12,6],l:[6,6],t:[6,6],b:[6,6],e:[6,6],g:[12,6],z:[8,6],n:[8,8],w:[12,6],a:[10,6],y:[12,6],f:[10,8],i:[6,10],k:[12,8],ps:[8,9]};
+  function ci(v,lo,hi,def){v=Math.round(+v);return (v>=lo&&v<=hi)?v:def}
+  function cleanJc(j){
+    if(!j||typeof j!=='object') return null;
+    var o={dz:ci(j.dz,0,40,0),sn:ci(j.sn,50,150,100),lm:ci(j.lm,20,100,100),ax:(j.ax==='x'||j.ax==='y')?j.ax:'f'};
+    return (o.dz===0&&o.sn===100&&o.lm===100&&o.ax==='f')?null:o;
+  }
+  function cleanBoard(b){
+    var out=[];
+    if(!Array.isArray(b)) return out;
+    b.slice(0,16).forEach(function(x){
+      if(!x||typeof x!=='object') return;
+      var n0=out.length;
+      var w=x.w===2?2:1;
+      if(x.k==='s'){
+        var c=Math.round(+x.c);
+        if(c>=0&&c<NMAX) out.push({k:x.k,c:c,w:w,hold:x.hold===true,v:x.v===true});
+      }else if(x.k==='j'){
+        var ja=Math.round(+x.c), jb=Math.round(+x.d);
+        if(ja>=0&&ja<NMAX&&jb>=-1&&jb<NMAX){var jo={k:'j',c:ja,d:jb,m:x.m==='tank'?'tank':'axis',w:w,hold:x.hold===true},jj=cleanJc(x.jc);if(jj) jo.jc=jj;if(x.sw===1||x.sw===true) jo.sw=1;out.push(jo)}
+      }else if(x.k==='d'){
+        var da=Math.round(+x.c), db=Math.round(+x.d), dc=Math.round(+x.e), dd=Math.round(+x.f);
+        if(da>=0&&da<NMAX&&dc>=0&&dc<NMAX&&db>=-1&&db<NMAX&&dd>=-1&&dd<NMAX){var dobj={k:'d',c:da,d:db,e:dc,f:dd,m:x.m==='tank'?'tank':'axis',w:2,hold:x.hold===true},dj=cleanJc(x.jc);if(dj) dobj.jc=dj;out.push(dobj)}
+      }else if(x.k==='l'){
+        var lc=Math.round(+x.c);
+        if(lc>=0&&lc<NMAX) out.push({k:'l',c:lc,w:w});
+      }else if(x.k==='m'&&Array.isArray(x.t)){
+        var mt=[];
+        x.t.slice(0,4).forEach(function(q){
+          if(!q||typeof q!=='object') return;
+          var mc=Math.round(+q.c), mr=Math.round(+q.r);
+          if(mc>=0&&mc<NMAX&&mr>=-100&&mr<=100&&mr!==0&&!mt.some(function(z){return z.c===mc})) mt.push({c:mc,r:mr});
+        });
+        if(mt.length) out.push({k:'m',t:mt,c:mt[0].c,w:w,hold:x.hold===true,v:x.v===true});
+      }else if(x.k==='b'){
+        var bcn=Math.round(+x.c);
+        if(bcn>=0&&bcn<NMAX) out.push({k:'b',c:bcn,w:w});
+      }else if(x.k==='t'){
+        var tcn=Math.round(+x.c), tp=Math.round(+x.p);
+        if(tcn>=0&&tcn<NMAX) out.push({k:'t',c:tcn,w:x.y==='dir'?2:w,y:['led','latch','dir'].indexOf(x.y)>=0?x.y:'led',p:(tp>=5&&tp<=100)?tp:100});
+      }else if(x.k==='w'){
+        var wa=Math.round(+x.c), wb=Math.round(+x.d), wp=Math.round(+x.p);
+        if(wa>=0&&wa<NMAX&&wb>=0&&wb<NMAX&&wa!==wb){
+          var wo={k:'w',c:wa,d:wb,w:w,p:(wp>=5&&wp<=100)?wp:100};
+          if(x.mid===1||x.mid===true) wo.mid=1;
+          if(x.ra===1||x.ra===true) wo.ra=1;
+          if(x.rb===1||x.rb===true) wo.rb=1;
+          out.push(wo);
+        }
+      }else if(x.k==='a'){
+        var acn=Math.round(+x.c), as0=Math.round(+x.s);
+        if(acn>=0&&acn<NMAX) out.push({k:'a',c:acn,w:w,s:(as0>=1&&as0<=300)?as0:20});
+      }else if(x.k==='y'){
+        var ycn=Math.round(+x.c), yp=Math.round(+x.p), yd=Math.round(+x.d*10)/10;
+        if(ycn>=0&&ycn<NMAX) {out.push({k:'y',c:ycn,w:w,p:(yp>=5&&yp<=100)?yp:50,d:(yd>=1&&yd<=30)?yd:4});if(x.sc===1||x.sc===true) out[out.length-1].sc=1}
+      }else if(x.k==='f'||x.k==='i'||x.k==='k'){
+        var ocn=Math.round(+x.c);
+        if(ocn>=0&&ocn<NMAX){out.push({k:x.k,c:ocn,w:w});if((x.k==='f'||x.k==='i')&&(x.ow===1||x.ow===true)) out[out.length-1].ow=1;if(x.k==='i'&&(x.hz===1||x.hz===true)) out[out.length-1].hz=1;if(x.k==='k'&&(+x.ws===30||+x.ws===60)) out[out.length-1].ws=+x.ws;if(x.k==='k'&&(x.tg===1||x.tg===true)){out[out.length-1].tg=1;var tvv=Math.round(+x.tv);out[out.length-1].tv=isFinite(tvv)?Math.max(-100,Math.min(100,tvv)):80}if((x.k==='f'||x.k==='i')&&(+x.th===1||+x.th===2)) out[out.length-1].th=+x.th;if((x.k==='f'||x.k==='i')&&(x.sh===1||x.sh===true)) out[out.length-1].sh=1}
+      }else if(x.k==='n'){
+        var kcn=Math.round(+x.c);
+        if(kcn>=0&&kcn<NMAX){out.push({k:x.k,c:kcn,w:w});var nrt=Math.round(+x.rt*2)/2;if(x.rt!==undefined&&nrt>=0&&nrt<=10&&nrt!==3) out[out.length-1].rt=nrt;if(+x.th===1||+x.th===2) out[out.length-1].th=+x.th;if(x.ow===1||x.ow===true) out[out.length-1].ow=1;if(x.sw===1||x.sw===true) out[out.length-1].sw=1}
+      }else if(x.k==='g'||x.k==='lv'){
+        var gcn=Math.round(+x.c);
+        if(gcn>=0&&gcn<NMAX){
+          var go={k:x.k,c:gcn,w:w};
+          var gr0=Math.round(+x.gr);if(x.gr!==undefined&&gr0>=-100&&gr0<=0) go.gr=gr0;
+          if(Array.isArray(x.gf)){var gf0=x.gf.slice(0,5).map(function(q){return Math.round(+q)}).filter(function(q){return q>=1&&q<=100});if(gf0.length) go.gf=gf0}
+          out.push(go);
+        }
+      }else if(x.k==='st'){
+        var stc=Math.round(+x.c),sra=Math.round(+x.ra);
+        if(stc>=0&&stc<NMAX){var so={k:'st',c:stc,w:w};if([90,180,270].indexOf(sra)>=0) so.ra=sra;if(x.hold===true) so.hold=true;if(x.gy===1||x.gy===true) so.gy=1;var sgz=Math.round(+x.gz),sgs=Math.round(+x.gs);if(x.gz!==undefined&&sgz>=0&&sgz<=10&&sgz!==3) so.gz=sgz;if([30,45,60].indexOf(sgs)>=0) so.gs=sgs;out.push(so)}
+      }else if(x.k==='dp'){
+        var dpa=Math.round(+x.c),dpb=Math.round(+x.d),dpp=Math.round(+x.p),dpr=Math.round(+x.rt*10)/10;
+        if(dpa>=0&&dpa<NMAX&&dpb>=-1&&dpb<NMAX&&dpb!==dpa){
+          var dpo={k:'dp',c:dpa,d:dpb,w:w,m:x.m==='car'?'car':'tank',p:(dpp>=10&&dpp<=100)?dpp:70};
+          if(x.rt!==undefined&&dpr>=0&&dpr<=3&&dpr!==0.3) dpo.rt=dpr;
+          if(x.tg===1||x.tg===true) dpo.tg=1;
+          out.push(dpo);
+        }
+      }else if(x.k==='rs'){
+        var rps=Math.round(+x.p),rns=[4,6].indexOf(+x.ns)>=0?+x.ns:6,rsl=Math.round(+x.s),rrt=Math.round(+x.rt*2)/2,rhb=Math.round(+x.hb);
+        var ro={k:'rs',w:w,p:(rps>=5&&rps<=100)?rps:100,ns:rns,s:(rsl>=0&&rsl<rns)?rsl:0};
+        if(x.rt!==undefined&&rrt>=0&&rrt<=10&&rrt!==3) ro.rt=rrt;
+        if(rhb>=1&&rhb<=2&&rhb*PER+rns<=NMAX) ro.hb=rhb;
+        out.push(ro);
+      }else if(x.k==='z'){
+        var za=Math.round(+x.a);
+        out.push({k:'z',w:w,a:(za>=0&&za<=240)?za:15});
+      }else if(x.k==='ps'){
+        out.push({k:'ps',w:w,hd:pickOf(x.hd,[300,500,800,1200],500),md:pickOf(x.md,[0,1],0),o0:pickOf(x.o0,[0,1],1),o1:pickOf(x.o1,[0,1],1),o2:pickOf(x.o2,[0,1],1),o3:pickOf(x.o3,[0,1],1),o4:pickOf(x.o4,[0,1],1),o5:pickOf(x.o5,[0,1],1)});
+      }else if(x.k==='e'){
+        out.push({k:'e',w:1});
+      }
+      if(out.length>n0){
+        var it0=out[out.length-1], g1=cleanG(x.g,it0.k,48,24,it0.k==='i'?it0.hz:it0.v);
+        if(g1) it0.g=g1;
+        if(['e','z','a','l','j','d','w','f','i','k','rs','dp','ps'].indexOf(it0.k)<0){
+          if(x.inv===1||x.inv===true) it0.inv=1;
+          var cp0=Math.round(+x.cap);if(cp0>=10&&cp0<100) it0.cap=cp0;
+          if(it0.k==='s'){var sn0=Math.round(+x.snap);if([5,10,25].indexOf(sn0)>=0) it0.snap=sn0}
+          if(it0.k==='b'){var bp0=Math.round(+x.p);it0.p=(bp0>=30&&bp0<=100)?bp0:100;if(x.lock===true) it0.lock=true}
+        }
+        if(['s','n','st'].indexOf(it0.k)>=0&&x.pc!==undefined){var pc0=Math.round(+x.pc);if(pc0>=0&&pc0<NMAX&&pc0!==it0.c){it0.pc=pc0;if(x.pi===1||x.pi===true) it0.pi=1}}
+        if(typeof x.lbl==='string'&&it0.k!=='e'){var lb0=x.lbl.replace(/\s+/g,' ').trim().slice(0,20);if(lb0) it0.lbl=lb0}
+      }
+    });
+    return out;
+  }
+  function idxOf(v,def,allowNone){v=Math.round(+v);if(allowNone&&v===-1)return -1;return (v>=0&&v<NMAX)?v:def}
+  function sanitizeCfg(c){
+    var d=baseCfg();
+    if(!c||typeof c!=='object') return d;
+    if(Array.isArray(c.ch)) c.ch.slice(0,NMAX).forEach(function(x,i){
+      if(!x||typeof x!=='object') return;
+      var o=d.ch[i];
+      if(typeof x.name==='string') o.name=tr(x.name.slice(0,16));
+      o.inv=!!x.inv;
+      o.max=num(x.max,10,100,100);
+      o.off=num(x.off,0,50,0);
+      o.expo=num(x.expo,0,100,0);
+      o.kind=(x.kind==='hold'||x.kind==='light')?x.kind:'slider';
+      o.blink=['off','slow','fast','pulse'].indexOf(x.blink)>=0?x.blink:'off';
+      o.bright=Math.round(num(x.bright,0,100,100));
+      o.stp=pickOf(x.stp,[1,5,10],5);
+    });
+    d.limit=num(c.limit,10,100,100);
+    d.ramp=num(c.ramp,0,100,60);
+    d.zone=pickOf(c.zone,[25,50,75,100],100);
+    d.testPwr=Math.round(num(c.testPwr,10,100,60));
+    d.dash=c.dash===true;
+    d.dgv=2;
+    d.hubNames=[0,1,2].map(function(q){var v=Array.isArray(c.hubNames)?c.hubNames[q]:'';return typeof v==='string'?v.replace(/[\u0000-\u001f<>]/g,'').slice(0,12):''});
+    d.spring=true;
+    var s1=c.s1||{mode:c.mode,a:c.a,b:c.b}, s2=c.s2||{};
+    var gh=c.stickHold===true;
+    d.s1={mode:s1.mode==='tank'?'tank':'axis',a:idxOf(s1.a,0,false),b:idxOf(s1.b,1,false),hold:typeof s1.hold==='boolean'?s1.hold:gh};
+    d.s2={mode:s2.mode==='tank'?'tank':'axis',a:idxOf(s2.a,2,true),b:idxOf(s2.b,3,true),hold:typeof s2.hold==='boolean'?s2.hold:gh};
+    d.hubs=cleanHubs(Array.isArray(c.hubs)?c.hubs:[num(c.mod,0,2,0),-1,-1]);
+    d.layout=(c.layout==='joy'||c.layout==='dual'||c.layout==='board')?c.layout:'std';
+    d.speed=(c.speed==='slow'||c.speed==='normal')?c.speed:'fast';
+    d.board=cleanBoard(c.board);
+    if(c.dgv!==2) d.board.forEach(function(it){if(it.g) it.g=it.g.map(function(q){return q*2})});
+    var tl=(c.tilt&&typeof c.tilt==='object')?c.tilt:{};
+    d.tilt={on:tl.on===true,sens:pickOf(tl.sens,[30,45,60],45),inv:tl.inv===true,all:tl.all===true};
+    // Colour choices are now orange(0), red(1), yellow(2). Older saves used six: pink maps to red, yellow to yellow, the rest to orange.
+    d.accent=Math.round(num(c.accent,0,5,0));
+    if(c.accentV!==2) d.accent=({4:1,5:2})[d.accent]||0; else d.accent=Math.min(2,d.accent);
+    d.accentV=2;
+    var pd=(c.pad&&typeof c.pad==='object')?c.pad:{};
+    d.pad={on:pd.on!==false,dead:Math.round(num(pd.dead,5,40,12)),trig:Math.round(num(pd.trig,-1,NMAX-1,-1)),map:{}};
+    var msrc=(pd.map&&typeof pd.map==='object')?pd.map:{};
+    PAD_BTNS.forEach(function(b){
+      var v=msrc[b];
+      if(typeof v!=='string'||!/^([frlt]\d{1,2}|z|R|P|rp|rn|rg|s:[A-Za-z0-9_-]{1,40})$/.test(v)) return;
+      if(/^[frlt]\d/.test(v)&&+v.slice(1)>=NMAX) return;
+      d.pad.map[b]=v;
+    });
+    var sf=(c.safety&&typeof c.safety==='object')?c.safety:{};
+    d.safety={idle:pickOf(sf.idle,[0,10,30,60,120],60),warn:pickOf(sf.warn,[0,15,30,60],30),run:pickOf(sf.run,[0,10,20,30,60],0)};
+    d.seq=cleanSeqs(c.seq);
+    d.rec=cleanRecs(c.rec);
+    return d;
+  }
+  function starters(){
+    var car=baseCfg(['Left wheel','Right wheel','Headlights','Channel D','Channel E','Channel F']);
+    car.s1.mode='tank';car.layout='joy';car.ch[2].kind='hold';
+    var exc=baseCfg(['Left track','Right track','Arm','Bucket','Swing','Lights']);
+    exc.s1.mode='tank';exc.layout='dual';exc.ch[4].kind='hold';exc.ch[4].max=60;exc.ch[5].kind='hold';exc.accent=2;
+    car.seq=[{id:uid(),name:'Spin',loop:false,steps:[{ch:0,pwr:60,dur:1.5,par:false},{ch:1,pwr:-60,dur:1.5,par:true},{ch:-1,pwr:0,dur:0.5,par:false}]}];
+    exc.seq=[{id:uid(),name:'Dig cycle',loop:false,steps:[{ch:2,pwr:-60,dur:2,par:false},{ch:3,pwr:60,dur:1.5,par:false},{ch:2,pwr:60,dur:2,par:false},{ch:4,pwr:40,dur:3,par:false}]}];
+    var mine=baseCfg(['Drive','Steering','Lights','Winch','Rear lights','Channel F']);
+    mine.ch[2].kind='light';mine.ch[4].kind='light';mine.layout='board';mine.dash=true;
+    mine.board=[{k:'s',c:0,w:1,v:true,g:[0,0,12,24]},{k:'l',c:2,w:1,g:[12,0,13,7]},{k:'b',c:0,w:1,g:[12,7,13,7]},
+      {k:'t',c:3,y:'dir',w:1,g:[25,0,14,7]},{k:'l',c:4,w:1,g:[25,7,14,7]},{k:'e',w:1,g:[39,0,9,14]},{k:'s',c:1,w:1,g:[12,14,36,10]}];
+    mine.board.forEach(function(o){o.gp=o.g.slice()});
+    void car;void exc;
+    return [{id:uid(),name:'My model',cfg:sanitizeCfg(mine)}];
+  }
+  function cleanLim(a){var D=[[40,80],[70,60],[100,40]];return D.map(function(d,i){var x=(Array.isArray(a)&&a[i]&&typeof a[i]==='object')?a[i]:{};return {l:Math.round(num(x.l,10,100,d[0])),r:Math.round(num(x.r,0,100,d[1]))}})}
+  function cleanTpls(a){
+    var out=[];if(!Array.isArray(a)) return out;
+    a.slice(0,10).forEach(function(t){
+      if(!t||typeof t!=='object') return;
+      var n=String(t.name||'').replace(/\s+/g,' ').trim().slice(0,24), b=cleanBoard(t.board);
+      if(n&&b.length&&!out.some(function(o){return o.name===n})) out.push({name:n,board:b});
+    });
+    return out;
+  }
+  function cleanPrefs(p){p=(p&&typeof p==='object')?p:{};return {practice:p.practice===true,sound:p.sound!==false,haptic:p.haptic!==false,lang:p.lang==='ms'?'ms':'en',seen:p.seen===true,lock:p.lock===true,kidLimit:pickOf(p.kidLimit,[100,70,50,30],50),lim:cleanLim(p.lim),autoBackup:p.autoBackup!==false,full:p.full!==false,relink:p.relink!==false,fx:(p.fx==='full'||p.fx==='lite')?p.fx:'auto',lastBackup:Math.max(0,+p.lastBackup||0),tpls:cleanTpls(p.tpls),ui:p.ui==='light'?'light':'dark',fs:pickOf(p.fs,[100,115,130],100),hc:p.hc===true}}
+  var store={active:null,profiles:[],prefs:cleanPrefs()};
+  try{
+    var raw=localStorage.getItem('mk6v2');
+    if(raw){
+      var sp=JSON.parse(raw);
+      if(sp&&Array.isArray(sp.profiles)){
+        sp.profiles.forEach(function(p){
+          if(p&&typeof p.id==='string'&&typeof p.name==='string') store.profiles.push({id:p.id,name:tr(p.name.slice(0,24)),label:(typeof p.label==='string'?p.label.slice(0,24):''),cfg:sanitizeCfg(p.cfg)});
+        });
+        store.active=sp.active;
+        store.prefs=cleanPrefs(sp.prefs);
+      }
+    }
+    if(!store.profiles.length){
+      var old=localStorage.getItem('mk6');
+      if(old){var s0=starters();s0[0].cfg=sanitizeCfg(JSON.parse(old));store.profiles=s0}
+    }
+  }catch(e){}
+  if(!store.profiles.length) store.profiles=starters();
+  if(!store.profiles.some(function(p){return p.id===store.active})) store.active=store.profiles[0].id;
+  function activeProfile(){return store.profiles.filter(function(p){return p.id===store.active})[0]}
+  function RH(){return !!NB&&!store.prefs.practice}
+  var C=activeProfile().cfg;
+  var recSel=null, recNote='';
+  var scTimer=0;
+  function save(){
+    try{localStorage.setItem('mk6v2',JSON.stringify(store))}catch(e){}
+    if(NB&&NB.shortcuts){clearTimeout(scTimer);scTimer=setTimeout(pushShortcuts,1500)}
+  }
+  function pushShortcuts(){
+    try{
+      var list=store.profiles.slice().sort(function(a,b){return (b.id===store.active)-(a.id===store.active)}).slice(0,4)
+        .map(function(p){return {id:p.id,name:p.name}});
+      NB.shortcuts(JSON.stringify(list));
+    }catch(e){}
+  }
+
+  var rt={t:[],o:[]};
+  for(var q=0;q<NMAX;q++){rt.t.push(0);rt.o.push(0)}
+
+  function slotOn(s){return C.hubs[s]>=0}
+  function isActive(i){return slotOn((i/PER)|0)}
+  function activeSlots(){var o=[];for(var s=0;s<3;s++) if(slotOn(s)) o.push(s);return o}
+  function activeIdx(){var o=[];for(var i=0;i<NMAX;i++) if(isActive(i)) o.push(i);return o}
+  function tagOf(i){var s=(i/PER)|0;return activeSlots().length>1?'M'+(C.hubs[s]+1)+L[i%PER]:L[i%PER]}
+
+  /* Transport: broadcasts through the native bridge when running inside the Android app. */
+  var transport={send:function(frame,changed){
+    if(RH()){try{NB.send(frame.join(','))}catch(e){}}
+    if(changed)logFrame(frame);
+  }};
+
+  /* ---------- Power curve ---------- */
+  function powerFor(a,c){
+    if(a<=1) return 0;
+    var x=Math.min(a,100)/100, e=c.expo/100;
+    var m=100*((1-e)*x+e*x*x*x);
+    return Math.min(m+c.off,c.max);
+  }
+  var SPD={slow:0.4,normal:0.7,fast:1};
+  /* The hub only picks up a new broadcast about every 100-200 ms, so blinking is kept slow and
+     pulsing moves in coarse steps. Brightness is mapped above the LED start threshold. */
+  function blinkF(mode,now){
+    if(mode==='slow') return (Math.floor(now/1000)%2)?0:1;
+    if(mode==='fast') return (Math.floor(now/400)%2)?0:1;
+    if(mode==='pulse') return 0.5+0.5*Math.cos(Math.floor(now/200)*200/3000*2*Math.PI+Math.PI);
+    return 1;
+  }
+  /* The LEDs only light from about 40% hub power, so any brightness above 0 is mapped into 40..100%. */
+  function ledOut(b){return b<=0?0:40+60*Math.pow(Math.min(b,100)/100,1.5)}
+  function goalOf(i){
+    if(C.ch[i].kind==='light'){var lt=rt.t[i];return lt>0?Math.round(ledOut(lt*blinkF(C.ch[i].blink,performance.now()))):0}
+    var t=rt.t[i], m=powerFor(Math.abs(t),C.ch[i]);
+    var tb=!!S.turbo[i]||!!cal||testOn();
+    var f=(tb?1:(SPD[C.speed]||1))*((S.kid&&store.prefs.kidLimit)?store.prefs.kidLimit/100:1);
+    return (t<0?-m:m)*(tb?100:C.limit)/100*f;
+  }
+
+  // What the hub sends at a full 100% request (the power limit, speed and channel max); meters mark it with a tick
+  function hubMax(i){
+    if(C.ch[i].kind==='light') return 100;
+    var tb=!!S.turbo[i]||!!cal||testOn();
+    var f=(tb?1:(SPD[C.speed]||1))*((S.kid&&store.prefs.kidLimit)?store.prefs.kidLimit/100:1);
+    return Math.min(100,powerFor(100,C.ch[i])*(tb?100:C.limit)/100*f);
+  }
+
+  /* ---------- Channels ---------- */
+  var refs=[], groups=[], wrap=$('#channels'), cols=$('#cols');
+  var runBlk=[], runSince=[];
+  var AUTOT={}, RAMP={}, HIST={}, HCNT={}, RECS={}, MPK={}, RAMPLAST={};
+  function autoTick(){
+    var now=performance.now();
+    (C.board||[]).forEach(function(it){
+      if(it.k==='a'){
+        var c=it.c;
+        if(S.estop||rt.t[c]===0||!isFinite(rt.t[c])){AUTOT[c]=0;return}
+        if(!AUTOT[c]) AUTOT[c]=now;
+        if(now-AUTOT[c]>=it.s*1000){AUTOT[c]=0;setT(c,0,false);toast('Auto-stop: channel '+tagOf(c)+' stopped after '+it.s+' s.',5000);feedback('warn')}
+      }
+    });
+    Object.keys(RAMP).forEach(function(k){
+      var r=RAMP[k];
+      if(S.estop){delete RAMP[k];return}
+      var f=Math.min(1,(now-r.t0)/(r.d*1000));
+      setT(+k,Math.round(r.from+(r.to-r.from)*f),false);
+      if(f>=1) delete RAMP[k];
+    });
+    var mtr=false;
+    (C.board||[]).forEach(function(o){if(o.k==='k'||(o.k==='y'&&o.sc)){var hh=HIST[o.c]||(HIST[o.c]=[]);var rs0=RECS[o.c]||'live';if(rs0==='rec'&&hh.length>=600) RECS[o.c]='done';else if(rs0!=='done'){hh.push(S.estop?0:(rt.t[o.c]||0));HCNT[o.c]=(HCNT[o.c]||0)+1;if(hh.length>600) hh.shift()}mtr=true}else if(o.k==='f'||o.k==='i') mtr=true});
+    if(C.board&&(mtr||C.board.some(function(o){return o.k==='a'}))&&typeof paintBoard==='function') paintBoard();
+  }
+  setInterval(autoTick,100);
+
+  var SVGNS='http://www.w3.org/2000/svg';
+  function sv(tag,at,par){var e=document.createElementNS(SVGNS,tag);for(var k in at) e.setAttribute(k,at[k]);if(par) par.appendChild(e);return e}
+  function mPol(cx,cy,r,a){var d=a*Math.PI/180;return [cx+r*Math.cos(d),cy-r*Math.sin(d)]}
+  function mArc(cx,cy,r,a0,a1){var p=mPol(cx,cy,r,a0),q=mPol(cx,cy,r,a1);return 'M'+p[0].toFixed(1)+' '+p[1].toFixed(1)+'A'+r.toFixed(1)+' '+r.toFixed(1)+' 0 '+(Math.abs(a0-a1)>180?1:0)+' '+(a0>a1?1:0)+' '+q[0].toFixed(1)+' '+q[1].toFixed(1)}
+  var MTH=[['#1D9E75','#EF9F27','#E24B4A','#378ADD'],['#378ADD','#7F77DD','#D85A30','#c8cdd4'],['#8a93a0','#c8cdd4','#ffffff','#6f7882']];
+  function mCol(v,th){var a=Math.abs(v);return a>80?th[2]:a>55?th[1]:th[0]}
+  function mAg(v){return 210-(v+100)/200*240}
+  function mAgF(v){return 210-v/100*240}
+  function mSgn(v){return (v>0?'+':v<0?'−':'')+Math.abs(Math.round(v))}
+  var MSEQ=0;
+  function meterBuild(el,it){
+    var k=it.k, c=it.c, th=MTH[(it.th===1||it.th===2)?it.th:0], i, chs=activeIdx();
+    var TXT='var(--fg,#e8e8ea)',MUT='var(--muted,#8a93a0)',TRK='rgba(150,160,175,.32)';
+    var box=document.createElement('div');box.className='mtr-box';
+    var svg=sv('svg',{'class':'mtr','data-k':k,'preserveAspectRatio':'xMidYMid meet','role':'img','aria-label':'Power meter'},box);
+    var m={c:c,k:k,box:box,svg:svg,nch:chs.length};
+    function T(at,txt){var e=sv('text',at,svg);if(txt!==undefined) e.textContent=txt;return e}
+    function dots(cw,ch){
+      if(m.dg) m.dg.remove();
+      if(m.nch<2) return;
+      m.dg=sv('g',{},svg);
+      var sp=Math.min(m.cmp?10:14,(cw-12)/m.nch),rs=Math.min(1,sp/(m.cmp?10:14));
+      chs.forEach(function(q,j){sv('circle',{cx:cw/2+(j-(m.nch-1)/2)*sp,cy:ch-(m.cmp?5:7),r:(q===c?(m.cmp?3.5:4.5):(m.cmp?2.4:3))*Math.max(.55,rs),fill:q===c?'var(--danger,#E03E3E)':MUT,opacity:q===c?1:.55},m.dg)});
+    }
+    if(k==='f'){
+      m.seg=[];for(i=0;i<24;i++) m.seg.push(sv('path',{fill:'none',stroke:TRK},svg));
+      m.req=sv('path',{fill:'none','stroke-linecap':'round','stroke-width':5,stroke:th[3]},svg);
+      m.zt=sv('line',{stroke:TXT,'stroke-width':2.5,'stroke-linecap':'round'},svg);
+      m.hq=[sv('line',{stroke:'#fff','stroke-width':2.5,'stroke-linecap':'round',visibility:'hidden'},svg),sv('line',{stroke:'#fff','stroke-width':2.5,'stroke-linecap':'round',visibility:'hidden'},svg)];
+      m.val=T({'class':'mv','text-anchor':'middle','font-weight':700,fill:TXT});
+      m.sub=T({'text-anchor':'middle','font-size':11,fill:MUT});
+      m.lay=function(cw,ch){
+        m.cmp=ch<112;
+        var dh=m.nch>1?(m.cmp?12:18):0, R2=Math.max(16,Math.min((cw-12)/2,(ch-dh-7)/1.68));
+        var w=Math.max(5,R2*.16), r=R2-w/2-1, total=1.707*R2+w/2+1, y0=Math.max(1,(ch-dh-total)/2), cx=cw/2, cy=y0+R2+1;
+        m.cx=cx;m.cy=cy;m.R2=R2;m.rr=r;m.ww=w;m.hk='';
+        for(var j=0;j<24;j++){m.seg[j].setAttribute('d',mArc(cx,cy,r,mAg(-100+j*200/24)-.8,mAg(-100+(j+1)*200/24)+.8));m.seg[j].setAttribute('stroke-width',w.toFixed(1))}
+        m.zt.setAttribute('x1',cx);m.zt.setAttribute('x2',cx);m.zt.setAttribute('y1',cy-R2-1);m.zt.setAttribute('y2',cy-r+w/2);m.zt.setAttribute('display',it.ow?'none':'inline');
+        var fs=Math.max(8,Math.min(60,r*.55,(r-w/2)*2*.86/2.75));
+        m.val.setAttribute('font-size',fs.toFixed(0));m.val.setAttribute('x',cx);m.val.setAttribute('y',(cy+fs*.3).toFixed(1));
+        m.sub.setAttribute('display',R2<28?'none':'inline');m.sub.setAttribute('x',cx);m.sub.setAttribute('y',(cy+fs*.3+15).toFixed(1));
+        dots(cw,ch);m.rd='';
+      };
+    }else if(k==='i'){
+      m.seg=[];for(i=0;i<20;i++) m.seg.push(sv('rect',{rx:1.5,fill:TRK},svg));
+      m.rq=sv('rect',{rx:2,width:4,fill:th[3],visibility:'hidden'},svg);
+      m.mid=sv('line',{stroke:TXT,'stroke-width':1.5},svg);
+      m.hq=[sv('line',{stroke:'#fff','stroke-width':2.5,'stroke-linecap':'round',visibility:'hidden'},svg),sv('line',{stroke:'#fff','stroke-width':2.5,'stroke-linecap':'round',visibility:'hidden'},svg)];
+      m.lt=T({'text-anchor':'end','font-size':11,fill:MUT},it.ow?'100':'+100');
+      m.lm=T({'text-anchor':'end','font-size':11,fill:MUT},it.ow?'50':'0');
+      m.lb=T({'text-anchor':'end','font-size':11,fill:MUT},it.ow?'0':'-100');
+      m.val=T({'class':'mv','text-anchor':'middle','font-size':15,'font-weight':700,fill:TXT});
+      svg.removeChild(m.val); // the LED meter shows its value as small yellow text in the card header instead
+      m.lay=function(cw,ch){
+        if(it.hz){
+          // The bar fills the card. The scale goes underneath when there is room, otherwise it is left out.
+          var hdh=m.nch>1?16:0, avail=ch-hdh, hbL=14, hR=cw-14, hbw=Math.max(40,hR-hbL), noLab=avail<30, hty, hbh, hly=0;
+          if(noLab){hbh=Math.max(6,avail-4);hty=Math.max(1,(avail-hbh)/2)}
+          else{hty=4;hly=avail-2;hbh=Math.max(10,hly-12-hty)}
+          var hsw=hbw/20, hcx=hbL+hbw/2;
+          m.hzOn=true;m.bx0=hbL;m.bw=hbw;m.by0=hty;m.bh=hbh;m.hk='';
+          m.seg.forEach(function(r,j){r.setAttribute('y',hty.toFixed(1));r.setAttribute('height',hbh.toFixed(1));r.setAttribute('x',(hbL+j*hsw).toFixed(1));r.setAttribute('width',Math.max(2,hsw-2).toFixed(1))});
+          m.mid.setAttribute('display',it.ow?'none':'inline');m.mid.setAttribute('x1',hcx);m.mid.setAttribute('x2',hcx);m.mid.setAttribute('y1',hty-2);m.mid.setAttribute('y2',hty+hbh+2);
+          [m.lb,m.lm,m.lt].forEach(function(q){q.setAttribute('display',noLab?'none':'inline')});
+          m.lb.setAttribute('text-anchor','start');m.lb.setAttribute('x',hbL);m.lb.setAttribute('y',hly);
+          m.lm.setAttribute('text-anchor','middle');m.lm.setAttribute('x',hcx);m.lm.setAttribute('y',hly);
+          m.lt.setAttribute('text-anchor','end');m.lt.setAttribute('x',hR);m.lt.setAttribute('y',hly);
+          m.rq.setAttribute('x',-9999);dots(cw,ch);return;
+        }
+        m.hzOn=false;[m.lb,m.lm,m.lt].forEach(function(q){q.setAttribute('display','inline')});m.lt.setAttribute('text-anchor','end');m.lm.setAttribute('text-anchor','end');m.lb.setAttribute('text-anchor','end');
+        var dh=m.nch>1?16:0, top=6, bot=Math.max(top+60,ch-dh-4), x0=36, colw=Math.max(24,cw-x0-12);
+        var sh=(bot-top)/20, md=(top+bot)/2;m.md=md;m.half=(bot-top)/2;m.cx0=x0+colw+4;m.x0=x0;m.cw=colw;m.top=top;m.bot=bot;m.hk='';
+        m.seg.forEach(function(r,j){r.setAttribute('x',x0.toFixed(1));r.setAttribute('width',colw.toFixed(1));r.setAttribute('y',(top+j*sh).toFixed(1));r.setAttribute('height',Math.max(2,sh-2).toFixed(1))});
+        m.mid.setAttribute('display',it.ow?'none':'inline');m.mid.setAttribute('x1',x0-5);m.mid.setAttribute('x2',x0+colw+5);m.mid.setAttribute('y1',md);m.mid.setAttribute('y2',md);
+        m.lt.setAttribute('x',x0-8);m.lt.setAttribute('y',top+10);m.lm.setAttribute('x',x0-8);m.lm.setAttribute('y',md+4);m.lb.setAttribute('x',x0-8);m.lb.setAttribute('y',bot-2);
+        m.rq.setAttribute('x',m.cx0);dots(cw,ch);
+      };
+    }else{
+      var id='mc'+(++MSEQ), df=sv('defs',{},svg);
+      m.cu=sv('rect',{},sv('clipPath',{id:id+'u'},df));
+      m.cd=sv('rect',{},sv('clipPath',{id:id+'d'},df));
+      m.hl=[];m.vl=[];
+      for(i=0;i<=4;i++) m.hl.push(sv('line',{stroke:TRK,'stroke-width':.5},svg));
+      for(i=0;i<=9;i++) m.vl.push(sv('line',{stroke:TRK,'stroke-width':.5},svg));
+      m.zl=sv('line',{stroke:MUT,'stroke-width':1.5},svg);
+      m.up=sv('polyline',{fill:'none',stroke:'#1D9E75','stroke-width':3,'stroke-linejoin':'round','stroke-linecap':'round','clip-path':'url(#'+id+'u)'},svg);
+      m.dn=sv('polyline',{fill:'none',stroke:'#D85A30','stroke-width':3,'stroke-linejoin':'round','stroke-linecap':'round','clip-path':'url(#'+id+'d)'},svg);
+      m.dot=sv('circle',{r:4.5,fill:'#1D9E75'},svg);
+      m.t1=T({'font-size':11,fill:MUT},'+100');m.t2=T({'font-size':11,fill:MUT},'-100');m.t3=T({'text-anchor':'end','font-size':11,fill:MUT},'10 s');
+      m.tl=sv('line',{stroke:'#BA7517','stroke-width':1.5,'stroke-dasharray':'5 4',visibility:'hidden'},svg);
+      m.tt=T({'font-size':11,fill:'#BA7517',visibility:'hidden'});
+      m.b1=sv('line',{stroke:TXT,'stroke-width':1.5,visibility:'hidden'},svg);m.b2=sv('line',{stroke:TXT,'stroke-width':1.5,visibility:'hidden'},svg);
+      m.bl=sv('line',{stroke:'#378ADD','stroke-width':1.5,visibility:'hidden'},svg);m.bt=T({'text-anchor':'middle','font-size':11,fill:'#378ADD',visibility:'hidden'});
+      m.val=T({'class':'mv','text-anchor':'middle','font-size':15,'font-weight':700,fill:TXT});
+      m.n=Math.max(10,Math.min(60,+it.ws||10))*10;m.pause=false;m.endAbs=0;m.PW=180;m.PL=10;m.md=56;m.sc=.4;
+      m.lay=function(cw,ch){
+        var L=10,Rr=10,t=18,bt=Math.max(t+30,ch-34),md=(t+bt)/2;
+        m.bt0=t;m.PL=L;m.PW=cw-L-Rr;m.md=md;m.sc=(bt-t)/2/100;m.bb=bt;
+        m.cu.setAttribute('x',L);m.cu.setAttribute('y',t);m.cu.setAttribute('width',m.PW);m.cu.setAttribute('height',md-t+.2);
+        m.cd.setAttribute('x',L);m.cd.setAttribute('y',md+1.6);m.cd.setAttribute('width',m.PW);m.cd.setAttribute('height',bt-md-.6);
+        m.hl.forEach(function(l,j){var y=t+j*(bt-t)/4;l.setAttribute('x1',L);l.setAttribute('x2',cw-Rr);l.setAttribute('y1',y);l.setAttribute('y2',y)});
+        m.vl.forEach(function(l,j){var x=L+j*m.PW/9;l.setAttribute('x1',x);l.setAttribute('x2',x);l.setAttribute('y1',t);l.setAttribute('y2',bt)});
+        m.zl.setAttribute('x1',L);m.zl.setAttribute('x2',cw-Rr);m.zl.setAttribute('y1',md);m.zl.setAttribute('y2',md);
+        m.t1.setAttribute('x',L);m.t1.setAttribute('y',t-5);m.t2.setAttribute('x',L);m.t2.setAttribute('y',bt+14);
+        m.t3.setAttribute('x',cw-Rr);m.t3.setAttribute('y',bt+14);
+        m.val.setAttribute('x',cw/2);m.val.setAttribute('y',ch-6);m.dot.setAttribute('cx',cw-Rr);m.ps='';
+      };
+    }
+    el.appendChild(box);
+    if(k==='k'){
+      var bar=document.createElement('div');bar.className='mtr-ctl';
+      var ICO={
+        back:'<path d="M12 2.5 4 8l8 5.5z"/>',
+        rec:'<circle cx="8" cy="8" r="5.5" fill="#E24B4A"/>',
+        stop:'<rect x="3" y="3" width="10" height="10" rx="1.5"/>',
+        pause:'<rect x="3.5" y="2.5" width="3.3" height="11" rx="1"/><rect x="9.2" y="2.5" width="3.3" height="11" rx="1"/>',
+        play:'<path d="M4 2.5 12 8l-8 5.5z"/>'};
+      var mk=function(ic,lbl,fn){var b=document.createElement('button');b.type='button';b.className='btn';b.innerHTML='<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true">'+ICO[ic]+'</svg>';b.setAttribute('aria-label',lbl);b.addEventListener('click',function(e){e.preventDefault();fn();m.upd()});bar.appendChild(b);return b};
+      var cnt=function(){return HCNT[c]||0},first=function(){return cnt()-(HIST[c]||[]).length};
+      var step=function(d){var n=m.n;if(!m.pause){m.pause=true;m.endAbs=cnt()}m.endAbs=Math.max(first()+Math.min(n,(HIST[c]||[]).length),Math.min(cnt(),m.endAbs+d*Math.round(n/2)));if(d>0&&m.endAbs>=cnt()) m.pause=false};
+      mk('back','Back in time',function(){step(-1)});
+      m.br=mk('rec','Record up to 60 s',function(){HIST[c]=[];RECS[c]='rec';m.pause=false});
+      mk('stop','Stop',function(){var st=RECS[c]||'live';if(st==='rec'){RECS[c]='done';m.pause=true;m.endAbs=cnt()}else{HIST[c]=[];RECS[c]='live';m.pause=false}});
+      m.bp=mk('pause','Pause',function(){if(m.pause){m.pause=false}else{m.pause=true;m.endAbs=cnt()}});
+      mk('play','Forward or live',function(){if(m.pause) step(1)});
+      el.appendChild(bar);
+    }else if((k==='f'||k==='i')&&m.nch>1){
+      var sx=null,sy=0;svg.style.touchAction='pan-y';
+      svg.addEventListener('pointerdown',function(e){if(bdEditing) return;sx=e.clientX;sy=e.clientY});
+      svg.addEventListener('pointerup',function(e){
+        if(sx===null) return;var dx=e.clientX-sx,dy=e.clientY-sy;sx=null;
+        if(Math.abs(dx)>36&&Math.abs(dx)>1.6*Math.abs(dy)){var q=chs.indexOf(c);it.c=chs[(q+(dx<0?1:chs.length-1))%chs.length];save();syncBoard();feedback('ok')}
+      });
+      svg.addEventListener('pointercancel',function(){sx=null});
+    }
+    m.upd=function(){
+      var cw=box.clientWidth,ch=box.clientHeight;if(!cw||!ch) return;
+      if(m.dim!==cw+'x'+ch){m.dim=cw+'x'+ch;svg.setAttribute('viewBox','0 0 '+cw+' '+ch);m.lay(cw,ch)}
+      var j,v;
+      if(k==='k'){
+        v=rt.t[c]||0;if(!isFinite(v)) v=0;
+        var h=HIST[c]||[], n=m.n, pts=[], PL=m.PL, PW=m.PW, md=m.md, sc=m.sc, tot=HCNT[c]||0, off=m.pause?Math.max(0,tot-m.endAbs):0;
+        if(m.pause&&h.length>=n&&m.endAbs<tot-h.length+n){m.endAbs=tot-h.length+n;off=tot-m.endAbs}
+        for(j=0;j<n;j++){var hi=h.length-off-n+j,hv=hi>=0&&hi<h.length?h[hi]:0;pts.push((PL+j*PW/(n-1)).toFixed(1)+','+(md-hv*sc).toFixed(1))}
+        var last=h.length-off-1;v=(last>=0&&last<h.length)?h[last]:v;
+        var ps=pts.join(' ');
+        if(m.ps!==ps){m.ps=ps;m.up.setAttribute('points',ps);m.dn.setAttribute('points',ps)}
+        m.dot.setAttribute('cy',(md-v*sc).toFixed(1));m.dot.setAttribute('fill',v<0?'#D85A30':'#1D9E75');
+        var rl=null;if(!S.estop){if(it.k==='k'){if(it.tg){var tv0=(it.tv===undefined?80:it.tv);rl={to:tv0,man:1,d:0,s:0}}}else rl=RAMPLAST[c]}
+        if(rl){
+          var ty=md-rl.to*sc,a0=tot-off-n,xa=function(a){return PL+(a-a0)*PW/(n-1)},wend=tot-off;
+          m.tl.setAttribute('x1',PL);m.tl.setAttribute('x2',PL+PW);m.tl.setAttribute('y1',ty);m.tl.setAttribute('y2',ty);
+          m.tt.setAttribute('y',(ty+((rl.to>=0&&ty>m.bt0+16)?-5:13)).toFixed(1));m.tt.setAttribute('x',PL+PW-4);m.tt.setAttribute('text-anchor','end');m.tt.textContent='Target '+mSgn(rl.to);
+          m.tl.setAttribute('visibility','visible');m.tt.setAttribute('visibility','visible');
+          var sa=rl.s,ea=rl.s+Math.round(rl.d*10),by=m.bb-7;
+          if(!rl.man&&ea>=a0&&sa<=wend){
+            var xs=xa(Math.max(sa,a0)),xe=xa(Math.min(ea,wend));
+            m.bl.setAttribute('x1',xs);m.bl.setAttribute('x2',xe);m.bl.setAttribute('y1',by);m.bl.setAttribute('y2',by);
+            if(sa>=a0){m.b1.setAttribute('x1',xs);m.b1.setAttribute('x2',xs);m.b1.setAttribute('y1',by-5);m.b1.setAttribute('y2',by+5);m.b1.setAttribute('visibility','visible')}else m.b1.setAttribute('visibility','hidden');
+            if(ea<=wend){m.b2.setAttribute('x1',xe);m.b2.setAttribute('x2',xe);m.b2.setAttribute('y1',by-5);m.b2.setAttribute('y2',by+5);m.b2.setAttribute('visibility','visible')}else m.b2.setAttribute('visibility','hidden');
+            m.bt.setAttribute('x',(xs+xe)/2);m.bt.setAttribute('y',by-6);m.bt.textContent=rl.d.toFixed(1)+' s';
+            m.bl.setAttribute('visibility','visible');m.bt.setAttribute('visibility','visible');
+          }else{m.bl.setAttribute('visibility','hidden');m.bt.setAttribute('visibility','hidden');m.b1.setAttribute('visibility','hidden');m.b2.setAttribute('visibility','hidden')}
+        }else{[m.tl,m.tt,m.b1,m.b2,m.bl,m.bt].forEach(function(e){e.setAttribute('visibility','hidden')})}
+        var rst=RECS[c]||'live', tl;
+        if(rst==='rec') tl='● REC '+(h.length/10).toFixed(1)+' / 60 s';
+        else if(rst==='done') tl='■ '+(h.length/10).toFixed(1)+' s'+(m.pause&&off>0?' · −'+(off/10).toFixed(1)+' s':'');
+        else tl=m.pause?('❚❚ −'+(off/10).toFixed(1)+' s'):(n/10)+' s';
+        if(m.t3.textContent!==tl) m.t3.textContent=tl;
+        m.t3.setAttribute('fill',rst==='rec'?'#E24B4A':MUT);
+        var tx=mSgn(v)+'%';if(m.val.textContent!==tx) m.val.textContent=tx;
+        if(m.bp) m.bp.setAttribute('aria-pressed',String(!!m.pause));
+        if(m.br) m.br.setAttribute('aria-pressed',String(rst==='rec'));
+        return;
+      }
+      var rq=rt.t[c]||0;if(!isFinite(rq)) rq=0;
+      var hub=Math.round(goalOf(c));if(!isFinite(hub)) hub=0;
+      var out=it.sh?hub:rq, oth=it.sh?rq:hub;
+      var zn=Math.abs(out)>80?2:(Math.abs(out)>55?1:0);
+      if(m.lz!==undefined&&zn===2&&m.lz<2&&!bdEditing) dialBuzz();
+      m.lz=zn;
+      var diff=Math.abs(rq-hub)>=1;
+      // tick(s) on the scale at the hub's limit
+      var hlim=Math.round(hubMax(c)),hkey=hlim+'|'+(it.sh?1:0)+(it.ow?1:0);
+      if(m.hk!==hkey&&m.hq){
+        m.hk=hkey;var hon=hlim<99&&!it.sh,hv=it.ow?[hlim]:[hlim,-hlim];
+        m.hq.forEach(function(ln,qi){
+          if(!hon||qi>=hv.length){ln.setAttribute('visibility','hidden');return}
+          if(k==='f'){
+            var ha=it.ow?mAgF(hv[qi]):mAg(hv[qi]),p0=mPol(m.cx,m.cy,m.rr-m.ww/2-2,ha),p1=mPol(m.cx,m.cy,m.rr+m.ww/2+3,ha);
+            ln.setAttribute('x1',p0[0].toFixed(1));ln.setAttribute('y1',p0[1].toFixed(1));ln.setAttribute('x2',p1[0].toFixed(1));ln.setAttribute('y2',p1[1].toFixed(1));
+          }else if(m.hzOn){
+            var hx=it.ow?m.bx0+hv[qi]/100*m.bw:m.bx0+m.bw/2+hv[qi]/100*m.bw/2;
+            ln.setAttribute('x1',hx.toFixed(1));ln.setAttribute('x2',hx.toFixed(1));ln.setAttribute('y1',(m.by0-2).toFixed(1));ln.setAttribute('y2',(m.by0+m.bh+2).toFixed(1));
+          }else{
+            var hy=it.ow?m.bot-hv[qi]/100*(m.bot-m.top):m.md-hv[qi]/100*m.half;
+            ln.setAttribute('x1',(m.x0-3).toFixed(1));ln.setAttribute('x2',(m.x0+m.cw+3).toFixed(1));ln.setAttribute('y1',hy.toFixed(1));ln.setAttribute('y2',hy.toFixed(1));
+          }
+          ln.setAttribute('visibility','visible');
+        });
+      }
+      if(k==='f'){
+        if(it.ow){out=Math.max(0,out);oth=Math.max(0,oth)}
+        var tx2=it.ow?String(Math.round(out)):mSgn(out);if(m.val.textContent!==tx2) m.val.textContent=tx2;
+        var sb=diff?((it.sh?'of ':'hub ')+(oth<0?'\u2212':'')+Math.abs(Math.round(oth))):'%';if(m.sub.textContent!==sb) m.sub.textContent=sb;
+        for(j=0;j<24;j++){var vc=it.ow?(j+.5)*100/24:-100+(j+.5)*200/24,on=it.ow?(out>0&&vc<=out):((vc>0&&vc<=out)||(vc<0&&vc>=out));var col=on?mCol(vc,th):TRK;if(m.seg[j].getAttribute('stroke')!==col) m.seg[j].setAttribute('stroke',col)}
+        var rd='';if(m.rd!==rd){m.rd=rd;m.req.setAttribute('d',rd)}
+      }else{
+        if(it.ow){out=Math.max(0,out);oth=Math.max(0,oth)}
+        var tx3=it.ow?String(Math.round(out)):mSgn(out);if(m.hd&&m.hd.textContent!==tx3) m.hd.textContent=tx3;
+        for(j=0;j<20;j++){var vv=it.hz?(it.ow?(j+.5)*5:-100+(j+.5)*10):(it.ow?100-(j+.5)*5:100-(j+.5)*10),on2=it.ow?(out>0&&vv<=out):((vv>0&&vv<=out)||(vv<0&&vv>=out));var cl=on2?mCol(vv,th):TRK;if(m.seg[j].getAttribute('fill')!==cl) m.seg[j].setAttribute('fill',cl)}
+        m.rq.setAttribute('visibility','hidden');
+      }
+    };
+    return m;
+  }
+  function dirRow(el,w,it,act){
+    var row=document.createElement('div');row.className='tgdir';
+    var bs=[];
+    [['Reverse',-1,'\u25C0'],['Stop',0,'\u25A0'],['Forward',1,'\u25B6']].forEach(function(d){
+      var b=document.createElement('button');b.type='button';b.className='tgd';b.setAttribute('data-d',String(d[1]));
+      var ic=document.createElement('i');ic.textContent=d[2];ic.setAttribute('aria-hidden','true');
+      var tx=document.createElement('span');tx.textContent=d[0];b.appendChild(ic);b.appendChild(tx);
+      b.addEventListener('click',function(){noteInput();if(S.estop||S.play) return;act(d[1])});
+      row.appendChild(b);bs.push(b);
+    });
+    el.appendChild(row);return bs;
+  }
+  function gearsOf(it){
+    var f=(it.gf&&it.gf.length)?it.gf:[35,65,100], l=[['R',it.gr===undefined?-50:it.gr],['N',0]];
+    f.forEach(function(v,i){l.push([String(i+1),v])});
+    return l;
+  }
+  // Short vibration for each 5% step of a dial (follows the Vibration setting)
+  var DBZ=0;
+  function dialBuzz(){
+    if(!store.prefs.haptic) return;
+    var nw=Date.now();if(nw-DBZ<45) return;DBZ=nw;
+    if(NB&&NB.haptic){try{NB.haptic('dial')}catch(e){}}
+    else if(navigator.vibrate){try{navigator.vibrate(15)}catch(e){}}
+  }
+  function wOut(it,v){return Math.round((it.inv?-v:v)*(it.cap||100)/100)}
+  function wIn(it,t){return Math.max(-100,Math.min(100,Math.round((it.inv?-t:t)*100/(it.cap||100))))}
+  var F_INV={k:'inv',l:'Reverse direction',ch:[0,1],lab:['Off','On'],only:true,def:0};
+  var F_SH={k:'sh',l:'Main value',ch:[0,1],lab:['Widget','Hub output'],only:true,def:0};
+  var F_TH={k:'th',l:'Colour theme',ch:[0,1,2],lab:['Default','Blue-orange','Mono'],only:true,def:0};
+  // Also drive a second channel of the same hub with the same value (or the opposite one, for a tank turn)
+  var F_PC={k:'pc',l:'Also drive channel (same hub)',ch:[-1,0,1,2,3,4,5],lab:['Off','A','B','C','D','E','F'],only:true,def:-1,g:function(it){return it.pc===undefined?-1:it.pc%PER},s:function(it,v){if(v<0||v===it.c%PER){delete it.pc;delete it.pi}else it.pc=Math.floor(it.c/PER)*PER+v}};
+  var F_PI={k:'pi',l:'Second channel direction',ch:[0,1],lab:['Same','Opposite'],only:true,def:0,g:function(it){return it.pi?1:0},s:function(it,v){if(v&&it.pc!==undefined) it.pi=1; else delete it.pi}};
+  var F_CAP={k:'cap',l:'Power limit',u:'%',min:10,max:100,st:5,ch:[25,50,75,100],def:100};
+  var WSPEC={
+    s:{t:'Slider settings',f:[F_INV,F_CAP,F_PC,F_PI,{k:'snap',l:'Snap to',ch:[0,5,10,25],lab:['Off','5%','10%','25%'],only:true,def:0}]},
+    m:{t:'Mix settings',f:[F_INV,F_CAP]},
+    rs:{t:'Selector settings',f:[{k:'p',l:'Output power',u:'%',min:5,max:100,st:5,ch:[25,50,75,100],def:100},
+      {k:'ns',l:'Positions',ch:[4,6],only:true,def:6},
+      {k:'hb',l:'Hub',ch:[0,1,2],lab:['Hub 1','Hub 2','Hub 3'],only:true,def:0,g:function(it){return it.hb||0},s:function(it,v){if(v) it.hb=v; else delete it.hb}},
+      {k:'rt',l:'On/off ramp time (0 = instant)',u:'s',min:0,max:10,st:0.5,ch:[0,1,3,5],def:3}]},
+    n:{t:'Dial settings',f:[F_INV,F_CAP,F_PC,F_PI,{k:'rt',l:'On/off ramp time (0 = instant)',u:'s',min:0,max:10,st:0.5,ch:[0,1,3,5],def:3},F_TH,{k:'ow',l:'Direction',ch:[0,1],lab:['Both ways','Forward only'],only:true,def:0},
+      {k:'sw',l:'Swipe to other channels',ch:[0,1],lab:['Off','On'],only:true,def:0,g:function(it){return it.sw?1:0},s:function(it,v){if(v) it.sw=1; else delete it.sw}}]},
+    g:{t:'Direction & limit',f:[F_INV,F_CAP]},
+    lv:{t:'Direction & limit',f:[F_INV,F_CAP]},
+    st:{t:'Steering wheel settings',f:[F_INV,F_CAP,F_PC,F_PI,{k:'ra',l:'Full lock at',ch:[90,180,270],lab:['90\u00b0','180\u00b0','270\u00b0'],only:true,def:180},
+      {k:'hold',l:'On release',ch:[0,1],lab:['Return to centre','Stay'],only:true,def:0,g:function(it){return it.hold?1:0},s:function(it,v){if(v) it.hold=true; else delete it.hold}},
+      {k:'gy',l:'Gyro (hold the wheel and tilt the phone)',ch:[0,1],lab:['Off','On'],only:true,def:0,g:function(it){return it.gy?1:0},s:function(it,v){if(v) it.gy=1; else delete it.gy}},
+      {k:'gs',l:'Gyro: tilt for full lock',ch:[0,30,45,60],lab:['Phone setting','High (30\u00b0)','Medium (45\u00b0)','Low (60\u00b0)'],only:true,def:0,g:function(it){return it.gs||0},s:function(it,v){if(v) it.gs=v; else delete it.gs}},
+      {k:'gz',l:'Gyro: dead zone (hand shake is ignored)',only:true,ch:[0,3,5,8],lab:['Off','3\u00b0','5\u00b0','8\u00b0'],def:3,g:function(it){return it.gz===undefined?3:it.gz},s:function(it,v){if(v===3) delete it.gz; else it.gz=v}}]},
+    dp:{t:'D-pad settings',f:[{k:'p',l:'Power',u:'%',min:10,max:100,st:5,ch:[40,70,100],def:70},
+      {k:'m',l:'Drive mode',ch:[0,1],lab:['Tank (2 motors)','Car (drive + steer)'],only:true,def:0,g:function(it){return it.m==='car'?1:0},s:function(it,v){it.m=v?'car':'tank'}},
+      {k:'rt',l:'Ramp time (0 = instant)',u:'s',min:0,max:3,st:0.1,ch:[0,0.3,1],def:0.3},
+      {k:'tg',l:'Control',ch:[0,1],lab:['Hold to move','Tap to toggle'],only:true,def:0,g:function(it){return it.tg?1:0},s:function(it,v){if(v) it.tg=1; else delete it.tg}}]},
+    b:{t:'Turbo settings',f:[{k:'p',l:'Turbo power',u:'%',min:30,max:100,st:5,ch:[50,75,100],def:100},{k:'lock',l:'Tap to lock on',ch:[0,1],lab:['Off','On'],only:true,def:0,g:function(it){return it.lock?1:0},s:function(it,v){if(v) it.lock=true; else delete it.lock}}]},
+    l:{t:'Light settings',f:[
+      {k:'br',l:'Brightness',u:'%',ch:[25,50,75,100],only:true,def:100,g:function(it){return C.ch[it.c].bright||100},s:function(it,v){C.ch[it.c].bright=v;syncChannel(it.c)}},
+      {k:'bl',l:'Blink',ch:[0,1,2,3],lab:['Steady','Slow','Fast','Pulse'],only:true,def:0,g:function(it){return Math.max(0,['off','slow','fast','pulse'].indexOf(C.ch[it.c].blink||'off'))},s:function(it,v){C.ch[it.c].kind='light';C.ch[it.c].blink=['off','slow','fast','pulse'][v];syncChannel(it.c)}}]},
+    t:{t:'Toggle settings',f:[{k:'p',l:'Power',u:'%',min:5,max:100,st:5,ch:[25,50,75,100]},F_INV,F_CAP]},
+    f:{t:'Meter settings',f:[F_SH,F_TH,{k:'ow',l:'Direction',ch:[0,1],lab:['Both ways','Forward only'],only:true,def:0}]},
+    i:{t:'Meter settings',f:[F_SH,F_TH,{k:'ow',l:'Direction',ch:[0,1],lab:['Both ways','Forward only'],only:true,def:0},{k:'hz',l:'Bar layout',ch:[0,1],lab:['Vertical','Horizontal'],only:true,def:0}]},
+    k:{t:'Scope settings',f:[{k:'ws',l:'Time window',ch:[10,30,60],lab:['10 s','30 s','60 s'],only:true,def:10},{k:'tg',l:'Target line',ch:[0,1],lab:['Off','On'],only:true,def:0},{k:'tv',l:'Target value',u:'%',min:-100,max:100,st:5,ch:[-80,-50,50,80,100],def:80}]},
+    y:{t:'Ramp settings',f:[{k:'p',l:'Target power',u:'%',min:5,max:100,st:5,ch:[25,50,75,100]},{k:'d',l:'Ramp time',u:'s',min:1,max:30,st:1,ch:[2,4,6,10]},{k:'sc',l:'Show scope',ch:[0,1],lab:['Off','On'],only:true,def:0},F_INV,F_CAP]},
+    w:{t:'Switch settings',f:[{k:'p',l:'Power',u:'%',min:5,max:100,st:5,ch:[25,50,75,100],def:100},
+      {k:'mid',l:'Centre off position',ch:[0,1],lab:['Off','On'],only:true,def:0,g:function(it){return it.mid?1:0},s:function(it,v){if(v) it.mid=1; else delete it.mid}},
+      {k:'ra',l:'Reverse output A',ch:[0,1],lab:['Off','On'],only:true,def:0,g:function(it){return it.ra?1:0},s:function(it,v){if(v) it.ra=1; else delete it.ra}},
+      {k:'rb',l:'Reverse output B',ch:[0,1],lab:['Off','On'],only:true,def:0,g:function(it){return it.rb?1:0},s:function(it,v){if(v) it.rb=1; else delete it.rb}}]},
+    ps:{t:'Start / stop button settings',f:[{k:'hd',l:'Hold time before it switches',ch:[300,500,800,1200],lab:['0.3 s','0.5 s','0.8 s','1.2 s'],only:true,def:500},{k:'md',l:'What it controls',ch:[0,1],lab:['Hub link','Output only'],only:true,def:0}].concat('ABCDEF'.split('').map(function(c,j){return {k:'o'+j,l:'Output only: channel '+c,ch:[1,0],lab:['Stopped','Left running'],only:true,def:1,dep:{k:'md',v:1}}}))},
+    a:{t:'Auto-stop settings',f:[{k:'s',l:'Stop after',u:'s',min:1,max:300,st:1,ch:[5,10,20,30,60]}]},
+    z:{t:'Timer settings',f:[{k:'a',l:'Alert after (0 = off)',u:'min',min:0,max:240,st:1,ch:[0,5,10,15,20,30]}]}
+  };
+  function wsEdit(it){
+    var sp=WSPEC[it.k];if(!sp) return;
+    var old=document.getElementById('gEdit');if(old) old.remove();
+    var ov=document.createElement('div');ov.id='gEdit';ov.className='gedit';
+    var bx=document.createElement('div');bx.className='gbox';ov.appendChild(bx);
+    function mk(tag,txt,cls){var e=document.createElement(tag);if(txt) e.textContent=txt;if(cls) e.className=cls;return e}
+    bx.appendChild(mk('h3',sp.t));
+    var vals={}, ins={}, boxes={};
+    // a field with dep:{k,v} is only shown while another field has that value
+    function refreshDep(){sp.f.forEach(function(f){if(f.dep&&boxes[f.k]) boxes[f.k].hidden=vals[f.dep.k]!==f.dep.v})}
+    function dec(f){return f.st&&f.st<1?1:0}
+    function clampF(f,v){v=+v;if(!isFinite(v)) return null;if(f.only) return v;v=Math.max(f.min,Math.min(f.max,v));return dec(f)?Math.round(v*10)/10:Math.round(v)}
+    sp.f.forEach(function(f){
+      var cur0=f.g?f.g(it):it[f.k];
+      vals[f.k]=cur0!==undefined?cur0:(f.def!==undefined?f.def:f.ch[1]);
+      var box=mk('div','','wsf');
+      box.appendChild(mk('span',f.l,'wsl'));
+      var rw=mk('div','','wsr');if(f.only) rw.hidden=true;
+      var mn=mk('button','\u2212','btn wsb'),pl=mk('button','+','btn wsb');mn.type=pl.type='button';
+      mn.setAttribute('aria-label','Decrease');pl.setAttribute('aria-label','Increase');
+      var inp=document.createElement('input');inp.type='number';inp.className='txt wsi';inp.min=String(f.min);inp.max=String(f.max);inp.step=String(f.st);inp.inputMode='decimal';
+      var un=mk('em',f.u);
+      function set(v,fromInp){
+        var c=clampF(f,v);if(c===null) return;
+        vals[f.k]=c;if(!fromInp) inp.value=String(c);refreshDep();
+        [].forEach.call(chips.children,function(b){b.setAttribute('aria-pressed',String(+b.getAttribute('data-v')===c))});
+      }
+      mn.addEventListener('click',function(){set(vals[f.k]-f.st)});
+      pl.addEventListener('click',function(){set(vals[f.k]+f.st)});
+      inp.addEventListener('input',function(){set(inp.value,true)});
+      inp.addEventListener('blur',function(){inp.value=String(vals[f.k])});
+      rw.appendChild(mn);rw.appendChild(inp);rw.appendChild(un);rw.appendChild(pl);
+      var chips=mk('div','','wsc');
+      f.ch.forEach(function(v){var b=mk('button',f.lab?f.lab[f.ch.indexOf(v)]:(v===0?'Off':String(v)+(f.u==='%'?'%':'')),'btn');b.type='button';b.setAttribute('data-v',String(v));b.addEventListener('click',function(){set(v)});chips.appendChild(b)});
+      box.appendChild(rw);box.appendChild(chips);bx.appendChild(box);
+      ins[f.k]=inp;boxes[f.k]=box;set(vals[f.k]);
+    });
+    refreshDep();
+    var act=mk('div','','gact');
+    var sv=mk('button','Save','btn'),cn=mk('button','Cancel','btn');sv.type=cn.type='button';sv.setAttribute('aria-pressed','true');
+    sv.addEventListener('click',function(){
+      var sc0=!!it.sc, hz0=!!it.hz;
+      sp.f.forEach(function(f){
+        var v=vals[f.k];
+        if(f.s) f.s(it,v);
+        else if(f.def!==undefined&&v===f.def) delete it[f.k];
+        else it[f.k]=v;
+      });
+      if(it.k==='z') SESS.warned=false;
+      if(it.k==='a') AUTOT[it.c]=0;
+      if(it.k==='y'&&sc0!==!!it.sc&&dashOn()) dashRefit(it);
+      if(it.k==='i'&&hz0!==!!it.hz&&dashOn()) dashRefit(it);
+      save();ov.remove();syncBoard();
+    });
+    cn.addEventListener('click',function(){ov.remove()});
+    act.appendChild(sv);act.appendChild(cn);bx.appendChild(act);
+    ov.addEventListener('click',function(e){if(e.target===ov) ov.remove()});
+    document.body.appendChild(ov);
+  }
+  function gearEdit(it){
+    var old=document.getElementById('gEdit');if(old) old.remove();
+    var rv=it.gr===undefined?-50:it.gr, fw=(it.gf&&it.gf.length?it.gf:[35,65,100]).slice();
+    var ov=document.createElement('div');ov.id='gEdit';ov.className='gedit';
+    var bx=document.createElement('div');bx.className='gbox';ov.appendChild(bx);
+    function mk(tag,txt,cls){var e=document.createElement(tag);if(txt) e.textContent=txt;if(cls) e.className=cls;return e}
+    function row(lbl,val,min,max){
+      var r=mk('label','', 'grow');r.appendChild(mk('span',lbl));
+      var i=document.createElement('input');i.type='number';i.min=String(min);i.max=String(max);i.step='5';i.inputMode='numeric';i.value=String(val);i.className='txt';
+      var mn=mk('button','\u2212','btn wsb'),pl=mk('button','+','btn wsb');mn.type=pl.type='button';
+      mn.setAttribute('aria-label','Decrease');pl.setAttribute('aria-label','Increase');
+      var bump=function(d){var n=Math.round(+i.value);if(!isFinite(n)||i.value==='') n=0;i.value=String(Math.max(min,Math.min(max,n+d)))};
+      mn.addEventListener('click',function(){bump(-5)});pl.addEventListener('click',function(){bump(5)});
+      r.appendChild(mn);r.appendChild(i);r.appendChild(mk('em','%'));r.appendChild(pl);return {r:r,i:i};
+    }
+    var rows=[];
+    function build(){
+      bx.textContent='';
+      bx.appendChild(mk('h3','Gear settings'));
+      rows=[];
+      var r0=row('R (reverse)',rv,-100,0);rows.push(r0);bx.appendChild(r0.r);
+      fw.forEach(function(v,i){var r=row('Gear '+(i+1),v,1,100);rows.push(r);bx.appendChild(r.r)});
+      var act=mk('div','', 'gact');
+      var add=mk('button','Add gear','btn'),rm=mk('button','Remove gear','btn');
+      add.type=rm.type='button';
+      add.disabled=fw.length>=5;rm.disabled=fw.length<=1;
+      add.addEventListener('click',function(){grab();fw.push(Math.min(100,(fw[fw.length-1]||0)+10));build()});
+      rm.addEventListener('click',function(){grab();fw.pop();build()});
+      act.appendChild(add);act.appendChild(rm);bx.appendChild(act);
+      var more=mk('button','Direction & limit','btn');more.type='button';
+      more.addEventListener('click',function(){grab();it.gr=rv;it.gf=fw.slice();save();ov.remove();wsEdit(it)});
+      bx.appendChild(more);
+      var act2=mk('div','', 'gact');
+      var sv=mk('button','Save','btn'),cn=mk('button','Cancel','btn');
+      sv.type=cn.type='button';sv.setAttribute('aria-pressed','true');
+      sv.addEventListener('click',function(){grab();it.gr=rv;it.gf=fw.slice();save();ov.remove();syncBoard()});
+      cn.addEventListener('click',function(){ov.remove()});
+      act2.appendChild(sv);act2.appendChild(cn);bx.appendChild(act2);
+    }
+    function num(i,a,b,d){var n=Math.round(+i.value);return isFinite(n)&&i.value!==''?Math.max(a,Math.min(b,n)):d}
+    function grab(){rv=num(rows[0].i,-100,0,rv);fw=fw.map(function(v,i){return num(rows[i+1].i,1,100,v)})}
+    build();
+    ov.addEventListener('click',function(e){if(e.target===ov) ov.remove()});
+    document.body.appendChild(ov);
+  }
+  var SESS={ms:0,last:0,warned:false};
+  function fmtSess(ms){var t=Math.floor(ms/1000),h=Math.floor(t/3600),m=Math.floor(t/60)%60,sc=t%60,z=function(n){return n<10?'0'+n:''+n};return (h?h+':':'')+z(m)+':'+z(sc)}
+  function sessReset(){SESS.ms=0;SESS.warned=false;SESS.last=performance.now()}
+  function sessTick(){
+    var now=performance.now(), dt=now-(SESS.last||now);SESS.last=now;
+    if(!S.connected) return;
+    SESS.ms+=Math.min(dt,2000);
+    var al=0;(C.board||[]).forEach(function(o){if(o.k==='z'&&o.a) al=al?Math.min(al,o.a):o.a});
+    if(al&&!SESS.warned&&SESS.ms>=al*60000){SESS.warned=true;toast('Session '+al+' min. Check motors and battery.',6000);feedback('warn')}
+    if(typeof paintBoard==='function'&&C.board&&C.board.some(function(o){return o.k==='z'})) paintBoard();
+  }
+  setInterval(sessTick,500);
+  // Slider minimum / maximum only limit the channel's own slider, never other widgets (selector, dial, joystick ...)
+  function setT(i,v,fromUI,force){
+    if(runBlk&&runBlk[i]&&!force){ if(v===0||S.estop) runBlk[i]=false; else return }
+    if(S.estop) v=0; else if(S.play&&!force) return;
+    rt.t[i]=clamp(Math.round(v),-100,100)||0;
+    if(!fromUI||S.estop) refs[i].rng.value=rt.t[i];
+    refs[i].val.textContent=fmt(rt.t[i]);
+    if(refs[i].preB) refs[i].preB.forEach(function(b){b.classList.toggle('on',+b.dataset.v===rt.t[i])});
+    if(refs[i].hRev){refs[i].hRev.classList.toggle('on',rt.t[i]<0);refs[i].hFwd.classList.toggle('on',rt.t[i]>0)}
+  }
+  function unlockCh(i){
+    var r=refs[i];
+    if(r&&r.hRev){r.hRev.classList.remove('on');r.hFwd.classList.remove('on')}
+    if(r&&r.locked){r.locked=false;r.lock.setAttribute('aria-pressed','false');r.lock.textContent='Lock'}
+  }
+  function zeroAll(){
+    for(var u=0;u<NMAX;u++){unlockCh(u);if(runBlk)runBlk[u]=false}
+    for(var i=0;i<NMAX;i++){rt.t[i]=0;rt.o[i]=0;refs[i].rng.value=0;refs[i].val.textContent='0'}
+  }
+  function buildChannel(i){
+    var el=document.createElement('article');el.className='ch';
+    el.innerHTML='<div class="ch-head"><span class="tag"></span><input class="name" maxlength="16" aria-label="Channel name"><button class="btn inv" type="button" aria-pressed="false">Reverse</button></div>'+
+      '<div class="track"><div class="fill"></div><input class="pwr" type="range" min="-100" max="100" step="1" value="0" aria-label="Channel power"><button class="stp dec" type="button" aria-label="Decrease 5%"></button><button class="stp inc" type="button" aria-label="Increase 5%"></button></div>'+
+      '<div class="pre" role="group" aria-label="Quick values"><button class="btn" type="button" data-v="-100">\u2212100</button><button class="btn" type="button" data-v="-50">\u221250</button><button class="btn" type="button" data-v="0">0</button><button class="btn" type="button" data-v="50">+50</button><button class="btn" type="button" data-v="100">+100</button></div>'+
+      '<div class="holds" hidden><button class="hold rev" type="button">Reverse</button><button class="hold fwd" type="button">Forward</button></div>'+
+      '<div class="lights" hidden>'+
+        '<label><span class="set-top"><span>Brightness</span><output class="ltOut">100%</output></span><input class="lt-bright" type="range" min="0" max="100" step="5"></label>'+
+        '<label>Blink<select class="lt-blink"><option value="off">Steady</option><option value="slow">Slow blink</option><option value="fast">Fast blink</option><option value="pulse">Pulse</option></select></label></div>'+
+      '<div class="ch-foot"><span class="meter-wrap" aria-hidden="true"><span class="meter"></span><span class="ar"></span></span><output class="val">0</output><span class="sent">out 0</span><button class="btn stop" type="button">Stop</button><button class="btn lock" type="button" aria-pressed="false">Lock</button><button class="lt-on" type="button" role="switch" aria-checked="false" aria-label="Light" hidden>Off</button></div>'+
+      '<details class="adv"><summary>Channel settings</summary><div class="adv-grid">'+
+        '<label><span class="set-top"><span>Maximum power</span><output class="maxOut"></output></span><input class="max" type="range" min="10" max="100" step="5"></label>'+
+        '<label><span class="set-top"><span>Start power</span><output class="offOut"></output></span><input class="off" type="range" min="0" max="50" step="5"></label>'+
+        '<label><span class="set-top"><span>Fine control (expo)</span><output class="expOut"></output></span><input class="expo" type="range" min="0" max="100" step="5"></label>'+
+        '<div class="seg stpseg" role="group" aria-label="Step size of the arrows"><button class="btn st1" type="button" aria-pressed="false">Step 1</button><button class="btn st5" type="button" aria-pressed="true">Step 5</button><button class="btn st10" type="button" aria-pressed="false">Step 10</button></div>'+
+        '<svg class="curve" viewBox="0 0 100 60" role="img" aria-label="Response curve"><path class="cgrid" d="M0 59.5H100M0.5 0V60"/><polyline class="cv" points=""/></svg>'+
+        '<div class="seg" role="group" aria-label="Control type"><button class="btn kS" type="button" aria-pressed="true">Slider</button><button class="btn kH" type="button" aria-pressed="false">Hold</button><button class="btn kL" type="button" aria-pressed="false">Light</button></div>'+
+      '</div></details>';
+    wrap.appendChild(el);
+    var r={el:el,tag:$('.tag',el),name:$('.name',el),inv:$('.inv',el),track:$('.track',el),fill:$('.fill',el),rng:$('.pwr',el),
+      holds:$('.holds',el),hRev:$('.hold.rev',el),hFwd:$('.hold.fwd',el),val:$('.val',el),mw:$('.meter-wrap',el),meter:$('.meter',el),sent:$('.sent',el),
+      lock:$('.lock',el),max:$('.max',el),maxOut:$('.maxOut',el),off:$('.off',el),offOut:$('.offOut',el),expo:$('.expo',el),expOut:$('.expOut',el),
+      pre:$('.pre',el),preB:[].slice.call(el.querySelectorAll('.pre .btn')),st1:$('.st1',el),st5:$('.st5',el),st10:$('.st10',el),
+      cv:$('.cv',el),kS:$('.kS',el),kH:$('.kH',el),kL:$('.kL',el),lights:$('.lights',el),ltOn:$('.lt-on',el),ltB:$('.lt-bright',el),ltOut:$('.ltOut',el),ltBl:$('.lt-blink',el)};
+    refs.push(r);
+
+    r.rng.addEventListener('input',function(){
+      var v=+r.rng.value;
+      setT(i,v,true);
+      if(+r.rng.value!==rt.t[i]) r.rng.value=rt.t[i];
+    });
+    r.preB.forEach(function(b){b.addEventListener('click',function(){
+      if(S.estop||S.play||r.locked) return;
+      setT(i,+b.dataset.v,false);
+    })});
+    (function(){
+      var tm=0,rp=0;
+      function step(d){
+        if(S.estop||S.play||r.locked) return;
+        var sp=C.ch[i].stp||5;
+        var v=Math.max(-100,Math.min(100,Math.round((rt.t[i]+(d<0?-sp:sp))/sp)*sp));
+        setT(i,v,false);
+      }
+      function stop(){clearTimeout(tm);clearInterval(rp);tm=0;rp=0}
+      [['.dec',-5],['.inc',5]].forEach(function(q){
+        var b=$(q[0],el);
+        b.addEventListener('pointerdown',function(e){
+          e.preventDefault();try{b.setPointerCapture(e.pointerId)}catch(_){}
+          stop();step(q[1]);tm=setTimeout(function(){rp=setInterval(function(){step(q[1])},120)},420);
+        });
+        ['pointerup','pointercancel','lostpointercapture','blur'].forEach(function(ev){b.addEventListener(ev,stop)});
+        b.addEventListener('contextmenu',function(e){e.preventDefault()});
+      });
+    })();
+    var rel=function(){ if(C.spring&&!S.play&&!r.locked){r.rng.value=0;setT(i,0,true)} };
+    r.rng.addEventListener('pointerup',rel);
+    r.rng.addEventListener('pointercancel',rel);
+    r.lock.addEventListener('click',function(){
+      if(S.estop||S.play) return;
+      r.locked=!r.locked;
+      r.lock.setAttribute('aria-pressed',String(r.locked));
+      r.lock.textContent=r.locked?'Locked':'Lock';
+      if(!r.locked&&(C.spring||C.ch[i].kind==='hold')){r.rng.value=0;setT(i,0,true)}
+    });
+    $('.stop',el).addEventListener('click',function(){
+      if(S.play) return;
+      unlockCh(i);
+      r.rng.value=0;setT(i,0,true);rt.o[i]=0;last=null;
+    });
+
+    [r.hRev,r.hFwd].forEach(function(btn,k){
+      var dir=k?1:-1, down=false;
+      function press(){ if(down)return; down=true; btn.classList.add('on'); setT(i,dir*100,false); }
+      function lift(){ if(!down)return; down=false; if(r.locked) return; btn.classList.remove('on'); setT(i,0,false); }
+      btn.addEventListener('pointerdown',function(e){
+        e.preventDefault();
+        try{btn.setPointerCapture(e.pointerId)}catch(_){}
+        press();
+      });
+      btn.addEventListener('pointerup',lift);
+      btn.addEventListener('pointercancel',lift);
+      btn.addEventListener('lostpointercapture',lift);
+      btn.addEventListener('contextmenu',function(e){e.preventDefault()});
+      btn.addEventListener('keydown',function(e){ if(e.key===' '||e.key==='Enter'){e.preventDefault();press()} });
+      btn.addEventListener('keyup',function(e){ if(e.key===' '||e.key==='Enter'){e.preventDefault();lift()} });
+      btn.addEventListener('blur',lift);
+    });
+
+    r.inv.addEventListener('click',function(){C.ch[i].inv=!C.ch[i].inv;r.inv.setAttribute('aria-pressed',String(C.ch[i].inv));save()});
+    r.name.addEventListener('input',function(){C.ch[i].name=r.name.value;syncSticks()});
+    r.name.addEventListener('change',save);
+    r.max.addEventListener('input',function(){C.ch[i].max=+r.max.value;r.maxOut.textContent=C.ch[i].max+'%';drawCurve(i)});
+    r.max.addEventListener('change',save);
+    r.off.addEventListener('input',function(){C.ch[i].off=+r.off.value;r.offOut.textContent=C.ch[i].off+'%';drawCurve(i)});
+    r.off.addEventListener('change',save);
+    r.expo.addEventListener('input',function(){C.ch[i].expo=+r.expo.value;r.expOut.textContent=C.ch[i].expo+'%';drawCurve(i)});
+    r.expo.addEventListener('change',save);
+    [[r.st1,1],[r.st5,5],[r.st10,10]].forEach(function(q){q[0].addEventListener('click',function(){C.ch[i].stp=q[1];syncChannel(i);save()})});
+    function setKind(k){C.ch[i].kind=k;r.rng.value=0;setT(i,0,true);syncChannel(i);save()}
+    r.kS.addEventListener('click',function(){setKind('slider')});
+    r.kL.addEventListener('click',function(){setKind('light')});
+    r.ltOn.addEventListener('click',function(){if(S.estop||S.play) return;setT(i,rt.t[i]>0?0:(C.ch[i].bright||100),false)});
+    r.ltB.addEventListener('input',function(){C.ch[i].bright=+r.ltB.value;r.ltOut.textContent=C.ch[i].bright+'%';if(rt.t[i]>0) setT(i,C.ch[i].bright,false)});
+    r.ltB.addEventListener('change',save);
+    r.ltBl.addEventListener('change',function(){C.ch[i].blink=r.ltBl.value;save()});
+    r.kH.addEventListener('click',function(){setKind('hold')});
+  }
+  for(var gs=0;gs<3;gs++){
+    var g=document.createElement('div');g.className='grp';wrap.appendChild(g);groups.push(g);
+    for(var gj=0;gj<PER;gj++) buildChannel(gs*PER+gj);
+  }
+
+  function drawCurve(i){
+    var c=C.ch[i], pts=[];
+    for(var k=0;k<=20;k++){var m=powerFor(k*5,c);pts.push((k*5)+','+(60-m*0.6).toFixed(1))}
+    refs[i].cv.setAttribute('points',pts.join(' '));
+  }
+  function syncChannel(i){
+    var c=C.ch[i], r=refs[i], hold=c.kind==='hold', light=c.kind==='light';
+    r.tag.textContent=tagOf(i);
+    r.name.value=c.name;
+    r.name.setAttribute('aria-label','Name of channel '+tagOf(i));
+    r.rng.setAttribute('aria-label','Power of channel '+tagOf(i));
+    r.inv.setAttribute('aria-pressed',String(c.inv));
+    r.max.value=c.max;r.maxOut.textContent=c.max+'%';
+    r.off.value=c.off;r.offOut.textContent=c.off+'%';
+    r.expo.value=c.expo;r.expOut.textContent=c.expo+'%';
+    r.track.hidden=hold||light;r.holds.hidden=!hold;r.lights.hidden=!light;r.lock.hidden=light;r.inv.hidden=light;r.ltOn.hidden=!light;
+    r.kS.setAttribute('aria-pressed',String(!hold&&!light));
+    r.kH.setAttribute('aria-pressed',String(hold));
+    r.kL.setAttribute('aria-pressed',String(light));
+    r.ltB.value=c.bright;r.ltOut.textContent=c.bright+'%';r.ltBl.value=c.blink;
+    r.pre.hidden=hold||light;
+    r.st1.setAttribute('aria-pressed',String(c.stp===1));r.st5.setAttribute('aria-pressed',String(c.stp===5));r.st10.setAttribute('aria-pressed',String(c.stp===10));
+    var sdec=$('.dec',r.el),sinc=$('.inc',r.el);sdec.setAttribute('aria-label','Decrease '+c.stp+'%');sinc.setAttribute('aria-label','Increase '+c.stp+'%');
+    drawCurve(i);
+    // Settings that only make sense for a slider are hidden for Hold and Light (Hold still uses Maximum power)
+    var sl=!hold&&!light;
+    [[r.max,!light],[r.off,sl],[r.expo,sl]].forEach(function(q){var lb=q[0].closest('label');if(lb) lb.hidden=!q[1]});
+    r.st1.parentNode.hidden=!sl;
+    var cvs=r.el.querySelector('svg.curve');if(cvs) cvs.setAttribute('display',sl?'inline':'none');
+  }
+
+  /* ---------- Sticks ---------- */
+  var sticks=[];
+  var TILT={g:[0,0],has:false,zero:null,ang:null,deg:0}, BD_TILT={cur:null};
+  window.onTilt=function(x,y,ang){TILT.g=[+x||0,+y||0];TILT.has=true;TILT.ang=ang;};
+  function gyroAny(){return !!(C.board&&C.board.some(function(o){return o.k==='st'&&o.gy}))}
+  function tiltNative(){ if(NB&&NB.tilt){try{NB.tilt(!!((C.tilt&&C.tilt.on)||gyroAny()))}catch(e){}} }
+  if(typeof window.addEventListener==='function'){
+    window.addEventListener('devicemotion',function(e){
+      var a=e&&e.accelerationIncludingGravity;
+      if(!a||a.x==null||a.y==null) return;
+      TILT.g=[a.x,a.y];TILT.has=true;
+    },{passive:true});
+  }
+  function tiltAngle(){
+    var ang=0;
+    if(TILT.ang!==null&&TILT.ang!==undefined) ang=+TILT.ang;
+    else try{ang=(typeof screen!=='undefined'&&screen.orientation&&screen.orientation.angle)||window.orientation||0}catch(e){}
+    ang=((ang%360)+360)%360;
+    var gx=TILT.g[0], gy=TILT.g[1], sx, sy;
+    if(ang===90){sx=gy;sy=-gx}else if(ang===180){sx=-gx;sy=-gy}else if(ang===270){sx=-gy;sy=gx}else{sx=gx;sy=gy}
+    if(Math.hypot(sx,sy)<3) return null;
+    return Math.atan2(sx,sy)*180/Math.PI;
+  }
+  function tiltActive(){return !!(C.tilt&&C.tilt.on&&TILT.has)}
+  function tiltVal(sn,dz){
+    var a=tiltAngle();
+    if(a===null) return 0;
+    if(TILT.zero===null) TILT.zero=a;
+    var d=a-TILT.zero;
+    while(d>180) d-=360;
+    while(d<-180) d+=360;
+    TILT.deg=C.tilt.inv?d:-d;
+    var sv=sn||C.tilt.sens, v=-d/sv;
+    if(C.tilt.inv) v=-v;
+    v=Math.max(-1,Math.min(1,v));
+    if(dz===undefined) return Math.abs(v)<0.08?0:v;
+    // custom dead zone in degrees: nothing inside it, then a smooth start so the value does not jump
+    var dd=Math.min(.9,dz/sv),av=Math.abs(v);
+    return av<=dd?0:(v<0?-1:1)*(av-dd)/(1-dd);
+  }
+  function tiltStep(){
+    var st=sticks[0], held=false;
+    if(st&&st.id!==null&&tiltActive()){applyStick(0,tiltVal(),st.y||0);held=true}
+    if(BD_TILT.cur&&(BD_TILT.cur.st?TILT.has:tiltActive())){
+      var bt=BD_TILT.cur, tv=bt.st?tiltVal(bt.it.gs||undefined,bt.it.gz===undefined?3:bt.it.gz):tiltVal();
+      if(bt.st){
+        // Steering wheel with gyro on: the phone's tilt turns the wheel while it is held.
+        var gv=Math.round(tv*20)*5;noteInput();
+        if(gv!==bt.last){bt.last=gv;dialBuzz()}
+        setT(bt.c,wOut(bt.it,gv),false);
+      }else if(bt.sl){setT(bt.c,tv*100,true);if(bt.r) bt.r.value=String(Math.round(tv*100))}
+      else applyJoy(bt,tv,bt.y||0);
+      held=true;
+    }
+    TILT.touch=held;
+    tiltStatus();
+  }
+  function tiltStatus(){
+    var el=tlSt;
+    if(!el) return;
+    var on=!!(C.tilt&&C.tilt.on), deg=TILT.touch?Math.max(-120,Math.min(120,TILT.deg)):0, tr='rotate('+deg.toFixed(1)+'deg)';
+    if(tlWheel&&tlWheel.style){tlWheel.hidden=!on;tlWheel.style.transform=tr;tlWheel.classList.toggle('on',on&&!!TILT.touch)}
+    var t='';
+    if(C.tilt&&C.tilt.on){
+      if(!TILT.has) t='Tilt sensor: no data yet';
+      else if(TILT.touch) t='Tilt: '+Math.round(TILT.deg)+'\u00b0';
+      else t='Tilt sensor is ready. Touch and hold a joystick or slider, then tilt the phone.';
+    }
+    if(el.textContent!==t) el.textContent=t;
+  }
+  function cfgOf(k){return k?C.s2:C.s1}
+  function applyStick(k,x,y){
+    var cf=cfgOf(k), va, vb;
+    if(cf.mode==='axis'){va=y;vb=x}else{va=clamp(y+x,-1,1);vb=clamp(y-x,-1,1)}
+    va*=(C.zone||100)/100;vb*=(C.zone||100)/100;
+    if(cf.a>=0) setT(cf.a,va*100,false);
+    if(cf.b>=0) setT(cf.b,vb*100,false);
+    axbPaint(k,va*100,vb*100);
+  }
+  // Axis bars under the pad: current value from the centre
+  function axbPaint(k,a,b){
+    var st=sticks[k];if(!st||!st.axb) return;
+    [a,b].forEach(function(v,q){
+      var r=st.axb[q],m=Math.abs(v);v=Math.round(v);
+      var lo=Math.min(0,v),w=Math.abs(v)/2;
+      r.f.style.left=(50+lo/2)+'%';r.f.style.width=w+'%';
+      r.f.style.background=m>=90?'#E24B4A':m>=60?'#EF9F27':'#1D9E75';
+      var tx=(v>0?'+':'')+v;if(r.o.textContent!==tx) r.o.textContent=tx;
+    });
+  }
+  function buildStick(k){
+    var box=document.createElement('div');box.className='padbox';
+    box.innerHTML='<h3 class="pb-title"></h3>'+
+      '<div class="seg" role="group" aria-label="Stick mode"><button class="btn mA" type="button" aria-pressed="true">Axis</button><button class="btn mT" type="button" aria-pressed="false">Tank</button></div>'+
+      '<div class="pad"><div class="knob rest"></div></div>'+
+      '<div class="axb"><div class="ab"><span class="abl"></span><span class="abt"><i class="abf"></i><i class="abz"></i></span><output>0</output></div><div class="ab"><span class="abl"></span><span class="abt"><i class="abf"></i><i class="abz"></i></span><output>0</output></div></div>'+
+      '<div class="maprow"><label><span class="la"></span><select class="selA"></select></label><label><span class="lb"></span><select class="selB"></select></label></div>'+
+      '<label class="check spr-row"><input class="spr" type="checkbox" checked><span>Return to 0 when released</span></label>';
+    $('#pads').appendChild(box);
+    var st={box:box,title:$('.pb-title',box),mA:$('.mA',box),mT:$('.mT',box),pad:$('.pad',box),knob:$('.knob',box),
+      spr:$('.spr',box),y:0,la:$('.la',box),lb:$('.lb',box),selA:$('.selA',box),selB:$('.selB',box),id:null};
+    st.axb=[].map.call(box.querySelectorAll('.ab'),function(e){return {l:$('.abl',e),f:$('.abf',e),o:$('output',e)}});
+    sticks.push(st);
+    st.spr.addEventListener('change',function(){
+      cfgOf(k).hold=!st.spr.checked;save();
+      if(!cfgOf(k).hold&&st.id===null){st.knob.classList.add('rest');st.knob.style.transform='translate(0,0)';st.pad.style.setProperty('--m','0');applyStick(k,0,0)}
+    });
+    st.mA.addEventListener('click',function(){cfgOf(k).mode='axis';syncSticks();save()});
+    st.mT.addEventListener('click',function(){cfgOf(k).mode='tank';syncSticks();save()});
+    st.selA.addEventListener('change',function(){cfgOf(k).a=+st.selA.value;syncLayout();save()});
+    st.selB.addEventListener('change',function(){cfgOf(k).b=+st.selB.value;syncLayout();save()});
+    var sgeo=null, sq=null, sraf=0;
+    function move(e){
+      if(e&&e.type==='pointermove'){sq={clientX:e.clientX,clientY:e.clientY};if(!sraf) sraf=requestAnimationFrame(function(){sraf=0;if(sq&&st.id!==null){var q=sq;sq=null;mstep(q)}});return}
+      mstep(e);
+    }
+    function mstep(e){
+      if(!sgeo){var r=st.pad.getBoundingClientRect();sgeo={cx:r.left+r.width/2,cy:r.top+r.height/2,R:Math.max(8,(r.width-st.knob.offsetWidth*0.6)/2-7)}}
+      var R=sgeo.R, dx=e.clientX-sgeo.cx, dy=e.clientY-sgeo.cy, m=Math.hypot(dx,dy);
+      if(m>R){dx*=R/m;dy*=R/m}
+      st.knob.style.transform='translate('+dx+'px,'+dy+'px)';
+      st.y=-dy/R;
+      applyStick(k,(k===0&&tiltActive())?tiltVal():dx/R,-dy/R);
+    }
+    st.pad.addEventListener('pointerdown',function(e){
+      st.id=e.pointerId;sgeo=null;
+      if(k===0) TILT.zero=null;
+      try{st.pad.setPointerCapture(e.pointerId)}catch(_){}
+      st.knob.classList.remove('rest');move(e);
+    });
+    st.pad.addEventListener('pointermove',function(e){if(e.pointerId===st.id)move(e)});
+    function end(e){
+      if(e.pointerId!==st.id)return;
+      if(sq){var q0=sq;sq=null;mstep(q0)}
+      st.id=null;if(cfgOf(k).hold)return;st.knob.classList.add('rest');st.knob.style.transform='translate(0,0)';st.pad.style.setProperty('--m','0');applyStick(k,0,0);
+    }
+    st.pad.addEventListener('pointerup',end);
+    st.pad.addEventListener('pointercancel',end);
+  }
+  buildStick(0);buildStick(1);
+
+  function syncSticks(){
+    var idxs=activeIdx();
+    sticks.forEach(function(st,k){
+      var cf=cfgOf(k);
+      st.spr.checked=!cf.hold;
+      st.mA.setAttribute('aria-pressed',String(cf.mode==='axis'));
+      st.mT.setAttribute('aria-pressed',String(cf.mode==='tank'));
+      st.la.textContent=cf.mode==='axis'?'Drive (up/down)':'Left motor';
+      st.lb.textContent=cf.mode==='axis'?'Steer (left/right)':'Right motor';
+      st.title.textContent=k?'Right stick':'Left stick';
+      st.axb[0].l.textContent=cf.mode==='axis'?'Drive':'Left';st.axb[1].l.textContent=cf.mode==='axis'?'Steer':'Right';
+      [st.selA,st.selB].forEach(function(sel,q){
+        var key=q?'b':'a';
+        sel.innerHTML='';
+        if(k===1){var none=document.createElement('option');none.value='-1';none.textContent='None';sel.appendChild(none)}
+        idxs.forEach(function(i){var o=document.createElement('option');o.value=String(i);o.textContent=tagOf(i)+' · '+C.ch[i].name;sel.appendChild(o)});
+        var cur=cf[key];
+        if(!(k===1&&cur===-1)&&idxs.indexOf(cur)<0){cur=idxs[Math.min(q+k*2,idxs.length-1)];cf[key]=cur}
+        sel.value=String(cur);
+      });
+    });
+  }
+  function syncTiltUi(){
+    if(!tlOn||!C.tilt) return;
+    tlOn.checked=C.tilt.on;tlOpt.hidden=!C.tilt.on;tlSens.value=String(C.tilt.sens);tlInv.checked=C.tilt.inv;tlAll.checked=C.tilt.all;
+    tiltNative();
+  }
+  function mappedSet(){
+    var m={};
+    if(C.layout==='joy'||C.layout==='dual'){m[C.s1.a]=1;m[C.s1.b]=1}
+    if(C.layout==='dual'){if(C.s2.a>=0)m[C.s2.a]=1;if(C.s2.b>=0)m[C.s2.b]=1}
+    return m;
+  }
+  function syncLayout(){
+    cols.classList.toggle('joy',C.layout==='joy');
+    cols.classList.toggle('dual',C.layout==='dual');
+    cols.classList.toggle('board',C.layout==='board');
+    $('#lBoard').setAttribute('aria-pressed',String(C.layout==='board'));
+    syncBoard();
+    $('#lStd').setAttribute('aria-pressed',String(C.layout==='std'));
+    $('#lJoy').setAttribute('aria-pressed',String(C.layout==='joy'));
+    $('#lDual').setAttribute('aria-pressed',String(C.layout==='dual'));
+    sticks[1].box.hidden=C.layout!=='dual';
+    $('#joyTitle').textContent=C.layout==='dual'?'Sticks':'Joystick';
+    var mapped=mappedSet(), multi=activeSlots().length>1, first=false, visible=[0,0,0];
+    refs.forEach(function(r,i){
+      var hid=!isActive(i)||!!mapped[i];
+      r.el.hidden=hid;
+      r.el.classList.remove('first');
+      if(!hid){visible[(i/PER)|0]++;if(!first&&!(multi)){r.el.classList.add('first');first=true}}
+    });
+    groups.forEach(function(g,s){
+      g.hidden=!(multi&&slotOn(s)&&visible[s]>0);
+      g.textContent='Hub M'+(C.hubs[s]+1)+((C.hubNames&&C.hubNames[C.hubs[s]])?' · '+C.hubNames[C.hubs[s]]:'');
+    });
+  }
+
+  /* ---------- Settings & hubs ---------- */
+  var limit=$('#limit'), ramp=$('#ramp'), loopBox=$('#loop');
+  var gpOn=$('#gpOn'), gpDead=$('#gpDead'), gpTrig=$('#gpTrig'), gpStat=$('#gpStat');
+  function syncSettings(){
+    limit.value=C.limit;ramp.value=C.ramp;loopBox.checked=S.loop;
+    $('#limitOut').textContent=C.limit+'%';$('#rampOut').textContent=C.ramp;
+    gpOn.checked=C.pad.on;gpDead.value=C.pad.dead;$('#gpDeadOut').textContent=C.pad.dead+'%';
+    gpTrig.innerHTML='';
+    var no=document.createElement('option');no.value='-1';no.textContent='None';gpTrig.appendChild(no);
+    activeIdx().forEach(function(i){var o=document.createElement('option');o.value=String(i);o.textContent=tagOf(i)+' · '+C.ch[i].name;gpTrig.appendChild(o)});
+    if(C.pad.trig>=0&&!isActive(C.pad.trig)) C.pad.trig=-1;
+    gpTrig.value=String(C.pad.trig);
+    for(var s=0;s<3;s++){
+      $('#hub'+s).value=String(C.hubs[s]);
+      var hn=$('#hubN'+s);hn.disabled=C.hubs[s]<0;hn.value=C.hubs[s]>=0?(C.hubNames[C.hubs[s]]||''):'';
+    }
+    $('#zoneSel').value=String(C.zone||100);
+    $('#calPwr').value=C.testPwr;$('#calPwrOut').textContent=C.testPwr+'%';
+    syncLimSeg();
+  }
+  function syncLimSeg(){
+    var lm=store.prefs.lim;
+    [0,1,2].forEach(function(i){
+      $('#limV'+i).textContent=lm[i].l+'%';
+      $('#limP'+i).setAttribute('aria-pressed',String(C.limit===lm[i].l&&C.ramp===lm[i].r));
+    });
+  }
+  [0,1,2].forEach(function(i){
+    $('#limP'+i).addEventListener('click',function(){
+      var p=store.prefs.lim[i];C.limit=p.l;C.ramp=p.r;save();syncSettings();feedback('ok');
+    });
+  });
+  [0,1,2].forEach(function(i){
+    $('#limS'+i).addEventListener('click',function(){
+      store.prefs.lim[i]={l:C.limit,r:C.ramp};save();syncLimSeg();toast('Profile saved.');
+    });
+  });
+  $('#calPwr').addEventListener('input',function(){C.testPwr=+$('#calPwr').value;$('#calPwrOut').textContent=C.testPwr+'%'});
+  $('#calPwr').addEventListener('change',save);
+  $('#zoneSel').addEventListener('change',function(){C.zone=pickOf($('#zoneSel').value,[25,50,75,100],100);save()});
+  [0,1,2].forEach(function(s){
+    var inp=$('#hubN'+s);
+    inp.addEventListener('input',function(){
+      if(C.hubs[s]<0) return;
+      C.hubNames[C.hubs[s]]=inp.value.replace(/[\u0000-\u001f<>]/g,'').slice(0,12);
+      syncLayout();
+      save();
+    });
+    inp.addEventListener('change',save);
+  });
+  limit.addEventListener('input',function(){C.limit=+limit.value;$('#limitOut').textContent=C.limit+'%';syncLimSeg()});
+  ramp.addEventListener('input',function(){C.ramp=+ramp.value;$('#rampOut').textContent=C.ramp;syncLimSeg()});
+  limit.addEventListener('change',save);ramp.addEventListener('change',save);
+  gpOn.addEventListener('change',function(){C.pad.on=gpOn.checked;if(!C.pad.on) releasePad();save()});
+  gpDead.addEventListener('input',function(){C.pad.dead=+gpDead.value;$('#gpDeadOut').textContent=C.pad.dead+'%'});
+  gpDead.addEventListener('change',save);
+  gpTrig.addEventListener('change',function(){releasePad();C.pad.trig=+gpTrig.value;save()});
+  loopBox.addEventListener('change',function(){S.loop=loopBox.checked});
+  function onHubChange(s,v){
+    var h=C.hubs.slice();h[s]=v;
+    for(var t=0;t<3;t++) if(t!==s&&v>=0&&h[t]===v) h[t]=-1;
+    C.hubs=cleanHubs(h);
+    stopPlay(true);
+    for(var i=0;i<NMAX;i++) if(!isActive(i)){rt.t[i]=0;rt.o[i]=0;refs[i].rng.value=0;refs[i].val.textContent='0'}
+    if(RH()&&S.connected){NB.stop();S.connected=false;hubMsg='';live.textContent='Hub setup changed. Tap Connect hub to reconnect.'}
+    last=null;
+    syncAll();paintLink();save();
+  }
+  [0,1,2].forEach(function(s){var sel=$('#hub'+s);sel.addEventListener('change',function(){onHubChange(s,+sel.value)})});
+  if(NB){
+    $('#note').textContent='Frames are broadcast over Bluetooth straight to the Mould King hubs. Put each hub in Bluetooth mode, tap Connect hub and wait until it says Hub active. With several hubs each one is updated in turn, so expect slightly slower response.';
+  }
+
+  /* ---------- Layout buttons ---------- */
+  ['Std','Joy','Dual','Board'].forEach(function(n){
+    $('#l'+n).addEventListener('click',function(){C.layout=n.toLowerCase();if(C.layout==='board'&&!C.board.length) prefillBoard();syncLayout();save()});
+  });
+
+  /* ---------- Model bar ---------- */
+  var prof=$('#prof'), profName=$('#profName'), profDel=$('#profDel'), delArmed=0;
+  function profLbl(p){return p.label||p.name||'(unnamed)'}
+  function syncProfiles(){
+    prof.innerHTML='';
+    store.profiles.forEach(function(p){var o=document.createElement('option');o.value=p.id;o.textContent=profLbl(p);prof.appendChild(o)});
+    prof.value=store.active;
+    profName.value=activeProfile().name;
+    profDel.disabled=store.profiles.length<=1;
+    if(typeof snapPaint==='function') snapPaint();
+  }
+  function syncAll(){
+    refs.forEach(function(r,i){syncChannel(i)});
+    syncSticks();syncSettings();syncLayout();syncProfiles();syncRec();paintAccent();paintLamps();syncSeq();syncSafety();syncApp();buildGpMap();syncSpeed();syncRecTools();bkPaint();syncBoard();syncTiltUi();
+  }
+  var ACC=['#FFC400','#FF4B3E','#FFC400'];
+  var swBox=$('#swatches'),swBtns=ACC.map(function(c,n){
+    var b=document.createElement('button');b.type='button';b.className='sw';b.style.setProperty('--c',c);b.setAttribute('aria-label','Colour '+(n+1));
+    b.addEventListener('click',function(){C.accent=n;paintAccent();save()});
+    swBox.appendChild(b);return b;
+  });
+  function paintAccent(){
+    var n=2;
+    var de=document.documentElement;if(de&&de.style)de.style.setProperty('--acc',ACC[n]);
+    swBtns.forEach(function(b,q){b.setAttribute('aria-pressed',String(q===n))});
+  }
+  function paintLamps(){
+    var g=$('#lampG'),r=$('#lampR');
+    if(g&&g.classList) g.classList.toggle('on',!!S.connected);
+    if(r&&r.classList) r.classList.toggle('on',!!S.estop);
+  }
+  function switchProfile(id){
+    var p=store.profiles.filter(function(x){return x.id===id})[0];
+    if(!p)return;
+    S.rec=null;stopPlay(false);
+    if(typeof labelEdit==='function'&&profLabel&&!profLabel.hidden){profLabel.hidden=true;prof.hidden=false;profRen.textContent='\u270e'}
+    store.active=id;C=p.cfg;recSel=null;recNote='';
+    zeroAll();last=null;
+    syncAll();paintRec();save();
+  }
+  prof.addEventListener('change',function(){switchProfile(prof.value)});
+  profName.addEventListener('input',function(){
+    activeProfile().name=profName.value.slice(0,24);
+    var o=prof.options[prof.selectedIndex];if(o)o.textContent=profLbl(activeProfile());
+    save();
+  });
+  var profLabel=$('#profLabel'), profRen=$('#profRen');
+  function labelEdit(on){
+    if(on){profLabel.value=activeProfile().label||activeProfile().name;profLabel.hidden=false;prof.hidden=true;profRen.textContent='\u2713';profRen.setAttribute('aria-label','Done renaming');try{profLabel.focus();profLabel.select()}catch(e){}}
+    else{profLabel.hidden=true;prof.hidden=false;profRen.textContent='\u270e';profRen.setAttribute('aria-label','Rename model in the list');save()}
+  }
+  profRen.addEventListener('click',function(){labelEdit(profLabel.hidden)});
+  profLabel.addEventListener('input',function(){
+    var ap=activeProfile();ap.label=profLabel.value.slice(0,24).trim()===ap.name?'':profLabel.value.slice(0,24);
+    var o=prof.options[prof.selectedIndex];if(o)o.textContent=profLbl(ap);
+    save();
+  });
+  profLabel.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();labelEdit(false)}});
+  profLabel.addEventListener('change',function(){if(!profLabel.hidden)labelEdit(false)});
+  profName.addEventListener('change',save);
+  $('#profNew').addEventListener('click',function(){
+    if(store.profiles.length>=MAX_MODELS){live.textContent='Model list is full.';return}
+    var copy=sanitizeCfg(JSON.parse(JSON.stringify(C)));
+    var p={id:uid(),name:'Model '+(store.profiles.length+1),cfg:copy};
+    store.profiles.push(p);
+    switchProfile(p.id);
+    live.textContent='New model created from the current settings';
+  });
+  /* Setup wizard: builds a ready-made model from a vehicle type. */
+  var wizPanel=$('#wizPanel'), wizType=$('#wizType');
+  var WIZ={
+    tank:{name:'Tracked vehicle',ch:['Left track','Right track'],mode:'tank',layout:'joy',note:'Channel A and B drive the tracks. Use the Joystick layout: push forward to drive, sideways to turn.'},
+    car:{name:'Car with steering',ch:['Drive','Steering'],mode:'axis',layout:'joy',note:'Channel A drives and channel B steers. Use the Joystick layout: up and down drives, left and right steers.'},
+    digger:{name:'Digger',ch:['Left track','Right track','Arm','Bucket','Swing'],mode:'tank',layout:'dual',note:'Channels A and B drive the tracks, C, D and E move the arm, bucket and swing. Uses the Dual stick layout.'}
+  };
+  function wizSync(){var w=WIZ[wizType.value]||WIZ.tank;$('#wizNote').textContent=w.note}
+  wizType.addEventListener('change',wizSync);
+  $('#profWiz').addEventListener('click',function(){wizPanel.hidden=!wizPanel.hidden;if(!wizPanel.hidden) wizSync()});
+  // ---- Test hub: move every active channel briefly at low power ----
+  var TEST_ID='__test', testBtn=$('#profTest'), testNote=$('#testNote'), testPlan=[];
+  function testOn(){return !!(S.play&&S.play.seq===TEST_ID)}
+  function buildTest(){
+    var steps=[];testPlan=[];
+    activeIdx().forEach(function(i){
+      var d;
+      if(C.ch[i].kind==='light'){steps.push({ch:i,pwr:100,dur:0.8});d=0.8}
+      else{steps.push({ch:i,pwr:C.testPwr,dur:0.7});steps.push({ch:i,pwr:-C.testPwr,dur:0.7});d=1.4}
+      steps.push({ch:-1,pwr:0,dur:0.3});d+=0.3;
+      testPlan.push({i:i,d:d*1000});
+    });
+    return {id:TEST_ID,name:'Test',speed:1,steps:steps};
+  }
+  function testPaint(){
+    if(!testBtn) return;
+    var on=testOn();
+    testBtn.textContent=on?'Stop test':'Test hub';
+    testBtn.setAttribute('aria-pressed',String(on));
+    testBtn.disabled=!on&&(S.estop||!!S.play||!!S.rec);
+    if(on){
+      var el=Math.max(0,performance.now()-S.play.start), n=0, acc=0;
+      for(;n<testPlan.length-1;n++){acc+=testPlan[n].d;if(el<acc) break}
+      testNote.textContent='Testing '+tagOf(testPlan[n].i)+' ('+(n+1)+'/'+testPlan.length+'). Keep the model clear.';
+      testNote.hidden=false;
+    }else if(!testNote.hidden){testNote.hidden=true;testNote.textContent=''}
+  }
+  if(testBtn){
+    testBtn.addEventListener('click',function(){
+      if(testOn()){stopPlay(true);testPaint();return}
+      if(S.estop){toast('Release the E-Stop first.');return}
+      if(RH()&&!S.connected){toast('Connect the hub first.');return}
+      if(S.play||S.rec){toast('Stop the current playback first.');return}
+      var sq=buildTest();
+      if(!sq.steps.length) return;
+      noteInput();
+      startPlay(compileSeq(sq),{seq:TEST_ID,loop:false,reps:1});
+      testPaint();
+    });
+    setInterval(testPaint,150);
+  }
+  $('#wizCancel').addEventListener('click',function(){wizPanel.hidden=true});
+  $('#wizGo').addEventListener('click',function(){
+    if(store.profiles.length>=MAX_MODELS){live.textContent='Model list is full.';return}
+    var w=WIZ[wizType.value]||WIZ.tank, names=w.ch.slice();
+    var lights=$('#wizLights').checked, winch=$('#wizWinch').checked;
+    var all=names.slice();while(all.length<PER) all.push('Channel '+L[all.length]);
+    var cfg=baseCfg(all);
+    cfg.s1.mode=w.mode;cfg.layout=w.layout;cfg.speed='normal';
+    if(w.mode==='axis'){cfg.ch[1].max=70}
+    var n=names.length;
+    if(lights&&n<PER){cfg.ch[n].name='Lights';cfg.ch[n].kind='light';n++}
+    if(winch&&n<PER){cfg.ch[n].name='Winch';cfg.ch[n].kind='hold';n++}
+    var prof={id:uid(),name:w.name,cfg:sanitizeCfg(cfg)};
+    store.profiles.push(prof);
+    wizPanel.hidden=true;
+    switchProfile(prof.id);
+    live.textContent='Model created: '+w.name;
+    toast('Model created. Rename the channels or change the layout any time.',4000);
+  });
+  profDel.addEventListener('click',function(){
+    if(store.profiles.length<=1)return;
+    if(!delArmed){
+      delArmed=setTimeout(function(){delArmed=0;profDel.textContent='Delete';profDel.classList.remove('warn')},3000);
+      profDel.textContent='Confirm delete';profDel.classList.add('warn');
+      return;
+    }
+    clearTimeout(delArmed);delArmed=0;profDel.textContent='Delete';profDel.classList.remove('warn');
+    var id=store.active;
+    store.profiles=store.profiles.filter(function(p){return p.id!==id});
+    switchProfile(store.profiles[0].id);
+  });
+
+  /* ---------- Record & replay ---------- */
+  var recBtn=$('#recBtn'), playBtn=$('#playBtn'), recStat=$('#recStat'), recSelEl=$('#recSel'), recName=$('#recName'), recDel=$('#recDel'), recDelArmed=0;
+  function selectedRec(){
+    var f=C.rec.filter(function(r){return r.id===recSel})[0];
+    return f||C.rec[0]||null;
+  }
+  function syncRec(){
+    var cur=selectedRec();
+    recSel=cur?cur.id:null;
+    recSelEl.innerHTML='';
+    if(!C.rec.length){var o=document.createElement('option');o.value='';o.textContent='No recordings yet';recSelEl.appendChild(o)}
+    C.rec.forEach(function(r){var o=document.createElement('option');o.value=r.id;o.textContent=r.name+' · '+fmtTime(r.dur);recSelEl.appendChild(o)});
+    if(recSel) recSelEl.value=recSel;
+    recName.value=cur?cur.name:'';
+    syncRecTools();
+    paintRec();
+    if(typeof renderQuick==='function'&&quickEl) renderQuick();
+  }
+  function paintRec(){
+    var cur=selectedRec();
+    if(typeof recQBtns!=='undefined'&&recQBtns.length) try{paintQuick()}catch(_){}
+    var rq=$('#recQuick');if(rq){rq.checked=!!(cur&&cur.btn);rq.disabled=!cur}
+    recBtn.textContent=S.rec?'Stop recording':'Record';
+    recBtn.setAttribute('aria-pressed',String(!!S.rec));
+    recBtn.disabled=!S.rec&&(!!S.play||S.estop);
+    playBtn.textContent=S.play?'Stop':'Play';
+    playBtn.setAttribute('aria-pressed',String(!!S.play));
+    playBtn.disabled=!S.play&&(!cur||!!S.rec||S.estop);
+    recDel.disabled=!cur||!!S.rec||!!S.play;
+    recName.disabled=!cur;
+    recSelEl.disabled=!!S.rec||!!S.play||!C.rec.length;
+    paintRecStatus(performance.now());
+    paintQuick();
+  }
+  function paintRecStatus(now){
+    var t='';
+    if(S.rec) t='Recording '+fmtTime(now-S.rec.start)+' / '+fmtTime(MAX_REC_MS);
+    else if(S.play&&now<S.play.start) t='Starts in '+Math.ceil((S.play.start-now)/1000)+' s'
+    else if(S.play) t=(S.play.preview?'Preview ':'Playing ')+fmtTime(Math.min(now-S.play.start,S.play.rec.dur))+' / '+fmtTime(S.play.rec.dur)+((S.play.loop===undefined?S.loop:S.play.loop)?' (loop)':'');
+    else t=recNote||'Ready';
+    if(recStat.textContent!==t) recStat.textContent=t;
+  }
+  function syncLock(){cols.classList.toggle('locked',S.estop||!!S.play)}
+  function recordSample(el,force){
+    var v=rt.t.slice();
+    var changed=force||!S.rec.last||v.some(function(x,i){return x!==S.rec.last[i]});
+    if(changed){S.rec.pts.push([Math.round(el)].concat(v));S.rec.last=v}
+  }
+  function startRecord(){
+    if(S.estop||S.play||S.rec) return;
+    recNote='';
+    S.rec={start:performance.now(),pts:[],last:null};
+    recordSample(0,true);
+    paintRec();
+  }
+  function stopRecord(){
+    if(!S.rec) return;
+    var el=Math.min(performance.now()-S.rec.start,MAX_REC_MS);
+    recordSample(el,true);
+    var pts=S.rec.pts;S.rec=null;
+    var moved=pts.some(function(p){return p.slice(1).some(function(x){return x!==0})});
+    if(pts.length<2||!moved){recNote='Nothing was recorded.';paintRec();return}
+    if(C.rec.length>=MAX_RECS){recNote='Recording list is full. Delete one first.';paintRec();return}
+    var rec={id:uid(),name:(store.prefs.lang==='ms'?'Rakaman ':'Take ')+(C.rec.length+1),dur:pts[pts.length-1][0],pts:pts};
+    C.rec.push(rec);recSel=rec.id;recNote='Saved '+rec.name+' ('+fmtTime(rec.dur)+').';
+    save();syncRec();
+  }
+  function startPlay(rec0,opts){
+    var rec=(rec0&&rec0.pts)?rec0:selectedRec();
+    if(!rec||S.estop||S.rec||S.play) return;
+    var pv=!!(RH()&&!S.connected);
+    if(pv) toast('Preview on the screen only. The hub is not connected, so nothing moves.',3500);
+    S.play={preview:pv,rec:rec,start:performance.now()+((opts&&opts.delay)||0)*1000,idx:0,seq:(opts&&opts.seq)||null,rid:(opts&&opts.rid)||null,loop:opts&&opts.loop!==undefined?!!opts.loop:undefined,reps:(opts&&opts.reps)||1};
+    paintRec();syncLock();
+  }
+  function stopPlay(zero){
+    if(!S.play) return;
+    S.play=null;
+    if(zero) zeroAll();
+    paintRec();syncLock();
+  }
+  function stepPlay(now){
+    var p=S.play;
+    if(!p) return;
+    if(p.preview&&S.connected){stopPlay(true);toast('Hub connected. Preview stopped. Press Play to run it for real.');return}
+    var el=now-p.start, dur=p.rec.dur;
+    if(el<0){for(var z=0;z<NMAX;z++) setT(z,0,false,true);return}
+    if(el>=dur){
+      if((p.loop===undefined?S.loop:p.loop)&&dur>200){p.start=now-(el%dur);el=el%dur;p.idx=0}
+      else if(p.seq&&p.reps>1&&dur>200){p.reps--;p.start=now-(el%dur);el=el%dur;p.idx=0}
+      else{stopPlay(true);return}
+    }
+    var pts=p.rec.pts;
+    while(p.idx+1<pts.length&&pts[p.idx+1][0]<=el) p.idx++;
+    var pt=pts[p.idx];
+    for(var i=0;i<NMAX;i++) setT(i,isActive(i)?pt[i+1]:0,false,true);
+  }
+  function stepRecord(now){
+    if(!S.rec) return;
+    var el=now-S.rec.start;
+    if(el>=MAX_REC_MS||S.rec.pts.length>=MAX_PTS){stopRecord();return}
+    recordSample(el,false);
+  }
+  recBtn.addEventListener('click',function(){if(S.rec)stopRecord();else startRecord()});
+  playBtn.addEventListener('click',function(){if(S.play)stopPlay(true);else startPlay()});
+  recSelEl.addEventListener('change',function(){recSel=recSelEl.value;recNote='';syncRec()});
+  recName.addEventListener('input',function(){
+    var cur=selectedRec();
+    if(!cur) return;
+    cur.name=recName.value.slice(0,24);
+    var o=recSelEl.options[recSelEl.selectedIndex];if(o)o.textContent=cur.name+' · '+fmtTime(cur.dur);
+  });
+  recName.addEventListener('change',function(){save();renderQuick()});
+  (function(){var rq=$('#recQuick');if(rq) rq.addEventListener('change',function(){var cur=selectedRec();if(!cur) return;cur.btn=rq.checked;save();renderQuick();
+    toast(rq.checked?'Added to Quick actions on the Drive screen.':'Removed from Quick actions.')})})();
+  recDel.addEventListener('click',function(){
+    var cur=selectedRec();
+    if(!cur) return;
+    if(!recDelArmed){
+      recDelArmed=setTimeout(function(){recDelArmed=0;recDel.textContent='Delete';recDel.classList.remove('warn')},3000);
+      recDel.textContent='Confirm';recDel.classList.add('warn');
+      return;
+    }
+    clearTimeout(recDelArmed);recDelArmed=0;recDel.textContent='Delete';recDel.classList.remove('warn');
+    C.rec=C.rec.filter(function(r){return r.id!==cur.id});
+    recSel=null;recNote='Recording deleted.';save();syncRec();
+  });
+
+  /* ---------- Backup ---------- */
+  var ioText=$('#ioText'), ioApply=$('#ioApply'), ioMsg=$('#ioMsg');
+  function exportJson(){
+    return JSON.stringify({app:'mk6console',version:3,profiles:store.profiles.map(function(p){return {name:p.name,label:p.label||'',cfg:p.cfg}}),tpls:store.prefs.tpls});
+  }
+  function uniqueName(n){
+    var base=n||'Imported model', name=base, k=2;
+    while(store.profiles.some(function(p){return p.name===name})){name=(base.slice(0,20)+' ('+k+')');k++}
+    return name;
+  }
+  function importText(text){
+    ioApply.hidden=true;ioText.hidden=true;
+    if(typeof text!=='string'||text.length>1500000){ioMsg.textContent='That file is too large to import.';return}
+    var data;
+    try{data=JSON.parse(text)}catch(e){ioMsg.textContent='That is not valid model data.';return}
+    var list=data&&Array.isArray(data.profiles)?data.profiles:(data&&data.cfg?[data]:null);
+    var hasT=!!(data&&Array.isArray(data.tpls)&&data.tpls.length);
+    if((!list||!list.length)&&!hasT){ioMsg.textContent='No models found in that data.';return}
+    list=list||[];
+    var added=0;
+    list.slice(0,10).forEach(function(p){
+      if(!p||typeof p!=='object'||store.profiles.length>=MAX_MODELS) return;
+      store.profiles.push({id:uid(),name:uniqueName(tr(String(p.name||'Imported model').slice(0,24))),label:(typeof p.label==='string'?p.label.slice(0,24):''),cfg:sanitizeCfg(p.cfg)});
+      added++;
+    });
+    var tAdd=0;
+    if(data&&Array.isArray(data.tpls)) cleanTpls(data.tpls).forEach(function(t){if(store.prefs.tpls.length<10&&!store.prefs.tpls.some(function(o){return o.name===t.name})){store.prefs.tpls.push(t);tAdd++}});
+    if(tAdd&&!added) save();
+    if(added){save();syncProfiles()}
+    ioMsg.textContent=(added?('Imported '+added+' model'+(added===1?'':'s')+'. Pick them in the Model list.'):(tAdd?'':'Nothing could be imported.'))+(tAdd?((added?' ':'')+'Imported '+tAdd+' layout template'+(tAdd===1?'':'s')+'.'):'');
+  }
+  window.onImportText=importText;
+  window.onFileResult=function(kind,result){
+    if(result==='ok') ioMsg.textContent='Models saved to file.';
+    else if(result==='cancel') ioMsg.textContent='Cancelled.';
+    else ioMsg.textContent=kind==='export'?'Could not save the file.':'Could not read that file.';
+  };
+  $('#exBtn').addEventListener('click',function(){
+    var json=exportJson();
+    if(NB){ioMsg.textContent='Choose where to save the file.';try{NB.exportFile('mk6-models.json',json)}catch(e){ioMsg.textContent='Could not save the file.'}return}
+    ioText.hidden=false;ioApply.hidden=true;ioText.readOnly=true;ioText.value=json;ioText.focus();ioText.select();
+    try{navigator.clipboard.writeText(json).catch(function(){})}catch(e){}
+    ioMsg.textContent='Copy this text and keep it somewhere safe.';
+  });
+  $('#imBtn').addEventListener('click',function(){
+    if(NB){ioMsg.textContent='Choose a model file.';try{NB.importFile()}catch(e){ioMsg.textContent='Could not read that file.'}return}
+    ioText.hidden=false;ioApply.hidden=false;ioText.readOnly=false;ioText.value='';ioText.focus();
+    ioMsg.textContent='Paste exported model data, then tap Apply import.';
+  });
+  ioApply.addEventListener('click',function(){importText(ioText.value)});
+
+  /* ---------- Link, E-STOP, frames ---------- */
+  var link=$('#link'), live=$('#live'), last=null, lastSend=0, sent=0, t0=performance.now(), lines=[];
+  var hubMsg='';
+  var HUB_TEXT={off:'Bluetooth is off',btoff:'Bluetooth was switched off',denied:'Permission denied',unsupported:'BLE advertising not supported',error:'Bluetooth error'};
+  S.bt=true;
+  function paintBt(){
+    var b=$('#btBtn');if(!b) return;
+    b.setAttribute('data-bt',S.bt?'on':'off');
+    b.setAttribute('aria-label',S.bt?'Bluetooth on':'Bluetooth off');
+    b.title=S.bt?'Bluetooth is on':'Bluetooth is off. Tap to open Bluetooth settings.';
+  }
+  function readBt(){S.bt=(NB&&NB.btOn)?!!NB.btOn():true;if(S.bt&&typeof hubMsg==='string'&&!S.connected&&(hubMsg===HUB_TEXT.off||hubMsg===HUB_TEXT.btoff)){hubMsg='';paintLink()}paintBt()}
+  (function(){var b=$('#btBtn');if(!b) return;b.addEventListener('click',function(){
+    if(NB&&NB.btSettings){try{NB.btSettings()}catch(e){}}else toast(S.bt?'Bluetooth is on.':'Bluetooth is off.');
+  })})();
+  readBt();
+  function paintLink(){
+    link.setAttribute('aria-pressed',String(S.connected));
+    paintLamps();
+    var t=RH()?(hubMsg||(S.connected?'Hub active':'Connect hub')):(NB?(S.connected?'Practice on':'Practice off'):(S.connected?'Simulation on':'Simulation off'));
+    $('#linkText').textContent=t;
+    var hs=$('#hubStat');if(hs){hs.setAttribute('data-st',!S.connected?'off':(hubMsg==='Pairing…'?'busy':'on'));hs.querySelector('span').textContent=t}
+    link.setAttribute('data-st',!S.connected?'off':(hubMsg==='Pairing…'?'busy':'on'));
+    link.setAttribute('aria-label',S.connected?'Disconnect hub':'Connect hub');paintBt();
+    // dashboard: widgets dim while the hub is not active; the lost banner goes away once the hub is back
+    document.documentElement.classList.toggle('nolink',!S.connected);
+    var lb=$('#lostBanner');if(lb&&S.connected) lb.hidden=true;
+    // While the hub is active, the dashboard's Edit / Reset / model picker are locked so they cannot be hit by accident
+    ['#dbEdit','#dbReset','#dbModel'].forEach(function(q){var b=$(q);if(b) b.disabled=!!S.connected&&RH()&&!bdEditing});
+    if(!S.connected) refs.forEach(function(r){r.sent.textContent='not sent'});
+  }
+  link.addEventListener('click',function(){
+    if(bdEditing){toast('Finish editing first, then connect the hub.');return}
+    last=null;
+    if(RH()){
+      if(S.connected){wantLink=false;NB.stop();S.connected=false;hubMsg='';stopPlay(true)}
+      else{
+        wantLink=true;hubMsg='Pairing…';S.connected=true;
+        NB.start(activeSlots().map(function(s){return C.hubs[s]}).join(','));
+      }
+      paintLink();return;
+    }
+    S.connected=!S.connected;paintLink();
+  });
+  // Auto-reconnect: if the hub link was on when the app went to the background, bring it back (channels at zero) on return
+  var wantLink=false,resumeAt=0,relinkTries=0;
+  window.onHubState=function(s){
+    if(!RH()&&s!=='stopped') return;
+    last=null;
+    if(s==='connecting'){S.connected=true;hubMsg='Pairing…'}
+    else if(s==='ready'){S.connected=true;hubMsg='';relinkTries=0;feedback('ok')}
+    else if(s==='stopped'){
+      S.connected=false;hubMsg='';stopPlay(true);
+      if(wantLink&&RH()&&store.prefs.relink&&S.bt!==false&&!S.estop&&Date.now()-resumeAt<3000&&relinkTries<3){
+        relinkTries++;zeroAll();hubMsg='Pairing…';S.connected=true;
+        try{NB.start(activeSlots().map(function(s){return C.hubs[s]}).join(','));toast('Reconnecting the hub. Motors are at zero.',4000)}catch(e){S.connected=false;hubMsg=''}
+      }
+    }
+    else{
+      wantLink=false;
+      var was=S.connected&&(s==='error');
+      S.connected=false;hubMsg=HUB_TEXT[s]||'Error';live.textContent=hubMsg;stopPlay(true);feedback('lost');
+      if(was){toast('Hub link lost. Motors stopped.',6000);var lb2=$('#lostBanner');if(lb2) lb2.hidden=false}
+    }
+    paintLink();
+  };
+  (function(){var lb=$('#lostBanner');if(lb) lb.addEventListener('click',function(){lb.hidden=true})})();
+  var es=$('#estop'), banner=$('#esBanner');
+  function paintEstop(){
+    es.setAttribute('aria-pressed',String(S.estop));
+    es.textContent=S.estop?'Release':'E-Stop';es.setAttribute('aria-label',S.estop?'Release emergency stop':'Emergency stop');
+    banner.hidden=!S.estop;
+    paintLamps();
+    syncLock();paintRec();paintPlayer();
+  }
+  // Start / stop button in 'Output only' mode: the hub link stays up, but every channel is held at 0 while outputs are off
+  function toggleOut(it){
+    S.outOff=!S.outOff;
+    S.outMsk=[it.o0,it.o1,it.o2,it.o3,it.o4,it.o5].map(function(x){return x!==0});
+    if(S.outOff){stopRecord();stopPlay(false);for(var i=0;i<NMAX;i++) if(isActive(i)&&S.outMsk[i%PER]) setT(i,0,false)}
+    last=null;tick();
+    live.textContent=S.outOff?'Hub output is off: the chosen channels are held at 0':'Hub output is on';
+  }
+  function setEstop(on){
+    if(S.estop===on) return;
+    S.estop=on;
+    stopRecord();stopPlay(false);
+    zeroAll();
+    last=null;tick();paintEstop();
+    live.textContent=S.estop?'E-Stop is on: every channel is locked at 0':'E-Stop released';
+    feedback(S.estop?'estop':'release');
+  }
+  es.addEventListener('click',function(){setEstop(!S.estop)});
+
+  function logFrame(f){
+    var s=((performance.now()-t0)/1000).toFixed(1).padStart(6,' ');
+    var slots=activeSlots(), multi=slots.length>1;
+    slots.forEach(function(sl,n){
+      var part=f.slice(n*PER,n*PER+PER).map(function(v,j){return L[j]+fmt(v).padStart(4,' ')}).join(' ');
+      lines.push(s+'s  '+(multi?'M'+(C.hubs[sl]+1)+' ':'')+part);
+    });
+    while(lines.length>60) lines.shift();
+    var el=$('#log');el.textContent=lines.join('\n');el.scrollTop=el.scrollHeight;
+  }
+
+  function tick(){
+    padPoll();tiltStep();
+    if(C.layout==='board') paintBoard();
+    var now=performance.now();
+    stepRecord(now);stepPlay(now);
+    safetyStep(now);
+    var step=Math.max(2,200*Math.pow(1-C.ramp/100,2)), vals=new Array(NMAX);
+    for(var i=0;i<NMAX;i++){
+      if(!isActive(i)){vals[i]=0;continue}
+      var hold=S.estop||(S.outOff&&(!S.outMsk||S.outMsk[i%PER]));
+      var goal=hold?0:goalOf(i);
+      if(hold) rt.o[i]=0;
+      var d=goal-rt.o[i];
+      rt.o[i]=(C.ch[i].kind==='light'||Math.abs(d)<=step)?goal:rt.o[i]+(d<0?-1:1)*step;
+      var o=Math.round(rt.o[i]), v=(C.ch[i].inv?-o:o)||0;
+      vals[i]=v;
+      var r=refs[i];
+      var rk=o+'|'+(S.estop?1:0)+(S.play?1:0)+(r.locked?1:0)+(S.connected?v:'')+(C.ch[i].kind==='light'?(rt.t[i]>0?'L':'l'):'');
+      if(r._rk===rk) continue;r._rk=rk;
+      r.track.classList.toggle('dis',!!(S.estop||S.play||r.locked));
+      r.fill.style.setProperty('--lf',String((50+Math.min(0,o)/2)/100));
+      r.fill.style.setProperty('--wf',String(Math.abs(o)/200));
+      r.track.classList.toggle('neg',o<0);
+      r.track.classList.toggle('idle',o===0);
+      r.meter.style.setProperty('--m',String(Math.abs(o)));
+      r.mw.classList.toggle('up',o>0);r.mw.classList.toggle('down',o<0);r.mw.classList.toggle('neg',o<0);
+      if(S.connected) r.sent.textContent='out '+fmt(v);
+      if(C.ch[i].kind==='light'){var lon=rt.t[i]>0;r.ltOn.setAttribute('aria-checked',String(lon));var lt2=lon?'On':'Off';if(r.ltOn.textContent!==lt2) r.ltOn.textContent=lt2}
+    }
+    if(S.rec||S.play) paintRecStatus(now);
+    if(!S.connected) return;
+    var frame=[];
+    activeSlots().forEach(function(s){for(var j=0;j<PER;j++) frame.push(vals[s*PER+j])});
+    var changed=!last||last.length!==frame.length||frame.some(function(v,k){return v!==last[k]});
+    var moving=frame.some(function(v){return v!==0});
+    if(changed||now-lastSend>(moving?150:1000)){
+      transport.send(frame,changed);
+      last=frame;lastSend=now;sent++;
+      $('#count').textContent=sent+' frames';
+    }
+  }
+
+  syncAll();
+  paintLink();
+  paintEstop();
+
+  // ---- Sequences and quick actions ----
+  var seqSel=$('#seqSel'), seqName=$('#seqName'), seqLoop=$('#seqLoop'), seqReps=$('#seqReps'), seqSpeed=$('#seqSpeed'), seqDelay=$('#seqDelay'), stepsEl=$('#steps'), seqInfo=$('#seqInfo');
+  var seqRun=$('#seqRun'), quickCard=$('#quickCard'), quickEl=$('#quick'), seqCur_=null, quickBtns=[];
+  function setSeqNote(t){var a=$('#seqNote'),b=$('#qNote');if(a)a.textContent=t||'';if(b)b.textContent=t||''}
+  function seqCur(){
+    var f=C.seq.filter(function(x){return x.id===seqCur_})[0];
+    return f||C.seq[0]||null;
+  }
+  function chOptions(sel,cur){
+    sel.innerHTML='';
+    var w=document.createElement('option');w.value='-1';w.textContent='Wait (all stopped)';sel.appendChild(w);
+    var idxs=activeIdx();
+    if(cur>=0&&idxs.indexOf(cur)<0) idxs.push(cur);
+    idxs.forEach(function(i){var o=document.createElement('option');o.value=String(i);
+      o.textContent=tagOf(i)+' · '+C.ch[i].name+(isActive(i)?'':' (hub off)');sel.appendChild(o)});
+    sel.value=String(cur);
+  }
+  function paintSeqInfo(){
+    var sq=seqCur();
+    if(!sq){seqInfo.textContent='No sequence yet.';return}
+    var raw=0,t=0,ls=0;
+    sq.steps.forEach(function(st,n){var a=(st.par&&n>0)?ls:t;ls=a;t=Math.max(t,a+Math.round(st.dur*1000/(sq.speed||1)))});
+    raw=t;
+    seqInfo.textContent=sq.steps.length+' step'+(sq.steps.length===1?'':'s')+' · '+(raw/1000).toFixed(1)+' s'+(raw>MAX_REC_MS?' (too long: only the first 90 s run)':'');
+  }
+  function renderSteps(){
+    var sq=seqCur();
+    stepsEl.innerHTML='';
+    if(!sq) return;
+    sq.steps.forEach(function(st,n){
+      var el=document.createElement('div');el.className='step';
+      el.innerHTML='<div class="step-top"><span class="step-n">'+(n+1)+'</span><select class="sCh" aria-label="Channel"></select>'+
+        '<button class="btn mini sUp" type="button" aria-label="Move up">&#9650;</button><button class="btn mini sDn" type="button" aria-label="Move down">&#9660;</button><button class="btn mini sDel" type="button" aria-label="Delete step">&#10005;</button></div>'+
+        '<div class="step-row"><label>Power %<input class="sPwr" type="number" min="-100" max="100" step="5" inputmode="numeric"></label>'+
+        '<label>Seconds<input class="sDur" type="number" min="0.1" max="60" step="0.1" inputmode="decimal"></label>'+
+        '<label class="check"><input class="sPar" type="checkbox">Together</label></div>';
+      stepsEl.appendChild(el);
+      var ch=$('.sCh',el),pw=$('.sPwr',el),du=$('.sDur',el),pr=$('.sPar',el);
+      chOptions(ch,st.ch);pw.value=st.pwr;du.value=st.dur;pr.checked=st.par;
+      pr.disabled=n===0;pw.disabled=st.ch<0;
+      ch.addEventListener('change',function(){st.ch=+ch.value;pw.disabled=st.ch<0;save();paintSeqInfo()});
+      pw.addEventListener('change',function(){st.pwr=Math.round(num(pw.value,-100,100,st.pwr));pw.value=st.pwr;save()});
+      du.addEventListener('change',function(){st.dur=Math.round(num(du.value,0.1,60,st.dur)*10)/10;du.value=st.dur;save();paintSeqInfo()});
+      pr.addEventListener('change',function(){st.par=pr.checked;save();paintSeqInfo()});
+      $('.sDel',el).addEventListener('click',function(){sq.steps.splice(n,1);if(sq.steps[0])sq.steps[0].par=false;save();renderSteps();paintSeqInfo()});
+      $('.sUp',el).addEventListener('click',function(){if(n<1)return;sq.steps.splice(n-1,0,sq.steps.splice(n,1)[0]);sq.steps[0].par=false;save();renderSteps();paintSeqInfo()});
+      $('.sDn',el).addEventListener('click',function(){if(n>=sq.steps.length-1)return;sq.steps.splice(n+1,0,sq.steps.splice(n,1)[0]);sq.steps[0].par=false;save();renderSteps();paintSeqInfo()});
+    });
+  }
+  var recQBtns=[];
+  function runRecBtn(r){
+    if(S.play&&S.play.rid===r.id){stopPlay(true);return}
+    if(S.play||S.rec||S.estop) return;
+    startPlay(r,{rid:r.id});
+  }
+  function renderQuick(){
+    quickEl.innerHTML='';quickBtns=[];recQBtns=[];
+    var rq=C.rec.filter(function(r){return r.btn});
+    quickCard.hidden=!C.seq.length&&!rq.length;
+    C.seq.forEach(function(sq){
+      var b=document.createElement('button');b.type='button';b.className='qbtn';b.textContent='\u25B6 '+sq.name;
+      b.addEventListener('click',function(){runSeq(sq.id)});
+      quickEl.appendChild(b);quickBtns.push({b:b,sq:sq});
+    });
+    // recordings ticked "Show as a quick button" replay with one tap
+    rq.forEach(function(r){
+      var b=document.createElement('button');b.type='button';b.className='qbtn qrec';b.textContent='\u25CF '+r.name;
+      b.addEventListener('click',function(){noteInput();runRecBtn(r)});
+      quickEl.appendChild(b);recQBtns.push({b:b,r:r});
+    });
+    renderPlayer();paintQuick();
+  }
+  function paintQuick(){
+    if(!quickBtns) return;
+    recQBtns.forEach(function(q){
+      var mine=!!(S.play&&S.play.rid===q.r.id);
+      if(q.b.classList.contains('on')!==mine) q.b.classList.toggle('on',mine);
+      var t=(mine?'\u25A0 ':'\u25CF ')+q.r.name;if(q.b.textContent!==t) q.b.textContent=t;
+      var d=!mine&&(!!S.rec||!!S.play||S.estop);if(q.b.disabled!==d) q.b.disabled=d;
+    });
+    quickBtns.forEach(function(q){
+      var mine=!!(S.play&&S.play.seq===q.sq.id);
+      q.b.classList.toggle('on',mine);
+      q.b.textContent=(mine?'\u25A0 ':'\u25B6 ')+q.sq.name;
+      q.b.disabled=!mine&&(!!S.rec||!!S.play||S.estop||!q.sq.steps.length);
+    });
+    var cur=seqCur();
+    seqRun.textContent=(S.play&&cur&&S.play.seq===cur.id)?'Stop':'Run';
+    seqRun.disabled=!cur||!cur.steps.length||(!S.play&&(S.estop||!!S.rec))||(!!S.play&&S.play.seq!==cur.id);
+    paintPlayer();
+    if(typeof paintBoard==='function') paintBoard();
+  }
+  function runSeq(id){
+    var sq=C.seq.filter(function(x){return x.id===id})[0];
+    if(!sq) return;
+    if(S.play&&S.play.seq===id){stopPlay(true);setSeqNote('');return}
+    setSeqNote('');
+    if(S.play||S.rec||S.estop||!sq.steps.length) return;
+    startPlay(compileSeq(sq),{seq:id,loop:sq.loop,reps:sq.reps,delay:sq.delay});
+  }
+  function syncSeq(){
+    if(!seqSel) return;
+    var cur=seqCur();seqCur_=cur?cur.id:null;
+    seqSel.innerHTML='';
+    if(!C.seq.length){var o=document.createElement('option');o.value='';o.textContent='No sequences yet';seqSel.appendChild(o)}
+    C.seq.forEach(function(x){var o=document.createElement('option');o.value=x.id;o.textContent=x.name||'(unnamed)';seqSel.appendChild(o)});
+    if(cur) seqSel.value=cur.id;
+    seqSel.disabled=!C.seq.length;
+    seqName.value=cur?cur.name:'';seqName.disabled=!cur;
+    seqLoop.checked=!!(cur&&cur.loop);seqLoop.disabled=!cur;
+    seqReps.value=String(cur?cur.reps:1);seqSpeed.value=String(cur?cur.speed:1);seqDelay.value=String(cur?cur.delay:0);
+    seqReps.disabled=!cur||!!cur.loop;seqSpeed.disabled=!cur;seqDelay.disabled=!cur;
+    $('#stepAdd').disabled=!cur||cur.steps.length>=MAX_STEPS;
+    $('#seqDup').disabled=!cur||C.seq.length>=MAX_SEQ;
+    $('#seqDel').disabled=!cur;
+    $('#seqNew').disabled=C.seq.length>=MAX_SEQ;
+    renderSteps();paintSeqInfo();renderQuick();buildGpMap();
+  }
+  seqSel.addEventListener('change',function(){seqCur_=seqSel.value;syncSeq()});
+  seqName.addEventListener('input',function(){
+    var c=seqCur();if(!c) return;c.name=seqName.value.slice(0,24);
+    var o=seqSel.options[seqSel.selectedIndex];if(o)o.textContent=c.name||'(unnamed)';
+    quickBtns.forEach(function(q){if(q.sq===c)q.b.textContent='\u25B6 '+c.name});
+  });
+  seqName.addEventListener('change',function(){save();renderQuick()});
+  seqLoop.addEventListener('change',function(){var c=seqCur();if(c){c.loop=seqLoop.checked;seqReps.disabled=!!c.loop;save()}});
+  seqReps.addEventListener('change',function(){var c=seqCur();if(c){c.reps=pickOf(seqReps.value,[1,2,3,5,10],1);save()}});
+  seqSpeed.addEventListener('change',function(){var c=seqCur();if(c){c.speed=pickOf(seqSpeed.value,[0.5,0.75,1,1.5,2],1);save();paintSeqInfo()}});
+  seqDelay.addEventListener('change',function(){var c=seqCur();if(c){c.delay=pickOf(seqDelay.value,[0,1,2,3,5,10],0);save()}});
+  $('#stepAdd').addEventListener('click',function(){
+    var c=seqCur();if(!c||c.steps.length>=MAX_STEPS) return;
+    var idx=activeIdx();
+    c.steps.push({ch:idx.length?idx[0]:-1,pwr:50,dur:1,par:false});
+    save();syncSeq();
+  });
+  $('#seqNew').addEventListener('click',function(){
+    if(C.seq.length>=MAX_SEQ) return;
+    var n={id:uid(),name:(store.prefs.lang==='ms'?'Jujukan ':'Sequence ')+(C.seq.length+1),loop:false,reps:1,speed:1,delay:0,steps:[]};
+    C.seq.push(n);seqCur_=n.id;save();syncSeq();
+  });
+  $('#seqDup').addEventListener('click',function(){
+    var c=seqCur();if(!c||C.seq.length>=MAX_SEQ) return;
+    var n=JSON.parse(JSON.stringify(c));n.id=uid();n.name=(c.name+' copy').slice(0,24);
+    C.seq.push(n);seqCur_=n.id;save();syncSeq();
+  });
+  $('#seqDel').addEventListener('click',function(){
+    var c=seqCur();if(!c) return;
+    if(S.play&&S.play.seq===c.id) stopPlay(true);
+    C.seq=C.seq.filter(function(x){return x!==c});seqCur_=null;save();syncSeq();
+  });
+  seqRun.addEventListener('click',function(){var c=seqCur();if(c) runSeq(c.id)});
+  syncSeq();
+
+  // ---- Feedback (sound, vibration), toast, safety ----
+  var AC=null, toastEl=$('#toast'), toastTimer=0;
+  function beep(freqs,dur){
+    if(!store.prefs.sound) return;
+    try{
+      AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+      if(AC.state==='suspended'&&AC.resume) AC.resume();
+      var t=AC.currentTime;
+      freqs.forEach(function(f,i){
+        var o=AC.createOscillator(),g=AC.createGain(),st=t+i*dur;
+        o.type='square';o.frequency.value=f;
+        g.gain.setValueAtTime(0.07,st);g.gain.exponentialRampToValueAtTime(0.0001,st+dur*0.9);
+        o.connect(g);g.connect(AC.destination);o.start(st);o.stop(st+dur);
+      });
+    }catch(e){}
+  }
+  var FB={estop:[[440,440],0.12,'estop'],release:[[600,800],0.1,'ok'],ok:[[700,900],0.09,'ok'],lost:[[500,300],0.2,'lost'],warn:[[880,880,880],0.16,'warn'],idle:[[700,500,350],0.14,'warn'],hold:[[700,900],0.09,'hold']};
+  var FBLAST={};
+  function feedback(kind){
+    var f=FB[kind];if(!f) return;
+    if(kind==='warn'||kind==='idle'){var nw=Date.now();if(nw-(FBLAST.w||0)<2500) return;FBLAST.w=nw}
+    beep(f[0],f[1]);
+    if(store.prefs.haptic&&NB&&NB.haptic){try{NB.haptic(f[2])}catch(e){}}
+  }
+  function toast(msg,ms){
+    if(!toastEl) return;
+    toastEl.textContent=msg;toastEl.hidden=false;
+    clearTimeout(toastTimer);
+    toastTimer=setTimeout(function(){toastEl.hidden=true},ms||4500);
+  }
+  var lastInput=performance.now(), ptrDown=0, hotSince=[], hotWarned=[];
+  function noteInput(){lastInput=performance.now();if(typeof tkWake==='function') tkWake()}
+  if(document.addEventListener){
+    document.addEventListener('pointerdown',function(){ptrDown++;noteInput()},{passive:true});
+    document.addEventListener('pointermove',noteInput,{passive:true});
+    var pu=function(){ptrDown=Math.max(0,ptrDown-1);noteInput()};
+    document.addEventListener('pointerup',pu,{passive:true});
+    document.addEventListener('pointercancel',pu,{passive:true});
+    document.addEventListener('keydown',noteInput,{passive:true});
+  }
+  if(typeof window.addEventListener==='function') window.addEventListener('blur',function(){ptrDown=0});
+  for(var hq=0;hq<NMAX;hq++){hotSince.push(0);hotWarned.push(false)}
+  function safetyStep(now){
+    if(!Array.isArray(hotSince)||!hotSince.length) return;
+    var sf=C.safety, any=false, i;
+    for(i=0;i<NMAX;i++) if(isActive(i)&&C.ch[i].kind!=='light'&&(rt.t[i]!==0||rt.o[i]!==0)) any=true;
+    if(ptrDown>0||S.play) lastInput=now;
+    if(sf.idle>0&&any&&!S.estop&&!S.play&&now-lastInput>sf.idle*1000){
+      zeroAll();lastInput=now;
+      toast('Stopped: no input for '+sf.idle+' s');feedback('idle');
+    }
+    for(i=0;i<NMAX;i++){
+      if(sf.run>0&&!S.play&&isActive(i)&&C.ch[i].kind!=='light'&&rt.t[i]!==0){
+        if(!runSince[i]) runSince[i]=now;
+        else if(now-runSince[i]>sf.run*1000){
+          runBlk[i]=true;runSince[i]=0;rt.t[i]=0;unlockCh(i);refs[i].rng.value=0;refs[i].val.textContent='0';
+          toast('Channel '+tagOf(i)+' stopped after '+sf.run+' s of running. Move it back to 0, then start again.',6000);feedback('warn');
+        }
+      }else runSince[i]=0;
+    }
+    for(i=0;i<NMAX;i++){
+      if(isActive(i)&&C.ch[i].kind!=='light'&&Math.abs(rt.o[i])>=90){
+        if(!hotSince[i]) hotSince[i]=now;
+        else if(sf.warn>0&&!hotWarned[i]&&now-hotSince[i]>sf.warn*1000){
+          hotWarned[i]=true;
+          toast('Channel '+tagOf(i)+' has run near full power for '+sf.warn+' s. Let the motor rest.',6000);feedback('warn');
+        }
+      }else{hotSince[i]=0;hotWarned[i]=false}
+    }
+  }
+  window.onAppEvent=function(ev){
+    if(ev==='nopin') toast('This launcher cannot add a shortcut.');
+    if(ev==='resume'){resumeAt=Date.now();tiltNative()}
+    if(ev==='notilt') toast('This phone has no tilt sensor.',5000);
+    if(ev==='backupok'){store.prefs.lastBackup=Date.now();save();bkPaint();if(bkManual) toast('Backup saved to the Downloads folder.',4000);bkManual=false}
+    if(ev==='backupfail'){if(bkManual) toast('Backup failed. Use Export models instead.',5000);bkManual=false}
+    if(ev==='bt1'){S.bt=true;if(!S.connected&&(hubMsg===HUB_TEXT.off||hubMsg===HUB_TEXT.btoff)){hubMsg='';paintLink()}paintBt();return}
+    if(ev==='bt0'){S.bt=false;paintBt();return}
+    if(ev==='resume') readBt();
+    if(ev==='btoff'){
+      var wasOn=S.connected;wantLink=false;
+      S.connected=false;hubMsg=HUB_TEXT.btoff;last=null;stopPlay(true);zeroAll();paintLink();
+      live.textContent=hubMsg;feedback('lost');
+      if(wasOn) toast('Bluetooth was switched off. Motors stopped.',8000);
+    }
+  };
+  window.openModel=function(id){
+    if(!store.profiles.some(function(p){return p.id===id})) return;
+    if(id!==store.active) switchProfile(id);
+  };
+
+
+  // ---- Calibration, player mode, settings lock, phone battery ----
+  var CAL_MS=1500, cal=null;
+  var calStatEl=$('#calStat');
+  function calShow(ids){['calStart','calOk','calRev','calAgain','calCancel'].forEach(function(id){$('#'+id).hidden=ids.indexOf(id)<0})}
+  function calIdle(msg){
+    if(cal){
+      if(cal.timer) clearTimeout(cal.timer);
+      var ci=cal.list[cal.n];if(ci!==undefined) setT(ci,0,false);
+    }
+    cal=null;calStatEl.textContent=msg;calShow(['calStart']);
+  }
+  function calRun(){
+    var i=cal.list[cal.n];
+    if(!S.connected||S.estop||S.play||S.rec){calIdle('Stopped. Connect the hub, release E-Stop and try again.');return}
+    cal.phase='run';calShow(['calCancel']);
+    calStatEl.textContent='Testing channel '+tagOf(i)+' ('+C.ch[i].name+') forward at '+C.testPwr+'%';
+    noteInput();setT(i,C.testPwr,false);
+    cal.timer=setTimeout(function(){
+      if(!cal) return;
+      setT(i,0,false);cal.phase='ask';
+      calShow(['calOk','calRev','calAgain','calCancel']);
+      calStatEl.textContent='Channel '+tagOf(i)+': did it move the right way?';
+    },CAL_MS);
+  }
+  function calNext(){
+    cal.n++;
+    if(cal.n>=cal.list.length){calIdle('Done. Every channel is checked.');return}
+    calRun();
+  }
+  $('#calStart').addEventListener('click',function(){
+    if(cal) return;
+    if(!S.connected){calStatEl.textContent='Connect the hub first (top right), then press Start.';return}
+    if(S.estop||S.play||S.rec){calStatEl.textContent='Release E-Stop and stop any sequence or recording first.';return}
+    cal={list:activeIdx(),n:0,phase:'run',timer:0};
+    calRun();
+  });
+  $('#calOk').addEventListener('click',function(){if(cal&&cal.phase==='ask') calNext()});
+  $('#calRev').addEventListener('click',function(){
+    if(!cal||cal.phase!=='ask') return;
+    var i=cal.list[cal.n];
+    C.ch[i].inv=!C.ch[i].inv;syncChannel(i);save();calRun();
+  });
+  $('#calAgain').addEventListener('click',function(){if(cal&&cal.phase==='ask') calRun()});
+  $('#calCancel').addEventListener('click',function(){if(cal) calIdle('Cancelled.')});
+
+  var player=$('#player'), plGrid=$('#plGrid'), plStop=$('#plStop'), plExit=$('#plExit'), plTitle=$('#plTitle'), plBtns=[];
+  function renderPlayer(){
+    if(!plGrid) return;
+    plGrid.innerHTML='';plBtns=[];
+    C.seq.forEach(function(sq){
+      var b=document.createElement('button');b.type='button';b.className='qbtn';
+      b.addEventListener('click',function(){noteInput();runSeq(sq.id)});
+      plGrid.appendChild(b);plBtns.push({b:b,sq:sq});
+    });
+    C.rec.filter(function(r){return r.btn}).forEach(function(r){
+      var b=document.createElement('button');b.type='button';b.className='qbtn';
+      b.addEventListener('click',function(){noteInput();runRecBtn(r)});
+      plGrid.appendChild(b);plBtns.push({b:b,rec:r});
+    });
+    if(!plBtns.length){var n=document.createElement('p');n.className='pl-note';n.textContent='No sequences yet. Leave player mode and make one first.';plGrid.appendChild(n)}
+    paintPlayer();
+  }
+  function paintPlayer(){
+    if(!plGrid||!plBtns) return;
+    var prof=store.profiles.filter(function(x){return x.id===store.active})[0];
+    plTitle.textContent=prof?prof.name:'';
+    plBtns.forEach(function(q){
+      if(q.rec){
+        var rm=!!(S.play&&S.play.rid===q.rec.id);
+        q.b.classList.toggle('on',rm);q.b.textContent=(rm?'■ ':'● ')+q.rec.name;
+        q.b.disabled=!rm&&(!!S.rec||!!S.play||S.estop);return;
+      }
+      var mine=!!(S.play&&S.play.seq===q.sq.id);
+      q.b.classList.toggle('on',mine);
+      q.b.textContent=(mine?'■ ':'▶ ')+q.sq.name;
+      q.b.disabled=!mine&&(!!S.rec||!!S.play||S.estop||!q.sq.steps.length);
+    });
+    plStop.textContent=S.estop?'Release':'E-Stop';
+  }
+  var holdT=0;
+  function holdBtn(btn,ms,fn){
+    function up(){if(holdT){clearTimeout(holdT);holdT=0}btn.classList.remove('holding')}
+    btn.addEventListener('pointerdown',function(e){
+      if(btn.dataset.tap==='1') return;
+      up();btn.classList.add('holding');
+      holdT=setTimeout(function(){holdT=0;btn.classList.remove('holding');feedback('hold');fn()},ms);
+    });
+    ['pointerup','pointercancel','pointerleave','blur'].forEach(function(ev){btn.addEventListener(ev,up)});
+    btn.addEventListener('contextmenu',function(e){e.preventDefault()});
+    btn.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();fn()}});
+  }
+  function openPlayer(){renderPlayer();S.kid=true;player.hidden=false;feedback('ok')}
+  function closePlayer(){player.hidden=true;S.kid=false}
+  $('#playerBtn').addEventListener('click',openPlayer);
+  plStop.addEventListener('click',function(){setEstop(!S.estop)});
+  holdBtn(plExit,1000,closePlayer);
+
+  var lockBtn=$('#lockBtn');
+  function applyLock(){
+    if(!lockBtn) return;
+    var on=!!store.prefs.lock, de=document.documentElement;
+    ['imBtn','ioApply'].forEach(function(id){var e=$('#'+id);if(e) e.disabled=on});
+    if(de&&de.setAttribute){ if(on) de.setAttribute('data-lock','1'); else de.removeAttribute('data-lock') }
+    lockBtn.textContent=on?'Hold to unlock':'Lock settings';
+  }
+  lockBtn.addEventListener('click',function(){
+    if(store.prefs.lock) return;
+    store.prefs.lock=true;save();applyLock();feedback('ok');
+    toast('Settings locked. To unlock, go to Settings › App and hold the unlock button for 2 seconds.',5000);
+  });
+  (function(){
+    function up(){if(holdT){clearTimeout(holdT);holdT=0}lockBtn.classList.remove('holding')}
+    lockBtn.addEventListener('pointerdown',function(){
+      if(!store.prefs.lock) return;
+      up();lockBtn.classList.add('holding');
+      holdT=setTimeout(function(){holdT=0;lockBtn.classList.remove('holding');store.prefs.lock=false;save();applyLock();feedback('hold')},2000);
+    });
+    ['pointerup','pointercancel','pointerleave','blur'].forEach(function(ev){lockBtn.addEventListener(ev,up)});
+  })();
+  applyLock();
+
+  var batEl=$('#bat'), batWarned=false;
+  function pollBattery(){
+    if(!batEl||!NB||!NB.battery) return;
+    var p=-1;try{p=+NB.battery()}catch(e){}
+    if(!(p>=0&&p<=100)){batEl.hidden=true;return}
+    batEl.hidden=false;batEl.textContent='Phone '+p+'%';batEl.classList.toggle('low',p<=15);
+    var hb=$('#hbat');if(hb){hb.hidden=false;hb.textContent='\u00b7 \ud83d\udd0b '+p+'%';hb.classList.toggle('low',p<=15)}
+    if(p<=15&&!batWarned){batWarned=true;toast('Phone battery is low ('+p+'%). Charge it before driving.',6000);feedback('warn')}
+    if(p>20) batWarned=false;
+  }
+  setInterval(pollBattery,30000);pollBattery();
+
+
+  // ---- Speed profiles, player limit, run limiter setting, recording tools, backup ----
+  var spdBtns={slow:$('#spdSlow'),normal:$('#spdNorm'),fast:$('#spdFast')};
+  function syncSpeed(){
+    if(!spdBtns) return;
+    Object.keys(spdBtns).forEach(function(k){spdBtns[k].setAttribute('aria-pressed',String(C.speed===k))});
+  }
+  Object.keys(spdBtns).forEach(function(k){
+    spdBtns[k].addEventListener('click',function(){C.speed=k;syncSpeed();save();feedback('ok')});
+  });
+  var kidLim=$('#kidLim');
+  kidLim.addEventListener('change',function(){store.prefs.kidLimit=pickOf(kidLim.value,[100,70,50,30],50);save()});
+  var sfRun=$('#sfRun');
+  sfRun.addEventListener('change',function(){C.safety.run=pickOf(sfRun.value,[0,10,20,30,60],0);save()});
+
+  var recFrom=$('#recFrom'), recTo=$('#recTo'), recJoinSel=$('#recJoinSel');
+  function recAddNew(name,pts){
+    if(C.rec.length>=MAX_RECS){recNote='Recording list is full. Delete one first.';paintRec();return}
+    var dur=pts.length?pts[pts.length-1][0]:0;
+    if(pts.length<2||pts.length>MAX_PTS||dur<=0||dur>MAX_REC_MS){recNote='That edit does not fit. Try a shorter one.';paintRec();return}
+    var r={id:uid(),name:String(name).slice(0,24),dur:dur,pts:pts};
+    C.rec.push(r);recSel=r.id;recNote='Saved '+r.name+' ('+fmtTime(r.dur)+').';save();syncRec();
+  }
+  function recRows(rec){return rec.pts.map(function(p){return p.slice()})}
+  $('#recSpdGo').addEventListener('click',function(){
+    var cur=selectedRec();if(!cur||S.rec||S.play) return;
+    var f=+$('#recSpd').value;if(!(f>0)) return;
+    var pts=cur.pts.map(function(p){return [Math.round(p[0]/f)].concat(p.slice(1))});
+    recAddNew(cur.name+' x'+f,pts);
+  });
+  $('#recTrim').addEventListener('click',function(){
+    var cur=selectedRec();if(!cur||S.rec||S.play) return;
+    var a=Math.round((+recFrom.value||0)*1000), b=Math.min(Math.round((+recTo.value||0)*1000),cur.dur);
+    if(!(a>=0&&b>a)){recNote='Set a start before the end.';paintRec();return}
+    var base=null, mid=[];
+    cur.pts.forEach(function(p){ if(p[0]<=a) base=p; else if(p[0]<b) mid.push(p) });
+    var first=(base||cur.pts[0]).slice(1);
+    var lastv=(mid.length?mid[mid.length-1]:(base||cur.pts[0])).slice(1);
+    var pts=[[0].concat(first)].concat(mid.map(function(p){return [p[0]-a].concat(p.slice(1))})).concat([[b-a].concat(lastv)]);
+    recAddNew(cur.name+' cut',pts);
+  });
+  $('#recJoin').addEventListener('click',function(){
+    var cur=selectedRec();if(!cur||S.rec||S.play) return;
+    var other=C.rec.filter(function(r){return r.id===recJoinSel.value})[0];
+    if(!other) return;
+    var pts=recRows(cur), gap=cur.dur+200, zero=[gap];
+    for(var z=0;z<NMAX;z++) zero.push(0);
+    pts.push(zero);
+    other.pts.forEach(function(p){pts.push([p[0]+gap+200].concat(p.slice(1)))});
+    recAddNew(cur.name+'+'+other.name,pts);
+  });
+  $('#recCopy').addEventListener('click',function(){
+    var cur=selectedRec();if(!cur||S.rec||S.play) return;
+    recAddNew(cur.name+' copy',recRows(cur));
+  });
+  function syncRecTools(){
+    var cur=selectedRec();
+    if(!recJoinSel) return;
+    recJoinSel.innerHTML='';
+    C.rec.forEach(function(r){var o=document.createElement('option');o.value=r.id;o.textContent=r.name;recJoinSel.appendChild(o)});
+    recFrom.value='0';recTo.value=cur?(cur.dur/1000).toFixed(1):'1';
+  }
+
+  // Backup to the Downloads folder (native side only)
+  var BK_MS=7*24*3600*1000, bkAuto=$('#bkAuto'), bkNow=$('#bkNow'), bkMsg=$('#bkMsg'), bkManual=false;
+  function bkPaint(){
+    if(!bkMsg) return;
+    var t=store.prefs.lastBackup;
+    bkMsg.textContent=t?('Last backup: '+new Date(t).toLocaleDateString()+'. File: Downloads/MK6-Console-backup.json'):'No backup yet. The file goes to Downloads/MK6-Console-backup.json.';
+    bkAuto.checked=store.prefs.autoBackup;
+    bkNow.hidden=!(NB&&NB.autoBackup);
+    bkAuto.disabled=!(NB&&NB.autoBackup);
+  }
+  function bkRun(manual){
+    if(!(NB&&NB.autoBackup)) return;
+    bkManual=!!manual;
+    try{NB.autoBackup(exportJson())}catch(e){}
+  }
+  function bkCheck(){
+    if(!(NB&&NB.autoBackup)||!store.prefs.autoBackup) return;
+    if(Date.now()-store.prefs.lastBackup>BK_MS) bkRun(false);
+  }
+  // ---- Board history: the last 3 boards of the current model, saved whenever editing finishes ----
+  var SNAPK='mk6.boardsnaps';
+  function snapLoad(){try{var a=JSON.parse(localStorage.getItem(SNAPK)||'[]');return Array.isArray(a)?a.filter(function(x){return x&&typeof x.p==='string'&&Array.isArray(x.b)&&isFinite(+x.t)}):[]}catch(e){return []}}
+  function snapBoard(){
+    try{
+      if(!C.board||!C.board.length) return;
+      var all=snapLoad(),pid=store.active,js=JSON.stringify(C.board),mine=all.filter(function(x){return x.p===pid});
+      if(mine.length&&JSON.stringify(mine[0].b)===js) return;
+      var rest=all.filter(function(x){return x.p!==pid});
+      mine.unshift({p:pid,t:Date.now(),b:JSON.parse(js)});
+      localStorage.setItem(SNAPK,JSON.stringify(mine.slice(0,3).concat(rest).slice(0,24)));
+    }catch(e){}
+    snapPaint();
+  }
+  function snapPaint(){
+    var box=$('#snapList');if(!box) return;
+    box.innerHTML='';
+    var mine=snapLoad().filter(function(x){return x.p===store.active}).slice(0,3);
+    if(!mine.length){var e=document.createElement('div');e.className='note';e.textContent='No saved boards yet.';box.appendChild(e);return}
+    mine.forEach(function(x,i){
+      var row=document.createElement('div');row.className='snaprow';
+      var d=new Date(+x.t),tx=document.createElement('span');
+      tx.textContent=(i===0?'Latest':'Earlier '+i)+' ';
+      var sm=document.createElement('small');sm.textContent=d.toLocaleDateString([], {day:'numeric',month:'short'})+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})+' \u00b7 '+x.b.length+' widgets';
+      tx.appendChild(sm);
+      var b=document.createElement('button');b.type='button';b.className='btn';b.textContent='Restore';
+      b.addEventListener('click',function(){
+        C.board=cleanBoard(x.b);bdEditing=false;dashAdd=false;save();syncBoard();toast('Board restored.');feedback('ok');
+      });
+      row.appendChild(tx);row.appendChild(b);box.appendChild(row);
+    });
+  }
+  window.__snap={take:snapBoard,list:snapLoad};
+  snapPaint();
+  setTimeout(snapBoard,5000);
+  bkAuto.addEventListener('change',function(){store.prefs.autoBackup=bkAuto.checked;save()});
+  bkNow.addEventListener('click',function(){bkRun(true)});
+  setInterval(bkCheck,3600000);
+  setTimeout(bkCheck,4000);
+  bkPaint();
+
+  // ---- Tilt settings ----
+  var tlOn=$('#tlOn'), tlOpt=$('#tlOpt'), tlSens=$('#tlSens'), tlInv=$('#tlInv'), tlAll=$('#tlAll'), tlSt=$('#tlSt'), tlWheel=$('#tlWheel');
+  tlOn.addEventListener('change',function(){
+    C.tilt.on=tlOn.checked;tlOpt.hidden=!C.tilt.on;TILT.zero=null;save();tiltNative();
+    if(C.tilt.on) setTimeout(function(){if(!TILT.has) toast('No tilt sensor data yet. Check that the phone has an accelerometer.',5000)},1500);
+  });
+  tlSens.addEventListener('change',function(){C.tilt.sens=pickOf(tlSens.value,[30,45,60],45);save()});
+  tlInv.addEventListener('change',function(){C.tilt.inv=tlInv.checked;save()});
+  tlAll.addEventListener('change',function(){C.tilt.all=tlAll.checked;save();syncBoard()});
+
+  // ---- Board layout ----
+  var bdGrid=$('#boardGrid'), bdEditor=$('#bdEditor'), bdEditBtn=$('#bdEdit'), bdNote=$('#bdNote');
+  var bdSel=[$('#bdTarget'),$('#bdTarget2'),$('#bdTarget3'),$('#bdTarget4')];
+  var bdFields=[$('#bdF1'),$('#bdF2'),$('#bdF3'),$('#bdF4')], bdLbl=[$('#bdL1'),$('#bdL2'),$('#bdL3'),$('#bdL4')];
+  var bdModeF=$('#bdFM'), bdMode=$('#bdMode'), bdWideChk=$('#bdWideChk'), bdSpring=$('#bdSpring'), bdSpringL=$('#bdSpringL');
+  var bdTypes=[['s',$('#bdTS')],['j',$('#bdTJ')],['d',$('#bdTD')],['m',$('#bdTM')],['l',$('#bdTL')],['t',$('#bdTT')],['b',$('#bdTB')],['w',$('#bdTW')],['a',$('#bdTA')],['y',$('#bdTY')],['f',$('#bdTF')],['i',$('#bdTI')],['k',$('#bdTK')],['n',$('#bdTN')],['rs',$('#bdTRS')],['g',$('#bdTG')],['st',$('#bdTST')],['lv',$('#bdTLV')],['dp',$('#bdTDP')],['z',$('#bdTZ')],['e',$('#bdTE')],['ps',$('#bdTPS')]];
+  var bdRat=(typeof document.querySelectorAll==='function')?[].slice.call(document.querySelectorAll('.bdRat')):[$('.bdRat'),$('.bdRat'),$('.bdRat'),$('.bdRat')], bdMixRow=$('#bdMixRow');
+  bdRat.forEach(function(sel){[100,75,50,25,-25,-50,-75,-100].forEach(function(v){bdOpt(sel,String(v),(v>0?'+':'')+v+'%')});sel.value='100'});
+  var bdK='s', bdEditing=false, bdPick=null, bdPickAt=0, bdW=[], dashAdd=false;
+  function prefillBoard(){
+    var n=0;
+    activeIdx().forEach(function(i){if(n<4){C.board.push({k:'s',c:i,w:C.ch[i].kind==='hold'?2:1,hold:C.ch[i].kind==='hold'});n++}});
+  }
+  function bdOpt(sel,v,t){var o=document.createElement('option');o.value=v;o.textContent=t;sel.appendChild(o)}
+  function bdFill(){
+    if(!bdSel[0]) return;
+    var chans=activeIdx(), tank=bdMode.value==='tank';
+    var n=(bdK==='e'||bdK==='z'||bdK==='rs'||bdK==='ps')?0:(bdK==='j'||bdK==='w'||bdK==='dp')?2:(bdK==='d'||bdK==='m'?4:1);
+    var L=bdK==='w'?['Output A','Output B']:(bdK==='l'||bdK==='t'||bdK==='b'||bdK==='g'||bdK==='st'||bdK==='lv'||bdK==='n'||bdK==='a'||bdK==='y'||bdK==='f'||bdK==='i'||bdK==='k')?[bdK==='l'?'Light channel':'Channel']:bdK==='m'?['Channel 1','Channel 2','Channel 3','Channel 4']:((bdK==='s')?['Channel']:
+      (bdK==='dp'?(tank?['Left motor','Right motor']:['Drive','Steer']):
+      (bdK==='j'?(tank?['Left motor','Right motor']:['Drive','Steer']):
+      (tank?['Left stick: Left motor','Left stick: Right motor','Right stick: Left motor','Right stick: Right motor']:
+            ['Left stick: Drive','Left stick: Steer','Right stick: Drive','Right stick: Steer']))));
+    bdSel.forEach(function(sel,q){
+      var show=q<n;
+      bdFields[q].hidden=!show;
+      sel.innerHTML='';
+      if(!show) return;
+      bdLbl[q].textContent=L[q]||'';
+      var none=((bdK==='j'||bdK==='d'||bdK==='dp')&&(q===1||q===3))||(bdK==='m'&&q>=1);
+      if(none) bdOpt(sel,'-1','None');
+      chans.forEach(function(i){bdOpt(sel,String(i),tagOf(i)+' · '+C.ch[i].name)});
+      if(bdK==='m'){sel.value=(q===0&&chans.length)?String(chans[0]):'-1'}
+      else if(chans.length>q) sel.value=String(chans[q]);
+    });
+    bdModeF.hidden=!(bdK==='j'||bdK==='d'||bdK==='dp');
+    bdSpringL.hidden=!(bdK==='s'||bdK==='j'||bdK==='d'||bdK==='m');
+    bdMixRow.hidden=bdK!=='m';
+    $('#bdLightRow').hidden=bdK!=='l';
+    $('#bdTgRow').hidden=bdK!=='t'&&bdK!=='y';
+    $('#bdTgStyle').hidden=bdK==='y';
+    bdRat.forEach(function(sel,q){sel.hidden=q>=n||bdK!=='m'});
+  }
+  function bdSetKind(k){
+    bdK=k;
+    bdTypes.forEach(function(t){t[1].setAttribute('aria-pressed',String(t[0]===k))});
+    bdWideChk.checked=(k==='j'||k==='d'||k==='m');
+    bdWideChk.disabled=(k==='d');
+    if(k==='d') bdWideChk.checked=true;
+    bdFill();
+  }
+  function applyJoy(it,x,y){
+    var va,vb;
+    if(it.m==='axis'){va=y;vb=x}else{va=clamp(y+x,-1,1);vb=clamp(y-x,-1,1)}
+    va*=(C.zone||100)/100;vb*=(C.zone||100)/100;
+    setT(it.c,va*100,false);
+    if(it.d>=0) setT(it.d,vb*100,false);
+  }
+  var BD_UNDO=[], BD_PADS=[], BD_SL=null;
+  var LMODES=[{t:'OFF',v:0},{t:'LOW',v:30},{t:'MID',v:60},{t:'FULL',v:100},{t:'BLINK',v:100,blink:true}];
+  function lightMode(c){
+    var v=rt.t[c]||0;
+    if(v<=0) return 0;
+    if(C.ch[c].blink&&C.ch[c].blink!=='off') return 4;
+    return v<=40?1:v<=75?2:3;
+  }
+  // Per-joystick tuning: axis lock, deadzone, sensitivity, limit
+  function jshape(x,y,jc){
+    if(!jc) return [x,y];
+    if(jc.ax==='x') y=0;
+    if(jc.ax==='y') x=0;
+    var dz=jc.dz/100,g=jc.sn/100,l=jc.lm/100;
+    function f(v){var a=Math.abs(v);if(a<=dz) return 0;a=Math.min(1,(a-dz)/(1-dz)*g)*l;return v<0?-a:a}
+    return [f(x),f(y)];
+  }
+  // Slider shortcut: tap the value read-out to send that slider (and its channels) back to 0
+  function bdOutZero(out,chs){
+    if(!out) return;
+    out.classList.add('zeroable');out.setAttribute('role','button');out.setAttribute('aria-label','Set to zero');
+    out.addEventListener('click',function(e){
+      if(bdEditing) return;
+      e.stopPropagation();noteInput();
+      chs.forEach(function(q){if(q!==undefined&&q>=0) setT(q,0,false)});
+    });
+  }
+  function bdPad(a,b,m,hold,tiltOk,bi){
+    var it={c:a,d:b,m:m};
+    var jp=document.createElement('div');jp.className='pad';
+    var kn=document.createElement('div');kn.className='knob rest';jp.appendChild(kn);
+    var pid=null;
+    var geo=null, jq=null, jraf=0;
+    var jgeo=function(){var r=jp.getBoundingClientRect();geo={cx:r.left+r.width/2,cy:r.top+r.height/2,R:Math.max(8,(r.width-kn.offsetWidth*0.6)/2-7)}};
+    var jmove=function(e){
+      if(e&&e.type==='pointermove'){jq={clientX:e.clientX,clientY:e.clientY};if(!jraf) jraf=requestAnimationFrame(function(){jraf=0;if(jq&&pid!==null){var q=jq;jq=null;jstep(q)}});return}
+      if(!geo) jgeo();jstep(e);
+    };
+    var jstep=function(e){
+      if(!geo) jgeo();
+      var R=geo.R, dx=e.clientX-geo.cx, dy=e.clientY-geo.cy, d=Math.hypot(dx,dy);
+      if(d>R){dx*=R/d;dy*=R/d}
+      var jc=bi&&bi.jc;
+      if(jc&&jc.ax==='x') dy=0;
+      if(jc&&jc.ax==='y') dx=0;
+      kn.style.transform='translate('+dx+'px,'+dy+'px)';
+      it.y=-dy/R;
+      var sh=jshape((tiltOk&&tiltActive())?tiltVal():dx/R,-dy/R,jc);
+      noteInput();applyJoy(it,sh[0],sh[1]);
+    };
+    jp.addEventListener('pointerdown',function(e){
+      pid=e.pointerId;geo=null;try{jp.setPointerCapture(e.pointerId)}catch(_){}
+      if(tiltOk){TILT.zero=null;BD_TILT.cur=it}
+      kn.classList.remove('rest');jmove(e)});
+    jp.addEventListener('pointermove',function(e){if(e.pointerId===pid) jmove(e)});
+    var jend=function(e){
+      if(e.pointerId!==pid) return;
+      if(jq){var q0=jq;jq=null;jstep(q0)}
+      pid=null;
+      if(tiltOk&&BD_TILT.cur===it) BD_TILT.cur=null;
+      if(hold) return;
+      kn.classList.add('rest');kn.style.transform='translate(0,0)';jp.style.setProperty('--m','0');applyJoy(it,0,0);
+    };
+    jp.addEventListener('pointerup',jend);jp.addEventListener('pointercancel',jend);
+    if(hold) applyJoy(it,0,0);
+    BD_PADS.push({jp:jp,kn:kn,it:it,busy:function(){return pid!==null},lx:null,ly:null});
+    return jp;
+  }
+  // Joysticks on the board show what their channels are doing when no finger is on them
+  // (gamepad, recording playback, another widget on the same channel)
+  function paintPads(){
+    BD_PADS.forEach(function(p){
+      if(!p.jp.isConnected) return;
+      if(p.busy()){if(p.kn.classList.contains('kglow')) p.kn.classList.remove('kglow');p.lx=null;return}
+      var it=p.it, z=(C.zone||100)/100||1, a=(rt.t[it.c]||0)/100/z, b=it.d>=0?(rt.t[it.d]||0)/100/z:0, x, y;
+      if(it.m==='axis'){y=a;x=b}else{y=(a+b)/2;x=(a-b)/2}
+      x=Math.max(-1,Math.min(1,x));y=Math.max(-1,Math.min(1,y));
+      var m=Math.hypot(x,y);if(m>1){x/=m;y/=m}
+      x=Math.round(x*100)/100;y=Math.round(y*100)/100;
+      if(x===p.lx&&y===p.ly) return;
+      p.lx=x;p.ly=y;
+      var nowR=Date.now();if(!p.R||nowR-p.Rt>1500){p.R=Math.max(8,(p.jp.offsetWidth-p.kn.offsetWidth*0.6)/2-7);p.Rt=nowR}var R=p.R;
+      p.kn.classList.toggle('rest',x===0&&y===0);
+      p.kn.style.transform='translate('+(x*R)+'px,'+(-y*R)+'px)';
+      var gm=Math.min(1,Math.hypot(x,y));p.kn.classList.toggle('kglow',gm>0.02);p.kn.style.setProperty('--g',gm.toFixed(2));
+    });
+  }
+
+  /* ---------- Dashboard: free-position widgets (separate layouts for landscape and portrait) ---------- */
+  function dashOn(){
+    if(C.layout!=='board') return false;
+    return dashSetMode()&&!!C.dash;
+  }
+  function dashSize(it){
+    var k=it.k, wd=it.w===2, L=DG.k==='g';
+    if(k==='j') return L?[12,16]:[16,18];
+    if(k==='d') return L?[24,16]:[24,14];
+    if(k==='s'||k==='m') return it.v?[6,16]:(L&&!wd?[16,6]:[24,6]);
+    if(k==='t') return it.y==='dir'?(L?[18,6]:[24,6]):(L?(wd?[12,6]:[8,6]):[12,6]);
+    if(k==='e') return [8,8];
+    if(k==='w') return L?[18,7]:[24,7];
+    if(k==='a') return L?[14,6]:[24,6];
+    if(k==='y') return it.sc?(L?[18,12]:[24,12]):(L?[18,6]:[24,6]);
+    if(k==='f') return L?[10,12]:[14,12];
+    if(k==='i') return it.hz?(L?[16,7]:[24,7]):(L?[8,14]:[10,14]);
+    if(k==='k') return L?[20,12]:[24,12];
+    if(k==='n') return L?[10,12]:[14,12];
+    if(k==='rs') return L?[10,12]:[14,12];
+    if(k==='st') return L?[10,12]:[14,12];
+    if(k==='lv') return L?[8,14]:[10,14];
+    if(k==='dp') return L?[12,14]:[16,14];
+    if(k==='g') return L?[24,6]:[24,7];
+    if(k==='z') return L?[10,6]:[16,6];
+    if(k==='ps') return L?[9,12]:[12,12];
+    return L?[8,6]:[12,6];
+  }
+  function dashHitsG(a,b){return a[0]<b[0]+b[2]&&b[0]<a[0]+a[2]&&a[1]<b[1]+b[3]&&b[1]<a[1]+a[3]}
+  function dashHits(it,g){return C.board.some(function(o){return o!==it&&o[DG.k]&&dashHitsG(o[DG.k],g)})}
+  var DASH_TINY=0;
+  function dashFind(it,f){
+    var sz=dashSize(it), mn=dmin(it);
+    if(DASH_TINY) mn=[Math.max(3,Math.round(mn[0]*DASH_TINY)),Math.max(3,Math.round(mn[1]*DASH_TINY))];
+    var w0=Math.max(mn[0],Math.round(sz[0]*f)), h0=Math.max(mn[1],Math.round(sz[1]*f));
+    if(it.k==='e'&&!dashHits(it,[DG.x-w0,DG.y-h0,w0,h0])) return [DG.x-w0,DG.y-h0,w0,h0];
+    for(var shrink=0;shrink<12;shrink++){
+      var w=Math.max(mn[0],w0-shrink*2), h=Math.max(mn[1],h0-shrink*2);
+      for(var y=0;y<=DG.y-h;y++) for(var x=0;x<=DG.x-w;x++){
+        var t=[x,y,w,h];
+        if(!dashHits(it,t)) return t;
+      }
+      if(w===mn[0]&&h===mn[1]) break;
+    }
+    return null;
+  }
+  // Place widgets that have no position yet. Never overlap: if they do not fit,
+  // try again with every new widget smaller and biggest first. Returns false if
+  // some widget still could not get its own space.
+  function dashAuto(){
+    var list=C.board.filter(function(o){return !o[DG.k]});
+    if(!list.length) return true;
+    var byArea=list.slice().sort(function(a,b){
+      if(a.k==='e'||b.k==='e') return (b.k==='e'?1:0)-(a.k==='e'?1:0);
+      var A=dashSize(a),B=dashSize(b);return B[0]*B[1]-A[0]*A[1]});
+    var tries=[[list,1],[byArea,1],[byArea,.85],[byArea,.7],[byArea,.55],[byArea,.4],[byArea,0],[byArea,0,.9],[byArea,0,.8],[byArea,0,.7],[byArea,0,.6],[byArea,0,.5],[byArea,0,.45]];
+    var ok=false;
+    for(var t=0;t<tries.length&&!ok;t++){
+      DASH_TINY=tries[t][2]||0;
+      list.forEach(function(o){delete o[DG.k]});
+      var order=tries[t][0].slice().sort(function(a,b){return (b.k==='e'?1:0)-(a.k==='e'?1:0)});
+      ok=true;
+      for(var i=0;i<order.length;i++){var g=dashFind(order[i],tries[t][1]);if(!g){ok=false;break}order[i][DG.k]=g}
+    }
+    var usedTiny=DASH_TINY;DASH_TINY=0;
+    if(ok&&usedTiny) toast('Many widgets, so some were made smaller. Remove one to make them bigger.',5000);
+    if(!ok){
+      list.forEach(function(o){if(!o[DG.k]){var mn=dmin(o);o[DG.k]=[0,0,mn[0],mn[1]]}});
+      toast('Too many widgets to fit on the screen. Remove one.');
+    }
+    save();
+    return ok;
+  }
+  function dashRefit(it){
+    if(!it[DG.k]) return;
+    var sz=dashSize(it), mn=dmin(it);
+    var w=Math.max(mn[0],Math.min(sz[0],DG.x)), h=Math.max(mn[1],Math.min(sz[1],DG.y));
+    var x=Math.min(it[DG.k][0],DG.x-w), y=Math.min(it[DG.k][1],DG.y-h), g=[x,y,w,h];
+    if(!dashHits(it,g)){it[DG.k]=g;return}
+    delete it[DG.k];dashAuto();
+  }
+  var DCELL={w:30,h:24,pw:720,ph:288};
+  function dashCell(){
+    var par=bdGrid.parentElement, pw=(par&&par.clientWidth)||window.innerWidth;
+    var hd=document.querySelector('header'), top=hd?hd.getBoundingClientRect().bottom:0;
+    DCELL.pw=Math.floor(pw);DCELL.ph=Math.floor(Math.max(150,window.innerHeight-top-12-(DG.k==='gp'?52:0)));
+    DCELL.w=DCELL.pw/DG.x;DCELL.h=DCELL.ph/DG.y;
+  }
+  function dashStyle(el,g){
+    var x0=Math.round(g[0]*DCELL.w), x1=Math.round((g[0]+g[2])*DCELL.w), y0=Math.round(g[1]*DCELL.h), y1=Math.round((g[1]+g[3])*DCELL.h);
+    el.style.left=x0+'px';el.style.top=y0+'px';el.style.width=(x1-x0)+'px';el.style.height=(y1-y0)+'px';
+  }
+  function dashFit(){
+    var on=dashOn();
+    document.documentElement.classList.toggle('dash',on);
+    document.documentElement.classList.toggle('dash-l',on&&DG.k==='g');
+    if(on){try{window.scrollTo(0,0);document.documentElement.scrollTop=0;document.body.scrollTop=0}catch(_){}}
+    if(!bdGrid) return;
+    if(!on){var dbar0=$('#dashBar');if(dbar0) dbar0.style.top='';bdGrid.style.height='';bdGrid.style.width='';bdGrid.style.margin='';bdGrid.style.backgroundSize='';return}
+    dashCell();
+    var hdr=document.querySelector('header'), htop=hdr?hdr.getBoundingClientRect().bottom:51;
+    var bt0=$('#btBtn'), dbar=$('#dashBar');
+    if(dbar){var bq=bt0?bt0.getBoundingClientRect():null;if(DG.k==='gp') dbar.style.top=''; else dbar.style.top=(bq&&bq.height?Math.round(bq.top+bq.height/2-16):Math.max(0,Math.round((htop-3-32)/2)))+'px'}
+    bdGrid.style.width=DCELL.pw+'px';bdGrid.style.height=DCELL.ph+'px';bdGrid.style.margin='0';
+    bdGrid.style.backgroundSize=DCELL.w+'px '+DCELL.h+'px';
+    bdW.forEach(function(w){if(w.el&&w.it&&w.it[DG.k]) dashStyle(w.el,w.it[DG.k])});
+    if(typeof bdGrid.querySelectorAll!=='function') return;
+    [].slice.call(bdGrid.querySelectorAll('.dw')).forEach(function(el){
+      if(el.__rsz) el.__rsz();
+      var hh=0, hd2=el.querySelector('.bdw-h');
+      if(hd2) hh=hd2.offsetHeight+3;
+      var ddt=el.querySelector('.dialdots');if(ddt&&el.querySelector('.pad')) hh+=ddt.offsetHeight+3;
+      var aw=el.clientWidth-14, ah=el.clientHeight-10-hh;
+      var esb=el.querySelector('.dw-es');
+      if(esb){var es0=Math.max(20,Math.floor(Math.min(el.clientWidth,el.clientHeight)-4));esb.style.width=es0+'px';esb.style.height=es0+'px';esb.style.alignSelf='center'}
+      var pads=[].slice.call(el.querySelectorAll('.pad'));
+      if(pads.length){
+        var sp=Math.max(30,Math.min(pads.length>1?(aw-42)/2:aw-18,ah-18));
+        sp=Math.floor(sp);
+        pads.forEach(function(q){q.style.width=sp+'px';q.style.height=sp+'px';q.style.marginTop=Math.max(0,Math.floor((ah-sp)/2))+'px';q.style.marginLeft=q.style.marginRight='0'});
+      }
+      var bv=el.querySelector('.bdv');
+      if(bv){
+        var inp=bv.firstChild, bh=Math.max(60,ah);
+        bv.style.height=bh+'px';
+        if(inp){
+          inp.style.zoom='1';var tk=inp.offsetHeight||46;
+          var kv=Math.max(window.innerHeight<340?0.6:1,Math.min(4,aw/tk,bh/(2.6*tk))), lw=bh/kv;
+          inp.style.zoom=String(kv);inp.style.width=lw+'px';inp.style.marginLeft=(-lw/2)+'px';inp.style.marginTop=(-tk/2)+'px';
+        }
+      }else if(el.querySelector){
+        var ct=el.querySelector(':scope > input[type=range], :scope > .tgl, :scope > .tgdir, :scope > .qbtn');
+        if(ct){
+          ct.style.zoom='1';ct.style.width='';
+          var cb=ct.offsetHeight||44, isIn=ct.matches&&ct.matches('input'), mw=ct.classList.contains('tgdir')?230:170, kc=Math.max(window.innerHeight<340?0.6:1,Math.min(4,ah/cb,isIn?aw/(2.6*cb):aw/mw));
+          ct.style.zoom=String(kc);ct.style.width=(aw/kc)+'px';
+        }
+      }
+    });
+  }
+  function dashGuides(it,g){
+    var old=bdGrid.querySelectorAll('.dguide');for(var i=0;i<old.length;i++) old[i].remove();
+    if(!it||!g) return;
+    var xs={},ys={};
+    C.board.forEach(function(o){var h=o[DG.k];if(o===it||!h) return;
+      [h[0],h[0]+h[2]].forEach(function(v){xs[v]=1});[h[1],h[1]+h[3]].forEach(function(v){ys[v]=1});
+      xs['c'+(h[0]*2+h[2])]=h[0]+h[2]/2;ys['c'+(h[1]*2+h[3])]=h[1]+h[3]/2});
+    var mine={x:[g[0],g[0]+g[2]],y:[g[1],g[1]+g[3]]}, cx=g[0]+g[2]/2, cy=g[1]+g[3]/2;
+    function line(v,vert){var d=document.createElement('div');d.className='dguide '+(vert?'v':'h');
+      if(vert){d.style.left=Math.round(v*DCELL.w)+'px'}else{d.style.top=Math.round(v*DCELL.h)+'px'}bdGrid.appendChild(d)}
+    var done={};
+    mine.x.forEach(function(v){if(xs[v]&&!done['x'+v]&&v>0&&v<DG.x){done['x'+v]=1;line(v,true)}});
+    mine.y.forEach(function(v){if(ys[v]&&!done['y'+v]&&v>0&&v<DG.y){done['y'+v]=1;line(v,false)}});
+    Object.keys(xs).forEach(function(k){if(k.charAt(0)==='c'&&xs[k]===cx&&!done['x'+cx]){done['x'+cx]=1;line(cx,true)}});
+    Object.keys(ys).forEach(function(k){if(k.charAt(0)==='c'&&ys[k]===cy&&!done['y'+cy]){done['y'+cy]=1;line(cy,false)}});
+  }
+  function dashDrag(el,it){
+    el.addEventListener('pointerdown',function(e){
+      if(e.target.closest&&e.target.closest('.bdw-ed,.bdw-lbl')) return;
+      var mode=e.target.classList.contains('dw-rs')?'rs':'mv';
+      var cw=DCELL.w, ch=DCELL.h;
+      var g0=it[DG.k].slice(), g1=g0.slice(), sx=e.clientX, sy=e.clientY, pid=e.pointerId, mn=dmin(it);
+      try{el.setPointerCapture(pid)}catch(_){}
+      el.classList.add('moving');
+      var mv=function(ev){
+        if(ev.pointerId!==pid) return;
+        var dx=Math.round((ev.clientX-sx)/cw), dy=Math.round((ev.clientY-sy)/ch), n=g0.slice();
+        if(mode==='mv'){n[0]=clamp(g0[0]+dx,0,DG.x-g0[2]);n[1]=clamp(g0[1]+dy,0,DG.y-g0[3])}
+        else{n[2]=clamp(g0[2]+dx,mn[0],DG.x-g0[0]);n[3]=clamp(g0[3]+dy,mn[1],DG.y-g0[1])}
+        if(dashHits(it,n)){
+          var nx=n.slice();nx[1]=g1[1];nx[3]=g1[3];
+          var ny=n.slice();ny[0]=g1[0];ny[2]=g1[2];
+          if(!dashHits(it,nx)) n=nx; else if(!dashHits(it,ny)) n=ny; else n=g1.slice();
+        }
+        g1=n;dashStyle(el,n);dashGuides(it,n);
+      };
+      var up=function(ev){
+        if(ev.pointerId!==pid) return;
+        var tap=Math.hypot(ev.clientX-sx,ev.clientY-sy)<6;
+        el.removeEventListener('pointermove',mv);el.removeEventListener('pointerup',up);el.removeEventListener('pointercancel',up);
+        el.classList.remove('moving','bad');
+        dashGuides(null);
+        if(tap&&ev.type==='pointerup'){bdPick=(bdPick===it&&mode==='mv')?null:it;bdPickAt=Date.now();syncBoard();return}
+        if(bdPick!==it) bdPickAt=Date.now();
+        bdPick=it;
+        if(dashHits(it,g1)){dashStyle(el,g0)}else if(g1.join()!==g0.join()){
+          var snap=JSON.parse(JSON.stringify(C.board));snap[C.board.indexOf(it)][DG.k]=g0.slice();
+          BD_UNDO.push({board:snap,msg:mode==='mv'?'Move undone.':'Size undone.'});if(BD_UNDO.length>20)BD_UNDO.shift();
+          it[DG.k]=g1;save();syncBoard();return}
+        dashFit();
+      };
+      el.addEventListener('pointermove',mv);el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
+      e.preventDefault();
+    });
+  }
+  function dashPlace(el,it){
+    el.classList.add('dw');
+    if(it.k==='e') el.classList.add('estopw');
+    dashStyle(el,it[DG.k]);
+    if(bdEditing){
+      el.classList.add('dw-ed');if(it===bdPick) el.classList.add('sel');
+      var rs=document.createElement('div');rs.className='dw-rs';rs.setAttribute('aria-hidden','true');el.appendChild(rs);
+      var rsz=function(){var m=Math.floor(Math.min(el.clientWidth,el.clientHeight)*0.42);rs.style.width=rs.style.height=Math.max(18,Math.min(44,m))+'px'};
+      rsz();if(window.requestAnimationFrame) requestAnimationFrame(rsz);el.__rsz=rsz;
+      dashDrag(el,it);
+    }
+  }
+  function bdMove(it,d){
+    var n=C.board.indexOf(it), m=n+d;if(n<0||m<0||m>=C.board.length) return;
+    var t=C.board[n];C.board[n]=C.board[m];C.board[m]=t;save();syncBoard();
+  }
+  function bdToolbar(it){
+    var ed=document.createElement('div');ed.className='bdw-ed';
+    var dash=dashOn();
+    if(dash&&it!==bdPick){ed.classList.add('empty');return ed}
+    var defs=dash?[]:[['◀','Move earlier',function(){bdMove(it,-1)}],['▶','Move later',function(){bdMove(it,1)}]];
+    if(!dash&&it.k!=='d') defs.push(['↔','Wide or normal',function(){it.w=it.w===2?1:2;save();syncBoard()}]);
+    if(it.k==='s'||it.k==='m') defs.push(['\u2195','Vertical or horizontal',function(){it.v=!it.v;if(dashOn()) dashRefit(it);save();syncBoard()},!!it.v]);
+    if(it.k==='s'||it.k==='j'||it.k==='d'||it.k==='m') defs.push(['0','Return to 0 on release',function(){
+      it.hold=!it.hold;
+      (it.t?it.t.map(function(z){return z.c}):[it.c,it.d,it.e,it.f]).forEach(function(q){if(q!==undefined&&q>=0) setT(q,0,false)});
+      save();syncBoard();
+    },!it.hold]);
+    if(it.k==='j'||it.k==='d') defs.push(['\u2699','Joystick settings',function(){jcShow(it)}]);
+    if(it.k==='g'||it.k==='lv') defs.push(['\u2699','Gear settings',function(){gearEdit(it)}]);
+    else if(WSPEC[it.k]) defs.push(['\u2699','Widget settings',function(){wsEdit(it)}]);
+    if(it.k!=='e') defs.push(['\u270E','Rename widget',function(e){bdRename(it,e.target.closest('.bdw-h'))}]);
+    defs.push(['✕','Remove',function(){var q=C.board.indexOf(it);if(q>=0){BD_UNDO.push({it:JSON.parse(JSON.stringify(it)),q:q});if(BD_UNDO.length>20)BD_UNDO.shift();C.board.splice(q,1)}save();syncBoard()}]);
+    defs.forEach(function(d){
+      var b=document.createElement('button');b.type='button';b.className='btn';b.textContent=d[0];b.setAttribute('aria-label',d[1]);
+      if(d.length>3) b.setAttribute('aria-pressed',String(d[3]));
+      b.addEventListener('click',function(e){if(dashOn()&&Date.now()-bdPickAt<150){e.preventDefault();return}d[2](e)});ed.appendChild(b);
+    });
+    return ed;
+  }
+  function bdRename(it,head){
+    if(!head||head.querySelector('.bdw-lbl')) return;
+    var inp=document.createElement('input');inp.type='text';inp.className='bdw-lbl txt';inp.maxLength=20;
+    inp.placeholder='Widget name (empty = default)';inp.setAttribute('aria-label','Widget name');inp.autocomplete='off';
+    inp.value=it.lbl||'';head.appendChild(inp);
+    var done=false;
+    function fin(save){
+      if(done) return;done=true;
+      if(save){var v=inp.value.replace(/\s+/g,' ').trim().slice(0,20);if(v) it.lbl=v; else delete it.lbl;save_();}
+      syncBoard();
+    }
+    function save_(){save()}
+    inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();fin(true)}else if(e.key==='Escape'){e.preventDefault();fin(false)}});
+    inp.addEventListener('blur',function(){fin(true)});
+    inp.addEventListener('pointerdown',function(e){e.stopPropagation()});
+    setTimeout(function(){try{inp.focus();inp.select()}catch(_){}},0);
+  }
+  function bdHead(el,text,it,withOut){
+    if(!text&&!bdEditing&&!withOut) return null;
+    var head=document.createElement('div');head.className='bdw-h';
+    var nm=document.createElement('span');nm.textContent=(it&&it.lbl)||text||'';if(it&&it.lbl) nm.title=text||'';
+    else if(text){
+      // "Dial · A · Left wheel" becomes a channel chip plus the channel name; the full text stays as the tooltip
+      var cm=/^(?:(.+?)\s\u00b7\s)?([A-F])\s\u00b7\s(.+)$/.exec(text);
+      if(cm){nm.title=text;nm.textContent='';var ch0=document.createElement('i');ch0.className='bdw-chip';ch0.textContent=cm[2];nm.appendChild(ch0);nm.appendChild(document.createTextNode(cm[3]))}
+    }
+    head.appendChild(nm);
+    var out=null;
+    if(bdEditing) head.appendChild(bdToolbar(it));
+    else if(withOut){out=document.createElement('output');out.textContent='0';head.appendChild(out)}
+    el.appendChild(head);
+    return out;
+  }
+  function syncBoard(){
+    if(!bdGrid||!C.board) return;
+    bdFill();
+    bdGrid.innerHTML='';bdW=[];BD_PADS=[];
+    var dash0=dashOn();
+    bdEditor.hidden=dash0?!(bdEditing&&dashAdd):!bdEditing;
+    $('#dbAdd').hidden=!bdEditing;
+    $('#dbBack').hidden=!BD_UNDO.length;
+    $('#dbTpl').hidden=!bdEditing;
+    $('#dbTidy').hidden=!(bdEditing&&dash0);
+    var dm=$('#dbModel');if(dm){dm.hidden=bdEditing;dm.innerHTML='';store.profiles.forEach(function(p){var o=document.createElement('option');o.value=p.id;o.textContent=p.label||p.name;dm.appendChild(o)});dm.value=store.active}
+    $('#dbAdd').setAttribute('aria-pressed',String(dashAdd&&bdEditing));
+    if(!bdEditing) bdPick=null;
+    bdEditBtn.setAttribute('aria-pressed',String(bdEditing));
+    bdEditBtn.textContent=bdEditing?'Done editing':'Edit board';
+    var dash=dashOn();
+    if(dash){dashAuto();dashCell();
+      // arc meters from older builds (old default 14x10) become the same size as the dial and wheel (10x12)
+      if(DG.k==='g'){var mig=false;C.board.forEach(function(o){
+        if(o.k==='f'&&o.g&&o.g[2]===14&&o.g[3]===10){var t=[o.g[0],o.g[1],10,12];if(t[1]+12<=DG.y&&!dashHits(o,t)){o.g=t;mig=true}}});
+        if(mig) save()}
+    }
+    bdGrid.classList.toggle('editing',dash&&bdEditing);
+    $('#dbEdit').setAttribute('aria-pressed',String(bdEditing));
+    $('#dbEdit').textContent=bdEditing?'Done':'Edit';
+    $('#bdDash').checked=!!C.dash;
+    var tiltTaken=false;
+    C.board.forEach(function(it){
+      var el=document.createElement('div');
+      el.className='bdw'+((it.w===2||it.k==='d')&&!dash?' w2':'')+(bdEditing?' editing':'');
+      var w={it:it,drag:false,out:null,rng:null};
+      if(it.k==='e'){
+        var eb=document.createElement('button');eb.type='button';eb.className='dw-es';eb.setAttribute('aria-label','Emergency stop');
+        eb.addEventListener('click',function(){setEstop(!S.estop)});
+        el.appendChild(eb);w.es=eb;
+        if(bdEditing) el.appendChild(bdToolbar(it));
+      }else if(it.k==='j'){
+        if(!isActive(it.c)||(it.d>=0&&!isActive(it.d))) return;
+        el.classList.add('padw');
+        bdHead(el,(it.m==='tank'?'Tank':'Stick')+' · '+tagOf(it.c)+(it.d>=0?'+'+tagOf(it.d):''),it,false);
+        var tp=C.tilt.all||!tiltTaken;tiltTaken=true;
+        el.appendChild(bdPad(it.c,it.d,it.m,it.hold,tp,it));
+        if(BD_SL&&BD_SL.it===it){el.classList.add(BD_SL.d>0?'slL':'slR');BD_SL=null}
+        var jch=activeIdx(),jprs=[];
+        for(var jq=0;jq<jch.length;jq+=2) jprs.push([jch[jq],jch[jq+1]===undefined?-1:jch[jq+1]]);
+        var jcur=-1;jprs.forEach(function(pr,qi){if(pr[0]===it.c) jcur=qi});
+        if(it.sw&&jprs.length>1&&jcur>=0){
+          // Swipe sideways on the card (outside the pad) to move the joystick to the next pair of channels.
+          var jdg=document.createElement('div');jdg.className='dialdots';
+          jprs.forEach(function(pr,qi){var di=document.createElement('i');if(qi===jcur) di.className='on';di.title=tagOf(pr[0])+(pr[1]>=0?'+'+tagOf(pr[1]):'');if(qi>0&&((pr[0]/PER)|0)!==((jprs[qi-1][0]/PER)|0)) di.style.marginLeft='6px';jdg.appendChild(di)});
+          el.appendChild(jdg);
+          var jsx=null,jsy=0;el.style.touchAction='pan-y';
+          el.addEventListener('pointerdown',function(e){if(bdEditing||(e.target.closest&&e.target.closest('.pad'))){jsx=null;return}jsx=e.clientX;jsy=e.clientY});
+          el.addEventListener('pointerup',function(e){
+            if(jsx===null) return;var dx=e.clientX-jsx,dy=e.clientY-jsy;jsx=null;
+            if(Math.abs(dx)>36&&Math.abs(dx)>1.6*Math.abs(dy)&&!S.estop&&!S.play){
+              var nx=(jcur+(dx<0?1:jprs.length-1))%jprs.length,np=jprs[nx];
+              [it.c,it.d].forEach(function(c){if(c>=0) setT(c,0,false)});
+              it.c=np[0];it.d=np[1];BD_SL={it:it,d:dx<0?1:-1};save();syncBoard();feedback('ok');
+            }
+          });
+          el.addEventListener('pointercancel',function(){jsx=null});
+        }
+      }else if(it.k==='d'){
+        var all=[it.c,it.d,it.e,it.f];
+        for(var q=0;q<4;q++) if(all[q]>=0&&!isActive(all[q])) return;
+        bdHead(el,'Double stick',it,false);
+        var pr=document.createElement('div');pr.className='bd-pads';
+        var tpd=C.tilt.all||!tiltTaken;tiltTaken=true;
+        pr.appendChild(bdPad(it.c,it.d,it.m,it.hold,tpd,it));pr.appendChild(bdPad(it.e,it.f,it.m,it.hold,!!C.tilt.all,it));
+        el.appendChild(pr);
+      }else if(it.k==='l'){
+        var lc=it.c;
+        if(!isActive(lc)) return;
+        w.out=bdHead(el,'Light · '+tagOf(lc),it,true);
+        var lb=document.createElement('button');lb.type='button';lb.className='qbtn lbtn';
+        lb.addEventListener('click',function(){
+          noteInput();if(S.estop||S.play) return;
+          if(C.ch[lc].kind!=='light'){C.ch[lc].kind='light';save();syncChannel(lc)}
+          // One tap = next mode: Off, Low, Medium, Full, Slow blink, Off
+          var md=lightMode(lc), nx=(md+1)%LMODES.length, L=LMODES[nx];
+          var bl=L.blink?'slow':'off';
+          if(C.ch[lc].blink!==bl){C.ch[lc].blink=bl;if(refs[lc]&&refs[lc].ltBl) refs[lc].ltBl.value=bl;save()}
+          setT(lc,L.v,false);
+        });
+        (function(){
+          var lt=0,lpDone=false;
+          function lpClose(){var m=document.getElementById('lpMenu');if(m)m.remove()}
+          function lpOpen(){
+            lpClose();lpDone=true;
+            var m=document.createElement('div');m.id='lpMenu';m.className='lpmenu';
+            [['Slow blink',100,'slow'],['Fast blink',100,'fast'],['Pulse',100,'pulse']].forEach(function(o){
+              var b=document.createElement('button');b.type='button';b.className='btn';b.textContent=o[0];
+              b.addEventListener('click',function(){
+                if(S.estop||S.play){lpClose();return}
+                if(C.ch[lc].kind!=='light'){C.ch[lc].kind='light';syncChannel(lc)}
+                C.ch[lc].blink=o[2];if(refs[lc]&&refs[lc].ltBl) refs[lc].ltBl.value=o[2];save();
+                setT(lc,o[1],false);lpClose();feedback('ok');
+              });
+              m.appendChild(b);
+            });
+            var r=lb.getBoundingClientRect();
+            document.body.appendChild(m);
+            var mh=m.offsetHeight,mw=m.offsetWidth;
+            m.style.left=Math.max(6,Math.min(innerWidth-mw-6,r.left+r.width/2-mw/2))+'px';
+            m.style.top=Math.max(6,Math.min(innerHeight-mh-6,r.top))+'px';
+            setTimeout(function(){document.addEventListener('pointerdown',function f(e){if(!m.contains(e.target)){lpClose();document.removeEventListener('pointerdown',f,true)}},true)},0);
+          }
+          lb.addEventListener('pointerdown',function(){lpDone=false;clearTimeout(lt);lt=setTimeout(lpOpen,500)});
+          ['pointerup','pointercancel','pointerleave'].forEach(function(ev){lb.addEventListener(ev,function(){clearTimeout(lt)})});
+          lb.addEventListener('contextmenu',function(e){e.preventDefault()});
+          lb.addEventListener('click',function(e){if(lpDone){e.stopImmediatePropagation();lpDone=false}},true);
+        })();
+        el.appendChild(lb);w.lb=lb;
+        var lvl=document.createElement('div');lvl.className='lvl';lvl.setAttribute('aria-hidden','true');
+        for(var li=0;li<4;li++){var lq=document.createElement('i');lvl.appendChild(lq)}
+        lb.appendChild(lvl);w.lvl=lvl;
+      }else if(it.k==='b'){
+        var bc=it.c;
+        if(!isActive(bc)) return;
+        bdHead(el,tagOf(bc)+' · '+C.ch[bc].name,it,false);
+        var tbn=document.createElement('button');tbn.type='button';tbn.className='qbtn turbo';
+        var tsp=document.createElement('span');tsp.textContent='TURBO';tbn.appendChild(tsp);
+        var tdown=false, tprev=0;
+        var tpress=function(){
+          if(tdown||S.estop||S.play) return;
+          tdown=true;noteInput();tprev=rt.t[bc];S.turbo[bc]=true;tbn.classList.add('on');
+          setT(bc,tprev<0?-(it.p||100):(it.p||100),false);
+        };
+        var tlift=function(){
+          if(!tdown) return;
+          tdown=false;tbn.classList.remove('on');
+          setT(bc,tprev,false);S.turbo[bc]=false;
+        };
+        tbn.addEventListener('pointerdown',function(e){
+          e.preventDefault();try{tbn.setPointerCapture(e.pointerId)}catch(_){}
+          if(it.lock&&tdown){if(S.estop||rt.t[bc]===0){tdown=false;tbn.classList.remove('on');S.turbo[bc]=false}else{tlift();return}}
+          tpress();
+        });
+        ['pointerup','pointercancel','lostpointercapture','blur'].forEach(function(ev){tbn.addEventListener(ev,function(){if(!it.lock) tlift()})});
+        tbn.addEventListener('contextmenu',function(e){e.preventDefault()});
+        el.appendChild(tbn);
+      }else if(it.k==='w'){
+        var wc=it.c, wd=it.d;
+        if(!isActive(wc)||!isActive(wd)) return;
+        bdHead(el,'Switch \u00b7 '+tagOf(wc)+' / '+tagOf(wd),it,false);
+        var sp=document.createElement('div');sp.className='spdt';
+        var la=document.createElement('span');la.className='spl a';la.textContent=tagOf(wc)+'\n'+C.ch[wc].name;
+        var lb2=document.createElement('span');lb2.className='spl b';lb2.textContent=tagOf(wd)+'\n'+C.ch[wd].name;
+        var sw=document.createElement('button');sw.type='button';sw.className='spsw';sw.setAttribute('role','switch');sw.setAttribute('aria-label','Switch '+tagOf(wc)+' or '+tagOf(wd));
+        var kn=document.createElement('i');sw.appendChild(kn);
+        var spSet=function(pos){
+          noteInput();if(S.estop||S.play) return;
+          var pw=it.p||100;
+          setT(wc,pos==='a'?(it.ra?-pw:pw):0,false);
+          setT(wd,pos==='b'?(it.rb?-pw:pw):0,false);
+          feedback('ok');
+        };
+        var spPos=function(){return rt.t[wc]!==0&&rt.t[wd]===0?'a':(rt.t[wd]!==0&&rt.t[wc]===0?'b':'')};
+        sw.addEventListener('click',function(e){
+          var r=sw.getBoundingClientRect(), side=(e.clientX-r.left)<r.width/2?'a':'b', cur=spPos();
+          if(e.detail===0) side=cur==='a'?'b':'a';
+          if(side===cur) spSet(it.mid?'':side); else spSet(side);
+        });
+        sp.appendChild(la);sp.appendChild(sw);sp.appendChild(lb2);el.appendChild(sp);
+        w.spdt={it:it,sw:sw,la:la,lb:lb2,kn:kn,pos:spPos};
+      }else if(it.k==='a'){
+        var ac=it.c;
+        if(!isActive(ac)) return;
+        bdHead(el,'Auto-stop \u00b7 '+tagOf(ac)+' \u00b7 '+C.ch[ac].name,it,false);
+        var ab=document.createElement('button');ab.type='button';ab.className='sesst';
+        var at=document.createElement('b');var as=document.createElement('small');ab.appendChild(at);ab.appendChild(as);
+        ab.addEventListener('click',function(){var o=[5,10,20,30,60];it.s=o[(o.indexOf(it.s)+1)%o.length];AUTOT[ac]=0;save();paintBoard()});
+        el.appendChild(ab);w.auto={t:at,s:as,it:it};
+      }else if(it.k==='y'){
+        var yc=it.c;
+        if(!isActive(yc)) return;
+        w.out=bdHead(el,'Ramp \u00b7 '+tagOf(yc)+' \u00b7 '+C.ch[yc].name+' \u00b7 '+(it.p||50)+'% \u00b7 '+it.d+'s',it,true);
+        var ybs=dirRow(el,w,it,function(dir){
+          delete RAMP[yc];
+          if(dir===0){delete RAMPLAST[yc];setT(yc,0,false);return}
+          RAMP[yc]={t0:performance.now(),from:rt.t[yc],to:wOut(it,dir*(it.p||50)),d:it.d};RAMPLAST[yc]={to:RAMP[yc].to,d:it.d,s:HCNT[yc]||0};
+        });
+        w.yr={c:yc,bs:ybs,it:it};
+        if(it.sc) w.yr.m=meterBuild(el,{k:'k',c:yc});
+      }else if(it.k==='f'||it.k==='i'||it.k==='k'){
+        var mtc=it.c;
+        if(!isActive(mtc)) return;
+        var mhd=bdHead(el,(it.k==='f'?'Arc meter':it.k==='i'?'LED meter':'Scope')+' \u00b7 '+tagOf(mtc)+' \u00b7 '+C.ch[mtc].name,it,it.k==='i');
+        el.classList.add('mtrw');if(it.k==='i'&&it.hz) el.classList.add('hzw');
+        w.mtr=meterBuild(el,it);w.mtr.hd=mhd;
+      }else if(it.k==='n'){
+        var nc=it.c;
+        if(!isActive(nc)) return;
+        w.out=bdHead(el,'Dial \u00b7 '+tagOf(nc)+' \u00b7 '+C.ch[nc].name,it,true);
+        var nw=document.createElement('div');nw.className='dialw';
+        var nbx=document.createElement('div');nbx.className='dialbox';
+        var nsv=document.createElementNS('http://www.w3.org/2000/svg','svg');nsv.setAttribute('viewBox','0 0 100 100');nsv.setAttribute('aria-hidden','true');
+        var NSEG=28,nstep=270/NSEG,nsg=[];
+        var npt=function(r,a){a=a*Math.PI/180;return (50+r*Math.sin(a)).toFixed(2)+' '+(50-r*Math.cos(a)).toFixed(2)};
+        for(var nj=0;nj<NSEG;nj++){
+          var na1=-135+nj*nstep+.6,na2=-135+(nj+1)*nstep-.6,nse=document.createElementNS('http://www.w3.org/2000/svg','path');
+          nse.setAttribute('d','M'+npt(49,na1)+'A49 49 0 0 1 '+npt(49,na2)+'L'+npt(42,na2)+'A42 42 0 0 0 '+npt(42,na1)+'Z');
+          nse.setAttribute('fill','rgba(150,160,175,.32)');nsv.appendChild(nse);nsg.push({e:nse,v:it.ow?(nj+.5)/NSEG*100:(-135+(nj+.5)*nstep)/135*100,f:''});
+        }
+        nbx.appendChild(nsv);
+        var nk=document.createElement('div');nk.className='dialk';nk.setAttribute('role','slider');nk.setAttribute('aria-valuemin',it.ow?'0':'-100');nk.setAttribute('aria-valuemax','100');
+        var ni=document.createElement('i');nk.appendChild(ni);
+        // The dial only turns relative to where it is now: touching it never jumps to another value,
+        // and it stops at the ends (0 and 100) instead of wrapping round.
+        var nAng=0,nLa=0;
+        var nPtr=function(e){var rc=nk.getBoundingClientRect();return Math.atan2(e.clientX-(rc.left+rc.width/2),-(e.clientY-(rc.top+rc.height/2)))*180/Math.PI};
+        var nCur=function(){var cv=wIn(it,rt.t[nc]);if(it.ow&&cv<0) cv=0;return it.ow?-135+cv/100*270:cv/100*135};
+        var nset=function(e){
+          var a=nPtr(e),d=a-nLa;nLa=a;
+          if(d>180) d-=360;else if(d<-180) d+=360;
+          nAng=Math.max(-135,Math.min(135,nAng+d));
+          noteInput();delete RAMP[nc];
+          var dstep=it.ow?Math.round((nAng+135)/270*20)*5:Math.round(nAng/135*20)*5;
+          if(dstep!==w.dlast){w.dlast=dstep;dialBuzz()}
+          setT(nc,wOut(it,dstep),false);
+        };
+        var nT=0,nX=0,nY=0,nPend=false,nLong=false;
+        nk.addEventListener('pointerdown',function(e){
+          if(S.estop||S.play) return;
+          e.preventDefault();try{nk.setPointerCapture(e.pointerId)}catch(_){}
+          nX=e.clientX;nY=e.clientY;nPend=true;nLong=false;w.dlast=wIn(it,rt.t[nc]);nAng=nCur();nLa=nPtr(e);clearTimeout(nT);nk.classList.add('holding');
+          nT=setTimeout(function(){
+            if(!nPend) return;
+            nPend=false;nLong=true;noteInput();nk.classList.remove('holding');nk.classList.add('pop');setTimeout(function(){nk.classList.remove('pop')},250);
+            var rp=RAMP[nc],cv=wIn(it,rt.t[nc]),off=rp?rp.to!==0:cv!==0;
+            var rd=it.rt===undefined?3:it.rt,tg=off?0:wOut(it,it.ow?Math.abs(w.dlv||50):(w.dlv||50));
+            if(off&&!rp&&cv!==0) w.dlv=cv;
+            if(rd>0) RAMP[nc]={t0:performance.now(),from:rt.t[nc],to:tg,d:rd};
+            else{delete RAMP[nc];setT(nc,tg,false)}
+            feedback('hold');
+          },800);
+        });
+        nk.addEventListener('pointermove',function(e){
+          if(nPend&&Math.hypot(e.clientX-nX,e.clientY-nY)>6){nPend=false;clearTimeout(nT);w.drag=true;nk.classList.remove('holding')}
+          if(w.drag&&!nLong) nset(e);
+        });
+        ['pointerup','pointercancel'].forEach(function(ev){nk.addEventListener(ev,function(e){
+          clearTimeout(nT);nk.classList.remove('holding');
+          nPend=false;nLong=false;w.drag=false;
+        })});
+        nk.addEventListener('contextmenu',function(e){e.preventDefault()});
+        nbx.appendChild(nk);nw.appendChild(nbx);el.appendChild(nw);w.dial={c:nc,k:nk,i:ni,sg:nsg,lv:null};
+        var nchs=activeIdx();
+        if(it.sw&&nchs.length>1){
+          // Swipe sideways on the card (outside the knob) to move the dial to the next channel.
+          var ndg=document.createElement('div');ndg.className='dialdots';
+          nchs.forEach(function(q){var di=document.createElement('i');if(q===nc) di.className='on';ndg.appendChild(di)});
+          if(nchs.length>8) ndg.style.gap='2px';el.appendChild(ndg);
+          var nsx=null,nsy=0;el.style.touchAction='pan-y';
+          el.addEventListener('pointerdown',function(e){if(bdEditing||nk.contains(e.target)){nsx=null;return}nsx=e.clientX;nsy=e.clientY});
+          el.addEventListener('pointerup',function(e){
+            if(nsx===null) return;var dx=e.clientX-nsx,dy=e.clientY-nsy;nsx=null;
+            if(Math.abs(dx)>36&&Math.abs(dx)>1.6*Math.abs(dy)){var q=nchs.indexOf(nc);it.c=nchs[(q+(dx<0?1:nchs.length-1))%nchs.length];save();syncBoard();feedback('ok')}
+          });
+          el.addEventListener('pointercancel',function(){nsx=null});
+        }
+      }else if(it.k==='rs'){
+        var rsn=it.ns||6,rsb=(it.hb||0)*PER;
+        w.out=bdHead(el,'Dial selector',it,true);
+        var rw=document.createElement('div');rw.className='dialw';
+        var rbx=document.createElement('div');rbx.className='dialbox';
+        var rsv=document.createElementNS('http://www.w3.org/2000/svg','svg');rsv.setAttribute('viewBox','0 0 100 100');rsv.setAttribute('aria-hidden','true');
+        var rdots=[],rang=function(i){return rsn===1?0:-135+i*270/(rsn-1)};
+        var rch=function(i){return rsb+i};
+        var rpt=function(r,a){a=a*Math.PI/180;return [50+r*Math.sin(a),50-r*Math.cos(a)]};
+        for(var ri=0;ri<rsn;ri++){
+          var rp0=rpt(46,rang(ri)),rg=document.createElementNS('http://www.w3.org/2000/svg','g');
+          var rh=document.createElementNS('http://www.w3.org/2000/svg','circle');rh.setAttribute('cx',rp0[0]);rh.setAttribute('cy',rp0[1]);rh.setAttribute('r',5);rh.setAttribute('fill','#E24B4A');rh.setAttribute('opacity','0');
+          var rc0=document.createElementNS('http://www.w3.org/2000/svg','circle');rc0.setAttribute('cx',rp0[0]);rc0.setAttribute('cy',rp0[1]);rc0.setAttribute('r',2.2);rc0.setAttribute('fill','#E24B4A');rc0.setAttribute('opacity','.3');
+          rg.appendChild(rh);rg.appendChild(rc0);rsv.appendChild(rg);rdots.push({c:rc0,h:rh,st:-1});
+        }
+        rbx.appendChild(rsv);
+        var rk=document.createElement('div');rk.className='dialk';rk.setAttribute('role','slider');rk.setAttribute('aria-valuemin','1');rk.setAttribute('aria-valuemax',String(rsn));
+        var rik=document.createElement('i');rk.appendChild(rik);
+        var rcur=function(){return Math.max(0,Math.min(rsn-1,it.s||0))};
+        var rison=function(){var c=rch(rcur()),rp=RAMP[c];return rp?rp.to!==0:rt.t[c]!==0};
+        var rmove=function(ni){
+          // Positions are visited in order (A, B, C ...): a jump is walked through one position at a time.
+          ni=Math.max(0,Math.min(rsn-1,ni));
+          while(ni!==rcur()){
+            noteInput();
+            var oc=rch(rcur()),rd0=it.rt===undefined?3:it.rt;
+            // The position being left fades out over the ramp time instead of cutting off.
+            if(rd0>0&&rt.t[oc]!==0) RAMP[oc]={t0:performance.now(),from:rt.t[oc],to:0,d:rd0};
+            else{delete RAMP[oc];setT(oc,0,false)}
+            it.s=rcur()+(ni>rcur()?1:-1);save();dialBuzz();
+          }
+        };
+        var rtog=function(){
+          var c=rch(rcur()),on=rison(),rd=it.rt===undefined?3:it.rt,tg=on?0:(it.p||100);
+          if(rd>0) RAMP[c]={t0:performance.now(),from:rt.t[c],to:tg,d:rd};
+          else{delete RAMP[c];setT(c,tg,false)}
+        };
+        // Relative turning, like the dial: touching never jumps to another position.
+        var rAng=0,rLa=0;
+        var rPtr=function(e){var rc=rk.getBoundingClientRect();return Math.atan2(e.clientX-(rc.left+rc.width/2),-(e.clientY-(rc.top+rc.height/2)))*180/Math.PI};
+        var rset=function(e){
+          var a=rPtr(e),d=a-rLa;rLa=a;
+          if(d>180) d-=360;else if(d<-180) d+=360;
+          rAng=Math.max(-135,Math.min(135,rAng+d));
+          rmove(rsn===1?0:Math.round((rAng+135)/270*(rsn-1)));
+        };
+        var rT=0,rX=0,rY=0,rPend=false,rLong=false;
+        rk.addEventListener('pointerdown',function(e){
+          if(S.estop||S.play) return;
+          e.preventDefault();try{rk.setPointerCapture(e.pointerId)}catch(_){}
+          rX=e.clientX;rY=e.clientY;rPend=true;rLong=false;rAng=rang(rcur());rLa=rPtr(e);clearTimeout(rT);rk.classList.add('holding');
+          rT=setTimeout(function(){
+            if(!rPend) return;
+            rPend=false;rLong=true;noteInput();rk.classList.remove('holding');rk.classList.add('pop');setTimeout(function(){rk.classList.remove('pop')},250);
+            rtog();
+            feedback('hold');
+          },800);
+        });
+        rk.addEventListener('pointermove',function(e){
+          if(rPend&&Math.hypot(e.clientX-rX,e.clientY-rY)>6){rPend=false;clearTimeout(rT);w.drag=true;rk.classList.remove('holding')}
+          if(w.drag&&!rLong) rset(e);
+        });
+        ['pointerup','pointercancel'].forEach(function(ev){rk.addEventListener(ev,function(e){
+          clearTimeout(rT);rk.classList.remove('holding');
+          rPend=false;rLong=false;w.drag=false;
+        })});
+        rk.addEventListener('contextmenu',function(e){e.preventDefault()});
+        rbx.appendChild(rk);rw.appendChild(rbx);el.appendChild(rw);
+        w.rsd={k:rk,i:rik,dots:rdots,n:rsn,ang:rang,ch:rch,cur:rcur,on:rison,lt:'',mv:rmove,tog:rtog};
+      }else if(it.k==='g'){
+        var gc=it.c;
+        if(!isActive(gc)) return;
+        w.out=bdHead(el,'Gear \u00b7 '+tagOf(gc)+' \u00b7 '+C.ch[gc].name,it,true);
+        var glist=gearsOf(it);
+        var gr=document.createElement('div');gr.className='tgdir gear';gr.style.gridTemplateColumns='repeat('+glist.length+',minmax(0,1fr))';
+        var gbs=[];
+        glist.forEach(function(gd,gi){
+          var b=document.createElement('button');b.type='button';b.className='tgd';b.setAttribute('data-g',String(gi));b.setAttribute('data-k',gd[0]==='R'||gd[0]==='N'?gd[0]:'F');
+          var ic=document.createElement('i');ic.textContent=gd[0];b.appendChild(ic);
+          b.addEventListener('click',function(){noteInput();if(S.estop||S.play) return;setT(gc,wOut(it,gd[1]),false)});
+          gr.appendChild(b);gbs.push(b);
+        });
+        el.appendChild(gr);w.gear={c:gc,bs:gbs,list:glist};
+      }else if(it.k==='st'){
+        var sc=it.c;
+        if(!isActive(sc)) return;
+        w.out=bdHead(el,'Wheel · '+tagOf(sc)+' · '+C.ch[sc].name,it,true);
+        var srg=(it.ra||180)/2;
+        var sw0=document.createElement('div');sw0.className='stw';
+        var sbx=document.createElement('div');sbx.className='stbox';
+        var ssv=document.createElementNS('http://www.w3.org/2000/svg','svg');ssv.setAttribute('viewBox','0 0 100 100');ssv.setAttribute('aria-hidden','true');
+        var spt=function(r,a){a=a*Math.PI/180;return (50+r*Math.sin(a)).toFixed(2)+' '+(50-r*Math.cos(a)).toFixed(2)};
+        var sar=document.createElementNS('http://www.w3.org/2000/svg','path');
+        sar.setAttribute('d','M'+spt(48.5,-srg)+'A48.5 48.5 0 '+(srg>90?1:0)+' 1 '+spt(48.5,srg));
+        sar.setAttribute('fill','none');sar.setAttribute('stroke','rgba(150,160,175,.55)');sar.setAttribute('stroke-width','1.6');sar.setAttribute('stroke-dasharray','3 3');ssv.appendChild(sar);
+        // same dashes, coloured like the meters from centre to the current value
+        var sz=[];(function(){var th=MTH[(it.th===1||it.th===2)?it.th:0],uid='stz'+(MSEQ++);
+          for(var zi=0;zi<3;zi++){
+            var cp=document.createElementNS('http://www.w3.org/2000/svg','clipPath');cp.setAttribute('id',uid+zi);
+            var pg=document.createElementNS('http://www.w3.org/2000/svg','polygon');cp.appendChild(pg);ssv.appendChild(cp);
+            var pa=document.createElementNS('http://www.w3.org/2000/svg','path');pa.setAttribute('d',sar.getAttribute('d'));pa.setAttribute('fill','none');pa.setAttribute('stroke',th[zi]);pa.setAttribute('stroke-width','1.6');pa.setAttribute('stroke-dasharray','3 3');pa.setAttribute('clip-path','url(#'+uid+zi+')');ssv.appendChild(pa);
+            sz.push(pg)}})();
+        sbx.appendChild(ssv);
+        var sk=document.createElement('div');sk.className='stk';sk.setAttribute('role','slider');sk.setAttribute('aria-valuemin','-100');sk.setAttribute('aria-valuemax','100');
+        sk.innerHTML='<svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="stgR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a94a6"/><stop offset=".5" stop-color="#3a4252"/><stop offset="1" stop-color="#1b2029"/></linearGradient><linearGradient id="stgS" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6b7587"/><stop offset="1" stop-color="#2a303b"/></linearGradient><radialGradient id="stgH" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#5b6578"/><stop offset="1" stop-color="#14181f"/></radialGradient></defs><circle cx="50" cy="50" r="45" fill="none" stroke="#0b0d11" stroke-width="12"/><circle cx="50" cy="50" r="45" fill="none" stroke="url(#stgR)" stroke-width="8.5"/><circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="1" stroke-dasharray="1.2 1.8"/><path d="M9 50H91M50 50V92" stroke="#0b0d11" stroke-width="10.5" stroke-linecap="round"/><path d="M9 50H91M50 50V92" stroke="url(#stgS)" stroke-width="8" stroke-linecap="round"/><circle cx="50" cy="50" r="13" fill="url(#stgH)" stroke="#0b0d11" stroke-width="2"/><circle cx="50" cy="50" r="4" style="fill:var(--hc,#ffd84a)" opacity=".9"/><rect x="43.5" y="2.5" width="13" height="16" rx="3.5" style="fill:var(--hc,#ffd84a);stroke:var(--hcd,#7a6a1f)" stroke-width="1.2"/><rect x="46" y="5" width="3" height="11" rx="1.5" fill="rgba(255,255,255,.55)"/></svg>';
+        var sAng=0,sPrev=0,sDrag=false,sGy={st:true,c:sc,it:it,last:0};
+        var sAt=function(e){var rc=sk.getBoundingClientRect();return Math.atan2(e.clientX-(rc.left+rc.width/2),-(e.clientY-(rc.top+rc.height/2)))*180/Math.PI};
+        sk.addEventListener('pointerdown',function(e){
+          if(S.estop||S.play) return;
+          e.preventDefault();try{sk.setPointerCapture(e.pointerId)}catch(_){}
+          delete RAMP[sc];sAng=wIn(it,rt.t[sc])/100*srg;sPrev=sAt(e);sDrag=true;sk.classList.add('drag');w.slast=wIn(it,rt.t[sc]);
+          if(it.gy&&TILT.has){TILT.zero=null;sGy.last=0;BD_TILT.cur=sGy}
+        });
+        sk.addEventListener('pointermove',function(e){
+          if(!sDrag||S.estop||S.play||BD_TILT.cur===sGy) return;
+          var a=sAt(e),d=a-sPrev;if(d>180) d-=360;if(d<-180) d+=360;sPrev=a;
+          sAng=Math.max(-srg,Math.min(srg,sAng+d));
+          var v=Math.round(sAng/srg*20)*5;
+          noteInput();
+          if(v!==w.slast){w.slast=v;dialBuzz()}
+          setT(sc,wOut(it,v),false);
+        });
+        ['pointerup','pointercancel'].forEach(function(ev){sk.addEventListener(ev,function(){
+          if(!sDrag) return;
+          sDrag=false;sk.classList.remove('drag');if(BD_TILT.cur===sGy) BD_TILT.cur=null;
+          if(!it.hold&&!S.estop&&!S.play&&rt.t[sc]!==0) RAMP[sc]={t0:performance.now(),from:rt.t[sc],to:0,d:0.25};
+        })});
+        sk.addEventListener('contextmenu',function(e){e.preventDefault()});
+        sbx.appendChild(sk);sw0.appendChild(sbx);el.appendChild(sw0);w.stw={c:sc,k:sk,rg:srg,zs:sz};
+      }else if(it.k==='lv'){
+        var lvc=it.c;
+        if(!isActive(lvc)) return;
+        w.out=bdHead(el,'Lever · '+tagOf(lvc)+' · '+C.ch[lvc].name,it,true);
+        var lvl=gearsOf(it).slice().reverse(), lvn=lvl.length;
+        var lvw=document.createElement('div');lvw.className='lvw';
+        var lvt=document.createElement('div');lvt.className='lvt';
+        var lvy=function(i){return (8+i/(lvn-1)*84)};
+        var lvr=document.createElement('div');lvr.className='rail';lvt.appendChild(lvr);
+        var lvb=[];
+        lvl.forEach(function(gd,gi){
+          var d=document.createElement('div');d.className='lvd';d.style.top=lvy(gi)+'%';
+          var b=document.createElement('b');b.textContent=gd[0];b.className=gd[0]==='R'?'gr':gd[0]==='N'?'gn':'gf';var tk=document.createElement('i');
+          d.appendChild(b);d.appendChild(tk);lvt.appendChild(d);lvb.push(b);
+        });
+        var lvk=document.createElement('div');lvk.className='lvk';lvk.setAttribute('role','slider');lvt.appendChild(lvk);
+        var lvSet=function(e){
+          if(S.estop||S.play) return;
+          var rc=lvt.getBoundingClientRect(),fr=((e.clientY-rc.top)/rc.height*100-8)/84;
+          var di=Math.max(0,Math.min(lvn-1,Math.round(fr*(lvn-1))));
+          if(di===w.lvi) return;
+          w.lvi=di;noteInput();delete RAMP[lvc];dialBuzz();setT(lvc,wOut(it,lvl[di][1]),false);
+        };
+        var lvD=false;
+        lvt.addEventListener('pointerdown',function(e){
+          if(S.estop||S.play) return;
+          e.preventDefault();try{lvt.setPointerCapture(e.pointerId)}catch(_){}
+          lvD=true;w.lvi=-1;lvSet(e);
+        });
+        lvt.addEventListener('pointermove',function(e){if(lvD) lvSet(e)});
+        ['pointerup','pointercancel'].forEach(function(ev){lvt.addEventListener(ev,function(){lvD=false})});
+        lvt.addEventListener('contextmenu',function(e){e.preventDefault()});
+        lvw.appendChild(lvt);el.appendChild(lvw);w.lev={c:lvc,k:lvk,b:lvb,l:lvl,y:lvy};
+      }else if(it.k==='dp'){
+        var dpc=it.c,dpd=it.d;
+        if(!isActive(dpc)||(dpd>=0&&!isActive(dpd))) return;
+        w.out=bdHead(el,'D-pad · '+tagOf(dpc)+(dpd>=0?'+'+tagOf(dpd):''),it,false);
+        var dww=document.createElement('div');dww.className='dpw';
+        var dbx=document.createElement('div');dbx.className='dpbox';
+        var dpr={},dbs={};
+        var dpGo=function(ch,to){
+          if(ch<0) return;
+          var rp=RAMP[ch];if(!rp&&rt.t[ch]===to) return;if(rp&&rp.to===to) return;
+          var rd=it.rt===undefined?0.3:it.rt;
+          if(rd>0&&to!==rt.t[ch]) RAMP[ch]={t0:performance.now(),from:rt.t[ch],to:to,d:rd};
+          else{delete RAMP[ch];setT(ch,to,false)}
+        };
+        var dpApply=function(){
+          var f=(dpr.u?1:0)-(dpr.d?1:0), t=(dpr.r?1:0)-(dpr.l?1:0), pw=it.p||70, a,b;
+          if(it.m==='car'){a=f;b=t}
+          else{a=Math.max(-1,Math.min(1,f+t));b=Math.max(-1,Math.min(1,f-t))}
+          noteInput();
+          dpGo(dpc,Math.round(a*pw));dpGo(dpd,Math.round(b*pw));
+        };
+        var dpClear=function(){dpr={};dpApply()};
+        [['u','▲','Forward'],['l','◀','Left'],['r','▶','Right'],['d','▼','Reverse']].forEach(function(q){
+          var b=document.createElement('button');b.type='button';b.className='dpb '+q[0];b.textContent=q[1];b.setAttribute('aria-label',q[2]);b.setAttribute('data-d',q[0]);
+          b.addEventListener('pointerdown',function(e){
+            if(S.estop||S.play) return;
+            e.preventDefault();try{b.setPointerCapture(e.pointerId)}catch(_){}
+            if(it.tg){var was=!!dpr[q[0]];dpr={};if(!was) dpr[q[0]]=1}
+            else dpr[q[0]]=1;
+            dpApply();
+          });
+          if(!it.tg) ['pointerup','pointercancel'].forEach(function(ev){b.addEventListener(ev,function(){if(dpr[q[0]]){delete dpr[q[0]];dpApply()}})});
+          b.addEventListener('contextmenu',function(e){e.preventDefault()});
+          dbx.appendChild(b);dbs[q[0]]=b;
+        });
+        var dph=document.createElement('div');dph.className='dphub';dbx.appendChild(dph);
+        dww.appendChild(dbx);el.appendChild(dww);w.dpd={bs:dbs,r:function(){return dpr},clr:dpClear};
+      }else if(it.k==='ps'){
+        el.classList.add('psw');
+        bdHead(el,'',it,false);
+        var pb=document.createElement('button');pb.type='button';pb.className='psb';pb.setAttribute('aria-label',it.md?'Hub output on/off (hold)':'Hub link on/off (hold)');
+        var psv=sv('svg',{viewBox:'0 0 120 116',class:'pssvg'},pb);
+        var pdf=sv('defs',{},psv),pgr=sv('radialGradient',{id:'psg'+(MSEQ++),cx:'.35',cy:'.3',r:'.9'},pdf);
+        var pgid=pgr.getAttribute('id');
+        sv('stop',{offset:'0','stop-color':'#5a6376'},pgr);sv('stop',{offset:'.6','stop-color':'#2a303b'},pgr);sv('stop',{offset:'1','stop-color':'#14181f'},pgr);
+        var pglow=sv('g',{style:'filter:blur(4px)',opacity:.55},psv);
+        var pglw=ledRing(pglow,60,58,46.5,40,90,360,7), pring=ledRing(psv,60,58,46.5,40,90,360,7);
+        var pcap=sv('g',{},psv);
+        sv('circle',{cx:60,cy:58,r:39,fill:'#0d1015',stroke:'#6b7280','stroke-width':2},pcap);
+        sv('circle',{cx:60,cy:58,r:35,fill:'url(#'+pgid+')',stroke:'#0d1015','stroke-width':2},pcap);
+        sv('ellipse',{cx:52,cy:42,rx:19,ry:8,fill:'#fff',opacity:.12},pcap);
+        var pic=sv('circle',{cx:60,cy:58,r:31,fill:'none','stroke-width':2.5,stroke:'#E24B4A'},pcap);
+        var pt1=sv('text',{x:60,y:58,'text-anchor':'middle','font-size':14,'font-weight':900,fill:'#e8e8ea'},pcap);pt1.textContent='START';
+        var pt2=sv('text',{x:60,y:71,'text-anchor':'middle','font-size':10,'font-weight':900,fill:'#E24B4A'},pcap);pt2.textContent='STOP';
+        var pst=sv('text',{x:60,y:62,'text-anchor':'middle','font-size':11,'font-weight':900,fill:'#E24B4A'},psv);
+        var pv={k:'ps',it:it,b:pb,ring:pring,glow:pglw,glowg:pglow,cap:pcap,ic:pic,t1:pt1,t2:pt2,st:pst,col:[],tgt:'',ai:0,t:0,dn:false,tm:0};
+        pb.addEventListener('pointerdown',function(e){
+          e.preventDefault();try{pb.setPointerCapture(e.pointerId)}catch(_){}
+          if(bdEditing) return;
+          noteInput();pv.dn=true;pb.classList.add('dn');
+          clearTimeout(pv.tm);
+          pv.tm=setTimeout(function(){
+            if(!pv.dn) return;
+            // held long enough: one vibration (feedback() already vibrates in the app), then the LEDs change colour one by one
+            if(store.prefs.haptic!==false&&!NB&&navigator.vibrate){try{navigator.vibrate(45)}catch(_){}}
+            feedback('ok');
+            pv.fired=true;if(it.md) toggleOut(it); else link.click();paintBoard();
+          },it.hd||500);
+        });
+        ['pointerup','pointercancel','lostpointercapture'].forEach(function(ev){pb.addEventListener(ev,function(){pv.dn=false;clearTimeout(pv.tm);pb.classList.remove('dn')})});
+        pb.addEventListener('contextmenu',function(e){e.preventDefault()});
+        el.appendChild(pb);w.vw=pv;
+      }else if(it.k==='z'){
+        bdHead(el,'Session timer',it,false);
+        var zd=document.createElement('button');zd.type='button';zd.className='sesst';
+        var zt=document.createElement('b');zt.textContent='00:00';
+        var zs=document.createElement('small');
+        zd.appendChild(zt);zd.appendChild(zs);
+        var zlp=0, zdone=false;
+        zd.addEventListener('pointerdown',function(){zdone=false;clearTimeout(zlp);zlp=setTimeout(function(){zdone=true;sessReset();toast('Session timer reset.');feedback('hold');paintBoard()},800)});
+        ['pointerup','pointercancel','pointerleave'].forEach(function(ev){zd.addEventListener(ev,function(){clearTimeout(zlp)})});
+        zd.addEventListener('click',function(){
+          if(zdone){zdone=false;return}
+          var o=[0,5,10,15,20,30];it.a=o[(o.indexOf(it.a)+1)%o.length];SESS.warned=false;save();paintBoard();
+        });
+        zd.addEventListener('contextmenu',function(e){e.preventDefault()});
+        el.appendChild(zd);w.sess={t:zt,s:zs,b:zd,it:it};
+      }else if(it.k==='t'){
+        var tc=it.c;
+        if(!isActive(tc)) return;
+        w.out=bdHead(el,tagOf(tc)+' · '+C.ch[tc].name,it,true);
+        var tgp=it.p||100, tgs=it.y||'led', tgb=[];
+        var tgDo=function(v){noteInput();if(S.estop||S.play) return;setT(tc,wOut(it,v),false)};
+        if(tgs==='dir'){
+          var dr=document.createElement('div');dr.className='tgdir';
+          [['Reverse',-1,'◀'],['Stop',0,'■'],['Forward',1,'▶']].forEach(function(d){
+            var b=document.createElement('button');b.type='button';b.className='tgd';b.setAttribute('data-d',String(d[1]));
+            var ic=document.createElement('i');ic.textContent=d[2];ic.setAttribute('aria-hidden','true');
+            var tx=document.createElement('span');tx.textContent=d[0];
+            b.appendChild(ic);b.appendChild(tx);
+            b.addEventListener('click',function(){tgDo(d[1]*tgp)});
+            dr.appendChild(b);tgb.push(b);
+          });
+          el.appendChild(dr);
+        }else{
+          var tb=document.createElement('button');tb.type='button';tb.className='tgl '+tgs;
+          tb.setAttribute('role','switch');
+          if(tgs==='latch'){
+            var k1=document.createElement('span');k1.className='k';tb.appendChild(k1);
+            var l1=document.createElement('span');l1.className='lbl';k1.appendChild(l1);
+          }else{
+            var l2=document.createElement('span');l2.className='led';tb.appendChild(l2);
+            var t2=document.createElement('span');t2.className='tx';tb.appendChild(t2);
+          }
+          tb.addEventListener('click',function(){tgDo(rt.t[tc]!==0?0:tgp)});
+          el.appendChild(tb);tgb.push(tb);
+          if(tgs==='led'&&it.w===2){
+            var pb=document.createElement('div');pb.className='tgbar';var pi=document.createElement('i');pb.appendChild(pi);el.appendChild(pb);w.bar=pi;
+          }
+        }
+        w.tg=tgb;w.tgs=tgs;
+      }else if(it.k==='m'){
+        var mt=it.t;
+        if(mt.some(function(z){return !isActive(z.c)})) return;
+        w.out=bdHead(el,'Mix · '+mt.map(function(z){return tagOf(z.c)+(z.r<0?'−':'')}).join(' '),it,true);
+        bdOutZero(w.out,mt.map(function(z){return z.c}));
+        var mr=document.createElement('input');mr.type='range';mr.min='-100';mr.max='100';mr.step='1';mr.value='0';
+        mr.setAttribute('aria-label','Mixer');
+        var mset=function(v){mt.forEach(function(z){setT(z.c,wOut(it,Math.max(-100,Math.min(100,Math.round(v*z.r/100)))),true)})};
+        mr.addEventListener('pointerdown',function(){w.drag=true});
+        mr.addEventListener('input',function(){noteInput();mset(+mr.value);if(w.out) w.out.textContent=fmt(+mr.value)});
+        var mrel=function(){
+          w.drag=false;
+          if(!it.hold&&!S.play&&!mt.some(function(z){return refs[z.c]&&refs[z.c].locked})){mr.value='0';mset(0)}
+        };
+        mr.addEventListener('pointerup',mrel);mr.addEventListener('pointercancel',mrel);
+        if(it.v){var mv=document.createElement('div');mv.className='bdv';mv.appendChild(mr);el.appendChild(mv);el.classList.add('vert')}
+        else el.appendChild(mr);
+        w.rng=mr;w.mix=mt;
+      }else{
+        var c=it.c;
+        if(!isActive(c)) return;
+        w.out=bdHead(el,tagOf(c)+' · '+C.ch[c].name,it,true);
+        if(it.k==='s') bdOutZero(w.out,[c]);
+        if(it.k==='s'){
+          var r=document.createElement('input');r.type='range';r.min='-100';r.max='100';r.step='1';r.value='0';
+          r.setAttribute('aria-label','Power of channel '+tagOf(c));
+          var tsl={sl:true,c:c,r:r};
+          r.addEventListener('pointerdown',function(){w.drag=true;if(C.tilt.all&&tiltActive()){TILT.zero=null;BD_TILT.cur=tsl}});
+          r.addEventListener('input',function(){
+            noteInput();
+            if(BD_TILT.cur===tsl){r.value=String(Math.round(tiltVal()*100));return}
+            if(it.snap){r.value=String(Math.round(+r.value/it.snap)*it.snap)}
+            setT(c,wOut(it,+r.value),true);
+          });
+          var rel=function(){
+            w.drag=false;
+            if(BD_TILT.cur===tsl) BD_TILT.cur=null;
+            if(!it.hold&&!S.play&&!(refs[c]&&refs[c].locked)){r.value='0';setT(c,0,true)}
+          };
+          r.addEventListener('pointerup',rel);r.addEventListener('pointercancel',rel);
+          if(it.v){
+            var vw=document.createElement('div');vw.className='bdv';vw.appendChild(r);el.appendChild(vw);el.classList.add('vert');
+          }else el.appendChild(r);
+          w.rng=r;
+        }else{
+          var hb=document.createElement('div');hb.className='holds';
+          [['Reverse',-1],['Forward',1]].forEach(function(d){
+            var b=document.createElement('button');b.type='button';b.className='hold '+(d[1]<0?'rev':'fwd');
+            var ar=document.createElement('span'),tx=document.createElement('span');
+            ar.textContent=d[1]<0?'◀':'▶';tx.textContent=d[0];ar.setAttribute('aria-hidden','true');
+            if(d[1]<0){b.appendChild(ar);b.appendChild(tx)}else{b.appendChild(tx);b.appendChild(ar)}
+            var down=false;
+            function press(){if(down)return;down=true;b.classList.add('on');noteInput();setT(c,wOut(it,d[1]*100),false)}
+            function lift(){if(!down)return;down=false;b.classList.remove('on');setT(c,0,false)}
+            b.addEventListener('pointerdown',function(e){e.preventDefault();try{b.setPointerCapture(e.pointerId)}catch(_){}press()});
+            ['pointerup','pointercancel','lostpointercapture','blur'].forEach(function(ev){b.addEventListener(ev,lift)});
+            b.addEventListener('contextmenu',function(e){e.preventDefault()});
+            hb.appendChild(b);
+          });
+          el.appendChild(hb);
+        }
+      }
+      if(dash) dashPlace(el,it);
+      w.el=el;
+      bdGrid.appendChild(el);bdW.push(w);
+    });
+    dashFit();
+    bdNote.textContent=C.board.length?'':'The board is empty. Tap Edit board to add controls.';
+    paintBoard();tiltNative();
+  }
+  function mirrorPairs(){
+    if(S.estop||S.play||!C.board) return;
+    C.board.forEach(function(it){
+      if(typeof it.pc!=='number'||it.pc===it.c) return;
+      var v=(it.pi?-1:1)*(rt.t[it.c]||0);
+      if((rt.t[it.pc]||0)!==(v||0)) setT(it.pc,v,false);
+    });
+  }
+  var OFFC='rgba(150,160,175,.32)';
+  function ledRing(par,cx,cy,r,n,a0,span,sw){
+    var a=[];
+    for(var i=0;i<n;i++) a.push(sv('path',{d:mArc(cx,cy,r,a0-i*span/n-0.8,a0-(i+1)*span/n+0.8),fill:'none','stroke-width':sw,stroke:OFFC},par));
+    return a;
+  }
+  // Start / stop button: red ring = hub link off, glowing yellow = on (green power symbol), yellow flashing = E-stop or hub fault
+  function psFault(){
+    var lb=$('#lostBanner');
+    return !!S.estop||(!!hubMsg&&hubMsg!=='Pairing…')||!!(lb&&!lb.hidden);
+  }
+  function paintVw(v){
+    var now=performance.now(), n=v.ring.length, on=v.it.md?!S.outOff:!!S.connected, T=on?'#ffd84a':'#E24B4A', flt=psFault();
+    // connecting (pairing): a short yellow tail runs round the ring; when the hub answers the ring fills yellow
+    if(!v.it.md&&on&&!flt&&!S.estop&&hubMsg==='Pairing…'){
+      var hd=Math.floor(now/45)%n;
+      for(var q=0;q<n;q++){var d=(hd-q+n)%n,cq=d===0?'#ffd84a':d<7?'rgba(255,216,74,'+(1-d/7).toFixed(2)+')':OFFC;
+        if(v.ring[q]._c!==cq){v.ring[q]._c=cq;v.ring[q].setAttribute('stroke',cq);v.glow[q].setAttribute('stroke',d<3?'#ffd84a':'transparent')}}
+      if(v.st.textContent!=='') v.st.textContent='';
+      v.t1.style.display=v.t2.style.display='';
+      v.ic.setAttribute('stroke','#ffd84a');v.t1.setAttribute('fill','#e8e8ea');v.t1.setAttribute('font-size',14);v.t1.setAttribute('y',58);
+      v.t2.setAttribute('fill','#E24B4A');v.t2.setAttribute('font-size',10);v.t2.setAttribute('y',71);v.glowg.setAttribute('opacity',.8);
+      v.tgt='busy';for(var q2=0;q2<n;q2++) v.col[q2]=OFFC;return;
+    }
+    if(v.tgt!==T){v.tgt=T;v.ai=0;v.t=now}
+    // one more LED changes every ~22 ms, clockwise from the top
+    var steps=Math.max(1,Math.floor((now-v.t)/22));
+    if(v.ai<n){var upto=Math.min(n,v.ai+steps);for(;v.ai<upto;v.ai++) v.col[v.ai]=T;v.t=now}
+    var blink=flt&&(Math.floor(now/450)%2===0);
+    for(var i=0;i<n;i++){
+      var c=flt?(blink?'#ffd84a':OFFC):(v.col[i]||OFFC);
+      if(v.ring[i]._c!==c){v.ring[i]._c=c;v.ring[i].setAttribute('stroke',c);v.glow[i].setAttribute('stroke',c==='rgba(150,160,175,.32)'?'transparent':c)}
+    }
+    var word=S.estop?'E-STOP':flt?'FAULT':'', wc=flt?'#ffd84a':on?'#ffd84a':'#E24B4A';
+    if(v.st.textContent!==word){v.st.textContent=word}
+    v.st.setAttribute('fill',wc);
+    // E-STOP / FAULT replace START/STOP inside the button; the ring stays centred in the card
+    v.t1.style.display=v.t2.style.display=word?'none':'';
+    // centre button: red ring + white/red wording when stopped, all yellow when started
+    v.ic.setAttribute('stroke',on?'#ffd84a':'#E24B4A');
+    // stopped: big white START, small red STOP; started: small yellow START, big white STOP
+    v.t1.setAttribute('fill',on?'#ffd84a':'#e8e8ea');v.t1.setAttribute('font-size',on?10:14);v.t1.setAttribute('y',on?53:58);
+    v.t2.setAttribute('fill',on?'#fff':'#E24B4A');v.t2.setAttribute('font-size',on?14:10);v.t2.setAttribute('y',on?69:71);
+    v.glowg.setAttribute('opacity',on&&!flt?.95:.55);
+    v.b.classList.toggle('flt',flt);
+  }
+  function paintBoard(){
+    if(!bdW||!bdW.length) return;
+    mirrorPairs();
+    paintPads();
+    bdW.forEach(function(w){
+      if(w.es){
+        w.es.classList.toggle('on',!!S.estop);
+        w.es.textContent=S.estop?'RELEASE':'E-STOP';
+      }else if(w.lb){
+        var lv=rt.t[w.it.c]>0, lmd=lightMode(w.it.c);
+        w.lb.classList.toggle('on',lv);w.lb.classList.toggle('blink',lmd===4);
+        var lt=w.lb.firstChild&&w.lb.firstChild.nodeType===3?w.lb.firstChild:null, ltx=LMODES[lmd].t;
+        if(!lt){lt=document.createTextNode('');w.lb.insertBefore(lt,w.lb.firstChild)}
+        if(w.lmd!==lmd){w.lmd=lmd;lt.data=ltx}
+        if(w.lvl) [].forEach.call(w.lvl.children,function(q,i){q.classList.toggle('on',lmd>0&&i<lmd)});
+        w.lb.disabled=S.estop||!!S.play;
+        if(w.out){var lpt=lv?Math.round(rt.t[w.it.c])+'%':'0%';if(w.out.textContent!==lpt) w.out.textContent=lpt}
+      }else if(w.spdt){
+        var sd=w.spdt, sps=sd.pos();
+        sd.sw.setAttribute('data-pos',sps||'n');sd.sw.setAttribute('aria-checked',String(sps==='b'));
+        sd.la.classList.toggle('on',sps==='a');sd.lb.classList.toggle('on',sps==='b');
+        sd.sw.disabled=S.estop||!!S.play;
+      }else if(w.auto){
+        var ac0=w.auto.it.c, ar=AUTOT[ac0]?Math.max(0,Math.ceil(w.auto.it.s-(performance.now()-AUTOT[ac0])/1000)):0;
+        var at0=AUTOT[ac0]?ar+' s':'ON';
+        if(w.auto.t.textContent!==at0) w.auto.t.textContent=at0;
+        var as0=(w.auto.it.s+' s limit \u00b7 tap to change');
+        if(w.auto.s.textContent!==as0) w.auto.s.textContent=as0;
+        w.auto.t.parentNode.classList.toggle('over',!!AUTOT[ac0]&&ar<=3);
+        w.auto.t.parentNode.classList.toggle('run',!AUTOT[ac0]);
+      }else if(w.yr){
+        var yv0r=rt.t[w.yr.c], yv0=wIn(w.yr.it,yv0r);
+        if(w.out) w.out.textContent=fmt(yv0r);
+        if(w.yr.m) w.yr.m.upd();
+        w.yr.bs.forEach(function(b){var d=+b.getAttribute('data-d');b.classList.toggle('on',d===0?yv0===0:(d>0?yv0>0:yv0<0));b.disabled=S.estop||!!S.play});
+      }else if(w.mtr){
+        w.mtr.upd();
+      }else if(w.dial){
+        var dvr=rt.t[w.dial.c], dv=wIn(w.it,dvr);if(w.it.ow&&dv<0) dv=0;
+        if(w.out) w.out.textContent=fmt(dvr);
+        w.dial.i.style.transform='rotate('+(w.it.ow?-135+dv/100*270:dv/100*135)+'deg)';
+        w.dial.k.setAttribute('aria-valuenow',String(dv));
+        w.dial.k.classList.toggle('on',dv!==0);
+        if(w.dial.lv!==dv){w.dial.lv=dv;w.dial.sg.forEach(function(q){var on=w.it.ow?q.v<=dv&&dv>0:(q.v>0&&q.v<=dv)||(q.v<0&&q.v>=dv),col=on?mCol(q.v,MTH[(w.it.th===1||w.it.th===2)?w.it.th:0]):'rgba(150,160,175,.32)';if(q.f!==col){q.f=col;q.e.setAttribute('fill',col)}})}
+      }else if(w.rsd){
+        var rd0=w.rsd,rsel=rd0.cur(),ron=!S.estop&&rd0.on();
+        w.rsd.i.style.transform='rotate('+rd0.ang(rsel)+'deg)';
+        w.rsd.k.classList.toggle('on',ron);w.rsd.k.setAttribute('aria-valuenow',String(rsel+1));
+        var rtxt='ABCDEF'.charAt(rd0.ch(rsel)%PER)+(ron?' ON':'');if(w.out&&w.out.textContent!==rtxt) w.out.textContent=rtxt;
+        var rlv=ron?Math.min(1,Math.abs(rt.t[rd0.ch(rsel)])/100):0;
+        rd0.dots.forEach(function(q,qi){
+          var sel=qi===rsel,lv=sel?Math.round(rlv*20)/20:0,sk=(sel?'s':'o')+lv;if(q.st===sk) return;q.st=sk;
+          // like the arc meter: the current position is a bigger red dot, the others small grey dots
+          q.c.setAttribute('fill',sel?'var(--danger,#E03E3E)':'#8a93a0');
+          q.c.setAttribute('r',sel?'3.6':'2.4');
+          q.c.setAttribute('opacity',sel?String(.7+.3*lv):'.55');
+          q.h.setAttribute('opacity',String(.35*lv));
+        });
+      }else if(w.stw){
+        var sv0=wIn(w.it,rt.t[w.stw.c]);
+        w.stw.k.style.transform='rotate('+(sv0/100*w.stw.rg)+'deg)';
+        (function(){var rg=w.stw.rg,cv=Math.max(-100,Math.min(100,sv0)),sg=cv<0?-1:1,m=Math.abs(cv),B=[0,55,80,100];
+          w.stw.zs.forEach(function(pg,zi){
+            var lo=B[zi],hi=Math.min(B[zi+1],m),pts='';
+            if(m>lo){var n=Math.max(2,Math.ceil((hi-lo)/100*rg/4));pts='50,50';
+              for(var q=0;q<=n;q++){var a=sg*(lo+(hi-lo)*q/n)/100*rg,r=a*Math.PI/180;pts+=' '+(50+70*Math.sin(r)).toFixed(2)+','+(50-70*Math.cos(r)).toFixed(2)}}
+            if(pg._p!==pts){pg._p=pts;pg.setAttribute('points',pts)}})})();
+        w.stw.k.setAttribute('aria-valuenow',String(sv0));
+        if(w.out) w.out.textContent=fmt(rt.t[w.stw.c]);
+      }else if(w.lev){
+        var lv0=wIn(w.it,rt.t[w.lev.c]),li0=0,lb0=1e9;
+        w.lev.l.forEach(function(gd,gi){var dd=Math.abs(gd[1]-lv0);if(dd<lb0){lb0=dd;li0=gi}});
+        w.lev.k.style.top=w.lev.y(li0)+'%';
+        w.lev.b.forEach(function(b,i){b.classList.toggle('on',i===li0&&lb0<=8)});
+        if(w.out) w.out.textContent=fmt(rt.t[w.lev.c]);
+      }else if(w.dpd){
+        var dd0=w.dpd.r();
+        Object.keys(w.dpd.bs).forEach(function(k){w.dpd.bs[k].classList.toggle('on',!!dd0[k]);w.dpd.bs[k].disabled=S.estop||!!S.play});
+        if((S.estop||S.play)&&Object.keys(dd0).length) w.dpd.clr();
+      }else if(w.gear){
+        var gv=wIn(w.it,rt.t[w.gear.c]), gi0=-1, gbest=1e9;
+        w.gear.list.forEach(function(gd,gi){var dd=Math.abs(gd[1]-gv);if(dd<gbest){gbest=dd;gi0=gi}});
+        if(gbest>8) gi0=-1;
+        if(w.out) w.out.textContent=fmt(rt.t[w.gear.c]);
+        w.gear.bs.forEach(function(b,i){b.classList.toggle('on',i===gi0);b.disabled=S.estop||!!S.play});
+      }else if(w.vw){
+        paintVw(w.vw);
+      }else if(w.sess){
+        var sm=SESS.ms, tx0=fmtSess(sm), aMs=(w.it.a||0)*60000;
+        if(w.sess.t.textContent!==tx0) w.sess.t.textContent=tx0;
+        var st=(w.it.a?'Alert '+w.it.a+' min':'No alert')+' \u00b7 hold to reset';
+        if(w.sess.s.textContent!==st) w.sess.s.textContent=st;
+        w.sess.b.classList.toggle('run',!!S.connected);
+        w.sess.b.classList.toggle('over',!!aMs&&sm>=aMs);
+      }else if(w.tg){
+        var tv=rt.t[w.it.c], ton=tv!==0;
+        if(w.out) w.out.textContent=fmt(tv);
+        if(w.tgs==='dir'){
+          w.tg.forEach(function(b){
+            var d=+b.getAttribute('data-d');
+            var tvu=wIn(w.it,tv);b.classList.toggle('on',d===(tvu>0?1:tvu<0?-1:0)&&(d!==0||!ton));
+            b.disabled=S.estop||!!S.play;
+          });
+        }else{
+          var tb0=w.tg[0];
+          tb0.classList.toggle('on',ton);tb0.setAttribute('aria-checked',String(ton));
+          tb0.disabled=S.estop||!!S.play;
+          var tt=tb0.querySelector('.tx,.lbl');if(tt) tt.textContent=ton?'ON':'OFF';
+          if(w.bar) w.bar.style.width=Math.min(100,Math.abs(tv))+'%';
+        }
+      }else if(w.mix){
+        var z0=w.mix[0], mv0=Math.round(wIn(w.it,rt.t[z0.c])*100/z0.r);
+        if(w.out&&!w.drag) w.out.textContent=fmt(mv0);
+        if(w.rng&&!w.drag&&+w.rng.value!==mv0) w.rng.value=String(mv0);
+      }else if(w.it.k==='s'){
+        var v=rt.t[w.it.c], vu=wIn(w.it,v);
+        if(w.out) w.out.textContent=fmt(v);
+        if(w.rng&&!w.drag&&+w.rng.value!==vu) w.rng.value=String(vu);
+      }
+    });
+  }
+  bdEditBtn.addEventListener('click',function(){bdEditing=!bdEditing;if(!bdEditing) snapBoard();syncBoard()});
+  $('#dbEdit').addEventListener('click',function(){bdEditing=!bdEditing;if(!bdEditing){dashAdd=false;snapBoard()}syncBoard()});
+  $('#dbAdd').addEventListener('click',function(){dashAdd=!dashAdd;syncBoard()});
+  var rstT=0;
+  $('#dbReset').addEventListener('click',function(){
+    var b=$('#dbReset');
+    if(!rstT){b.textContent='Tap again';rstT=setTimeout(function(){rstT=0;b.textContent='Reset'},3000);return}
+    clearTimeout(rstT);rstT=0;b.textContent='Reset';
+    dashOn();
+    BD_UNDO.push({board:JSON.parse(JSON.stringify(C.board))});if(BD_UNDO.length>20)BD_UNDO.shift();
+    C.board.forEach(function(o){delete o[DG.k]});save();syncBoard();toast('Layout reset. Back undoes it.')});
+  var DTPL={
+    car:[{k:'s',c:0,w:1,v:true,g:[0,0,12,24]},{k:'l',c:2,w:1,g:[12,0,13,7]},{k:'b',c:0,w:1,g:[12,7,13,7]},
+         {k:'t',c:3,y:'dir',w:1,g:[25,0,14,7]},{k:'l',c:4,w:1,g:[25,7,14,7]},{k:'e',w:1,g:[39,0,9,14]},{k:'s',c:1,w:1,g:[12,14,36,10]}],
+    exc:[{k:'s',c:0,w:1,v:true,g:[0,0,7,24]},{k:'d',c:2,d:5,e:3,f:4,m:'axis',w:2,g:[7,0,34,24]},{k:'s',c:1,w:1,v:true,g:[41,0,7,24]}],
+    mon:[{k:'i',c:0,w:1,g:[0,0,8,24]},{k:'f',c:0,w:1,g:[8,0,16,16]},{k:'s',c:0,w:1,g:[8,16,16,8]},{k:'k',c:0,w:1,g:[24,0,24,12]},{k:'y',c:0,w:1,p:80,d:4,sc:1,g:[24,12,24,12]}],
+    four:[{k:'f',c:0,w:1,g:[0,0,12,10]},{k:'f',c:1,w:1,g:[12,0,12,10]},{k:'f',c:2,w:1,g:[24,0,12,10]},{k:'f',c:3,w:1,g:[36,0,12,10]},{k:'j',c:0,d:1,m:'axis',w:1,g:[0,10,22,14]},{k:'k',c:0,w:1,g:[22,10,26,14]}],
+    dual:[{k:'j',c:0,d:1,m:'axis',w:1,g:[0,0,19,24]},{k:'e',w:1,g:[19,0,10,8]},{k:'l',c:4,w:1,g:[19,8,10,8]},{k:'b',c:0,w:1,g:[19,16,10,8]},
+          {k:'j',c:2,d:3,m:'axis',w:1,g:[29,0,19,24]}]
+  };
+  function dtplMine(){
+    var box=$('#dtplMine');box.textContent='';
+    var L2=store.prefs.tpls;
+    $('#dtplMineH').hidden=!L2.length;
+    L2.forEach(function(t,i){
+      var row=document.createElement('div');row.className='dtpl-row';
+      var b=document.createElement('button');b.type='button';b.className='btn';b.setAttribute('data-my',String(i));
+      b.appendChild(document.createTextNode(t.name));
+      var sm=document.createElement('small');sm.textContent=t.board.length+' widget'+(t.board.length===1?'':'s');b.appendChild(sm);
+      var x=document.createElement('button');x.type='button';x.className='btn dtpl-del';x.setAttribute('data-del',String(i));x.setAttribute('aria-label','Delete template '+t.name);x.textContent='\u2715';
+      row.appendChild(b);row.appendChild(x);box.appendChild(row);
+    });
+    $('#dtplSave').disabled=!C.board.length;
+  }
+  function dtplApply(board,label){
+    dashOn();
+    BD_UNDO.push({board:JSON.parse(JSON.stringify(C.board))});if(BD_UNDO.length>20)BD_UNDO.shift();
+    C.board=cleanBoard(JSON.parse(JSON.stringify(board)));
+    if(DG.k!=='g') C.board.forEach(function(o){if(o.g){o[DG.k]=o.g.slice()}});
+    dashTplShow(false);dashAdd=false;save();syncBoard();toast(label+' layout. Back undoes it.');
+  }
+  /* ---- Joystick settings dialog ---- */
+  var jcItem=null;
+  function jcPaint(){
+    var j=jcItem&&jcItem.jc||{dz:0,sn:100,lm:100,ax:'f'};
+    $('#jcDz').value=j.dz;$('#jcSn').value=j.sn;$('#jcLm').value=j.lm;
+    $('#jcDzO').textContent=j.dz+'%';$('#jcSnO').textContent=j.sn+'%';$('#jcLmO').textContent=j.lm+'%';
+    [].forEach.call($('#jcAx').querySelectorAll('button'),function(b){b.setAttribute('aria-pressed',String(b.getAttribute('data-ax')===j.ax))});
+  }
+  function jcSwPaint(){
+    var it=jcItem;$('#jcSwBox').hidden=!(it&&it.k==='j');
+    [].forEach.call($('#jcSw').querySelectorAll('button'),function(b){b.setAttribute('aria-pressed',String(b.getAttribute('data-sw')===(it&&it.sw?'1':'0')))});
+  }
+  [].forEach.call($('#jcSw').querySelectorAll('button'),function(b){b.addEventListener('click',function(){
+    if(!jcItem) return;if(b.getAttribute('data-sw')==='1') jcItem.sw=1; else delete jcItem.sw;
+    save();jcSwPaint();syncBoard();
+  })});
+  function jcShow(it){jcItem=it;jcPaint();jcSwPaint();$('#jcDlg').hidden=false}
+  function jcRead(ax){
+    if(!jcItem) return;
+    var o=cleanJc({dz:+$('#jcDz').value,sn:+$('#jcSn').value,lm:+$('#jcLm').value,ax:ax||(jcItem.jc&&jcItem.jc.ax)||'f'});
+    if(o) jcItem.jc=o; else delete jcItem.jc;
+    save();jcPaint();
+  }
+  ['#jcDz','#jcSn','#jcLm'].forEach(function(q){$(q).addEventListener('input',function(){jcRead()})});
+  [].forEach.call($('#jcAx').querySelectorAll('button'),function(b){b.addEventListener('click',function(){jcRead(b.getAttribute('data-ax'))})});
+  $('#jcReset').addEventListener('click',function(){if(jcItem){delete jcItem.jc;save();jcPaint()}});
+  ['#jcDz','#jcSn','#jcLm'].forEach(function(q){
+    var inp=$(q), out=$(q+'O').parentNode===inp.parentNode?$(q+'O'):null;
+    if(!out) return;
+    var wrap=document.createElement('div');wrap.className='jcst';
+    function mkb(t,d,l){var b=document.createElement('button');b.type='button';b.className='btn';b.textContent=t;b.setAttribute('aria-label',l);
+      b.addEventListener('click',function(e){e.preventDefault();inp.value=String(Math.max(+inp.min,Math.min(+inp.max,(+inp.value)+d*(+inp.step||1))));inp.dispatchEvent(new Event('input',{bubbles:true}))});return b}
+    out.parentNode.insertBefore(wrap,out);
+    wrap.appendChild(mkb('\u2212',-1,'Decrease'));wrap.appendChild(out);wrap.appendChild(mkb('+',1,'Increase'));
+  });
+  $('#jcDone').addEventListener('click',function(){$('#jcDlg').hidden=true;jcItem=null});
+  /* ---- Export / import layout ---- */
+  function lxShow(mode){
+    var ta=$('#lxText');
+    $('#dashTpl').hidden=true;$('#lxDlg').hidden=false;
+    if(mode==='export'){
+      ta.value=JSON.stringify({mk6layout:1,board:C.board.map(function(o){var c=JSON.parse(JSON.stringify(o));return c})});
+      $('#lxHelp').textContent='Copy this text to keep or share your layout.';
+      $('#lxImport').hidden=true;$('#lxCopy').hidden=false;
+      try{ta.focus();ta.select()}catch(e){}
+    }else{
+      ta.value='';
+      $('#lxHelp').textContent='Paste a layout here, then press Import. It replaces the current layout. Back undoes it.';
+      $('#lxImport').hidden=false;$('#lxCopy').hidden=true;
+      try{ta.focus()}catch(e){}
+    }
+  }
+  $('#lxExp').addEventListener('click',function(){
+    if(!C.board.length){toast('Nothing to export yet.');return}
+    lxShow('export')});
+  $('#lxImp').addEventListener('click',function(){lxShow('import')});
+  $('#lxX').addEventListener('click',function(){$('#lxDlg').hidden=true});
+  $('#lxCopy').addEventListener('click',function(){
+    var ta=$('#lxText');ta.focus();ta.select();
+    var ok=false;try{ok=document.execCommand('copy')}catch(e){}
+    if(!ok&&navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(ta.value).then(function(){toast('Copied.')},function(){toast('Select the text and copy it.')});return}
+    toast(ok?'Copied.':'Select the text and copy it.');
+  });
+  $('#lxImport').addEventListener('click',function(){
+    var txt=$('#lxText').value.trim(),o=null;
+    try{o=JSON.parse(txt)}catch(e){}
+    var list=o&&(Array.isArray(o)?o:(o.mk6layout===1&&Array.isArray(o.board)?o.board:null));
+    var b=list?cleanBoard(list):[];
+    if(!b.length){toast('That is not a valid layout.',4000);return}
+    $('#lxDlg').hidden=true;
+    dtplApply(b,'Imported');
+  });
+  /* Wallpaper: one image for portrait and one for landscape, kept in this phone only */
+  var WALL={p:'',l:'',fit:{p:'fill',l:'fill'}},wallLast='';
+  try{WALL.p=localStorage.getItem('mk6wp')||'';WALL.l=localStorage.getItem('mk6wl')||'';WALL.fit.p=localStorage.getItem('mk6wfp')==='stretch'?'stretch':'fill';WALL.fit.l=localStorage.getItem('mk6wfl')==='stretch'?'stretch':'fill'}catch(e){}
+  function wallSlot(){return document.documentElement.classList.contains('dash-l')?'l':'p'}
+  function wallEl(){
+    var e=document.getElementById('wallBg');
+    if(!e){e=document.createElement('div');e.id='wallBg';e.setAttribute('aria-hidden','true');document.body.insertBefore(e,document.body.firstChild)}
+    return e;
+  }
+  function wallTop(){var bar=document.querySelector('header.bar');var t=bar?Math.round(bar.getBoundingClientRect().bottom):0;wallEl().style.top=Math.max(0,t)+'px'}
+  function wallFitOf(sl){var f=WALL.fit&&WALL.fit[sl];return f==='stretch'?'stretch':'fill'}
+  function wallApply(force){
+    var R=document.documentElement,sl=wallSlot(),u=R.classList.contains('dash')?WALL[sl]:'';
+    var key=sl+'|'+(u?u.length:0)+'|'+wallFitOf(sl);if(key===wallLast&&!force) return;wallLast=key;
+    var e=wallEl();
+    if(u){
+      e.style.backgroundImage='linear-gradient(rgba(0,0,0,.12),rgba(0,0,0,.12)),url("'+u+'")';
+      e.style.backgroundSize=wallFitOf(sl)==='stretch'?'100% 100%':'cover';
+      R.classList.add('has-wall');wallTop();
+    }else{e.style.backgroundImage='';R.classList.remove('has-wall')}
+  }
+  new MutationObserver(function(){wallApply()}).observe(document.documentElement,{attributes:true,attributeFilter:['class']});
+  wallApply();
+  window.addEventListener('resize',function(){if(document.documentElement.classList.contains('has-wall')) wallTop()});
+  try{var wb=document.querySelector('header.bar');if(wb&&window.ResizeObserver) new ResizeObserver(function(){if(document.documentElement.classList.contains('has-wall')) wallTop()}).observe(wb)}catch(e){}
+  window.onWallpaper=function(slot,url){
+    if(!url){toast('No image was chosen.');return}
+    slot=slot==='l'?'l':'p';
+    try{localStorage.setItem(slot==='l'?'mk6wl':'mk6wp',url)}catch(e){toast('The image is too large to save.');return}
+    WALL[slot]=url;wallLast='';wallApply();
+    toast('Wallpaper set for '+(slot==='l'?'landscape':'portrait')+'.');
+  };
+  function wallLabel(){$('#wallH').textContent=wallSlot()==='l'?'Wallpaper (landscape)':'Wallpaper (portrait)';$('#wallClr').disabled=!WALL[wallSlot()];$('#wallFit').disabled=!WALL[wallSlot()];$('#wallFit').textContent=wallFitOf(wallSlot())==='stretch'?'Fit: Stretch':'Fit: Fill'}
+  $('#wallPick').addEventListener('click',function(){
+    var sl=wallSlot();
+    if(NB&&NB.pickWallpaper){try{NB.pickWallpaper(sl)}catch(e){toast('Could not open the image picker.')}return}
+    var f=document.createElement('input');f.type='file';f.accept='image/*';
+    f.addEventListener('change',function(){
+      var file=f.files&&f.files[0];if(!file){return}
+      var img=new Image(),url=URL.createObjectURL(file);
+      img.onload=function(){
+        var k=Math.min(1,1600/Math.max(img.width,img.height)),c=document.createElement('canvas');
+        c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        URL.revokeObjectURL(url);window.onWallpaper(sl,c.toDataURL('image/jpeg',.8));wallLabel();
+      };
+      img.onerror=function(){window.onWallpaper(sl,null)};img.src=url;
+    });
+    f.click();
+  });
+  $('#wallFit').addEventListener('click',function(){
+    var sl=wallSlot();WALL.fit[sl]=wallFitOf(sl)==='stretch'?'fill':'stretch';
+    try{localStorage.setItem(sl==='l'?'mk6wfl':'mk6wfp',WALL.fit[sl])}catch(e){}
+    wallApply(true);wallLabel();
+  });
+  $('#wallClr').addEventListener('click',function(){
+    var sl=wallSlot();WALL[sl]='';
+    try{localStorage.removeItem(sl==='l'?'mk6wl':'mk6wp')}catch(e){}
+    wallLast='';wallApply();wallLabel();toast('Default background restored.');
+  });
+  function dashTplShow(on){$('#dashTpl').hidden=!on;if(on){$('#dtplName').value='';dtplMine();wallLabel();var bl=function(){try{document.activeElement&&document.activeElement.blur()}catch(e){}};bl();setTimeout(bl,60)}}
+  $('#dtplSave').addEventListener('click',function(){
+    if(!C.board.length) return;
+    dashOn();
+    var nm=$('#dtplName').value.replace(/\s+/g,' ').trim().slice(0,24);
+    var L2=store.prefs.tpls, ex=-1;
+    if(!nm){var k=1;do{nm='My layout '+k;k++}while(L2.some(function(o){return o.name===nm}))}
+    L2.forEach(function(o,i){if(o.name===nm) ex=i});
+    if(ex<0&&L2.length>=10){toast('Up to 10 templates. Delete one first.');return}
+    var bd=JSON.parse(JSON.stringify(C.board));
+    if(DG.k!=='g') bd.forEach(function(o){if(o[DG.k]) o.g=o[DG.k].slice()});
+    var t={name:nm,board:cleanBoard(bd)};
+    if(ex>=0) L2[ex]=t; else L2.push(t);
+    save();dtplMine();$('#dtplName').value='';
+    toast(ex>=0?('Template "'+nm+'" updated.'):('Saved as "'+nm+'".'));
+  });
+  $('#dtplName').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();$('#dtplSave').click()}});
+  $('#dtplMine').addEventListener('click',function(e){
+    var d=e.target.closest&&e.target.closest('[data-del]');
+    if(d){
+      var i=+d.getAttribute('data-del');
+      if(!d.classList.contains('arm')){d.classList.add('arm');d.textContent='Delete?';setTimeout(function(){if(d.isConnected){d.classList.remove('arm');d.textContent='\u2715'}},3000);return}
+      var gone=store.prefs.tpls.splice(i,1)[0];save();dtplMine();if(gone) toast('Template "'+gone.name+'" deleted.');
+      return;
+    }
+    var b=e.target.closest&&e.target.closest('[data-my]');if(!b) return;
+    var t=store.prefs.tpls[+b.getAttribute('data-my')];if(t) dtplApply(t.board,t.name);
+  });
+  $('#dbTpl').addEventListener('click',function(){dashTplShow(true)});
+  // Tidy: pack every widget (same size) to the first free spot, reading order, no gaps
+  function dashTidy(){
+    if(!dashOn()) return;
+    var k=DG.k, list=C.board.filter(function(o){return o.k!=='e'&&o[k]});
+    if(!list.length) return;
+    BD_UNDO.push({board:JSON.parse(JSON.stringify(C.board))});if(BD_UNDO.length>20)BD_UNDO.shift();
+    var order=list.slice().sort(function(a,b){return (a[k][1]-b[k][1])||(a[k][0]-b[k][0])});
+    var size=order.map(function(o){return [o[k][2],o[k][3]]});
+    // rows: an item joins the current row if its top is within half the row's first height
+    var rows=[],cur=null;
+    order.forEach(function(o,i){
+      if(cur&&o[k][1]<cur.y+cur.h*0.5){cur.m.push(i);cur.h=Math.max(cur.h,size[i][1])}
+      else{cur={y:o[k][1],h:size[i][1],m:[i]};rows.push(cur)}
+    });
+    rows.forEach(function(r){r.m.sort(function(a,b){return order[a][k][0]-order[b][k][0]})});
+    order.forEach(function(o){delete o[k]});
+    var bad=[], y=0;
+    rows.forEach(function(r){
+      var x=0,rh=0;
+      r.m.forEach(function(i){
+        var o=order[i],w=size[i][0],h=size[i][1];
+        if(x>0&&x+w>DG.x){x=0;y+=rh;rh=0}
+        var t=[x,y,w,h];
+        while(dashHits(o,t)&&t[0]+w<DG.x) t[0]++;
+        if(dashHits(o,t)||t[0]+w>DG.x||t[1]+h>DG.y){bad.push(o);return}
+        o[k]=t;x=t[0]+w;rh=Math.max(rh,h);
+      });
+      y+=rh;
+    });
+    if(bad.length) dashAuto();
+    save();syncBoard();toast('Widgets tidied. Back undoes it.');
+  }
+  $('#dbTidy').addEventListener('click',dashTidy);
+  $('#dbTplX').addEventListener('click',function(){dashTplShow(false)});
+  $('#dashTpl').addEventListener('click',function(e){
+    if(e.target===this){dashTplShow(false);return}
+    var b=e.target.closest&&e.target.closest('[data-tpl]');if(!b) return;
+    var t=DTPL[b.getAttribute('data-tpl')];if(!t) return;
+    dtplApply(t,b.firstChild.textContent.trim());
+  });
+  $('#dbBack').addEventListener('click',function(){
+    var u=BD_UNDO.pop();if(!u){syncBoard();return}
+    if(u.board){C.board=cleanBoard(u.board);save();syncBoard();toast(u.msg||'Previous layout back.');return}
+    if(C.board.length>=16){BD_UNDO.push(u);toast('Board is full.');return}
+    var it=u.it, k=DG&&DG.k, g=k&&it[k];
+    if(g&&C.board.some(function(o){var h=o[k];return h&&g[0]<h[0]+h[2]&&h[0]<g[0]+g[2]&&g[1]<h[1]+h[3]&&h[1]<g[1]+g[3]})) delete it[k];
+    if(k&&!it[k]){var g2=dashFind(it,1);if(!g2){BD_UNDO.push(u);toast('No free space to put it back.');return}it[k]=g2}
+    C.board.splice(Math.min(u.q,C.board.length),0,it);
+    var n=C.board.length;C.board=cleanBoard(C.board);
+    if(C.board.length<n){BD_UNDO.length=0;toast('Could not put it back.')}else toast('Widget put back.');
+    save();syncBoard()});
+  $('#dbModel').addEventListener('change',function(){
+    var v=this.value;if(!v||v===store.active) return;
+    var tp=store.profiles.filter(function(p){return p.id===v})[0];
+    if(tp&&tp.cfg){
+      if(tp.cfg.board&&tp.cfg.board.length){tp.cfg.layout='board';tp.cfg.dash=true}
+      else toast('That model has no Board layout yet, so it opens in its own layout.',4500);
+    }
+    prof.value=v;switchProfile(v);
+  });
+  (function(){
+    var pad=$('#lockPad'),tm=0;
+    function setLock(on){document.documentElement.classList.toggle('locked',on);pad.hidden=!on;pad.classList.remove('hold');clearTimeout(tm);if(on) feedback('ok')}
+    $('#dbLock').addEventListener('click',function(){bdEditing=false;dashAdd=false;syncBoard();setLock(true);toast('Board locked. Hold the lock button to unlock.',3000)});
+    pad.addEventListener('pointerdown',function(e){e.preventDefault();pad.classList.add('hold');clearTimeout(tm);tm=setTimeout(function(){setLock(false);feedback('hold');toast('Board unlocked.')},1000)});
+    ['pointerup','pointercancel','pointerleave'].forEach(function(ev){pad.addEventListener(ev,function(){clearTimeout(tm);pad.classList.remove('hold')})});
+    window.__lock=function(){return document.documentElement.classList.contains('locked')};
+  })();
+  $('#dbExit').addEventListener('click',function(){C.dash=false;bdEditing=false;dashAdd=false;save();syncLayout()});
+  $('#bdDash').addEventListener('change',function(){C.dash=$('#bdDash').checked;save();syncLayout()});
+  var dashLastK=dashLand()?'g':'gp';
+  window.addEventListener('resize',function(){
+    var k=dashLand()?'g':'gp';
+    if(k!==dashLastK){dashLastK=k;syncLayout();return}
+    if(dashOn()){dashFit();setTimeout(dashFit,250)}
+  });
+  bdTypes.forEach(function(t){t[1].addEventListener('click',function(){bdSetKind(t[0])})});
+  bdMode.addEventListener('change',bdFill);
+  $('#bdAdd').addEventListener('click',function(){
+    if(C.board.length>=16){bdNote.textContent='The board is full (16 controls).';return}
+    var v=bdSel.map(function(s){return s.value});
+    if(!v[0]&&bdK!=='e'&&bdK!=='z'&&bdK!=='rs'&&bdK!=='ps'){bdNote.textContent='Nothing to add.';return}
+    var ww=bdWideChk.checked?2:1, m=bdMode.value==='tank'?'tank':'axis', n=v.map(function(x){return Math.round(+x)});
+    var hd=!bdSpring.checked;
+    if(bdK==='w'){
+      if(n[0]===n[1]){bdNote.textContent='Pick two different channels.';return}
+      C.board.push({k:'w',c:n[0],d:n[1],w:ww,p:100});
+    }
+    else if(bdK==='e') C.board.push({k:'e',w:1});
+    else if(bdK==='b') C.board.push({k:'b',c:n[0],w:ww});
+    else if(bdK==='a') C.board.push({k:'a',c:n[0],w:ww,s:20});
+    else if(bdK==='y'||bdK==='v') C.board.push({k:bdK,c:n[0],w:ww,p:Math.round(+$('#bdTgPow').value)||50,d:bdK==='y'?4:1});
+    else if(bdK==='f'||bdK==='i'||bdK==='k') C.board.push({k:bdK,c:n[0],w:ww});
+    else if(bdK==='n') C.board.push({k:bdK,c:n[0],w:ww});
+    else if(bdK==='u') C.board.push({k:'u',c:n[0],w:ww,p:Math.round(+$('#bdTgPow').value)||50});
+    else if(bdK==='g'||bdK==='lv') C.board.push({k:bdK,c:n[0],w:ww});
+    else if(bdK==='st') C.board.push({k:'st',c:n[0],w:ww});
+    else if(bdK==='dp'){
+      if(n[1]>=0&&n[0]===n[1]){bdNote.textContent='Pick different channels for each motor.';return}
+      C.board.push({k:'dp',c:n[0],d:n[1],w:ww,m:m==='tank'?'tank':'car',p:70});
+    }
+    else if(bdK==='z') C.board.push({k:'z',w:ww,a:15});
+    else if(bdK==='ps') C.board.push({k:'ps',w:ww,hd:500,md:0,o0:1,o1:1,o2:1,o3:1,o4:1,o5:1});
+    else if(bdK==='rs') C.board.push({k:'rs',w:ww,p:100,ns:6,s:0});
+    else if(bdK==='t'){
+      var tsy=$('#bdTgStyle').value;
+      C.board.push({k:'t',c:n[0],w:tsy==='dir'?2:ww,y:tsy,p:Math.round(+$('#bdTgPow').value)||100});
+    }
+    else if(bdK==='l'){
+      var lcc=C.ch[n[0]];lcc.kind='light';lcc.blink=$('#bdLBlink').value;lcc.bright=Math.round(+$('#bdLBright').value)||100;
+      syncChannel(n[0]);C.board.push({k:'l',c:n[0],w:ww});
+    }
+    else if(bdK==='m'){
+      var mt=[];
+      n.forEach(function(cv,q){if(cv>=0&&!mt.some(function(z){return z.c===cv})) mt.push({c:cv,r:Math.round(+bdRat[q].value)||100})});
+      if(!mt.length){bdNote.textContent='Pick at least one channel.';return}
+      if(mt.length<n.filter(function(x){return x>=0}).length){bdNote.textContent='Pick different channels.';return}
+      C.board.push({k:'m',t:mt,c:mt[0].c,w:ww,hold:hd,v:false});
+    }
+    else if(bdK==='s') C.board.push({k:'s',c:n[0],w:ww,hold:hd});
+    else{
+      var used=(bdK==='j'?n.slice(0,2):n).filter(function(x){return x>=0});
+      if(used.some(function(x,i){return used.indexOf(x)!==i})){bdNote.textContent='Pick different channels for each motor.';return}
+      if(bdK==='j') C.board.push({k:'j',c:n[0],d:n[1],m:m,w:ww,hold:hd});
+      else C.board.push({k:'d',c:n[0],d:n[1],e:n[2],f:n[3],m:m,w:2,hold:hd});
+    }
+    if(dashOn()){
+      var lastIt=C.board[C.board.length-1], lg=lastIt&&dashFind(lastIt,1);
+      if(!lg){C.board.pop();save();toast('No space. Make room or remove a widget first.');return}
+      lastIt[DG.k]=lg;
+      dashAdd=false;
+    }
+    bdNote.textContent='';save();syncBoard();
+  });
+  bdSetKind('s');
+  if(/[?&]mk6test\b/.test(location.search)) window.__t={C:C,S:S,rt:rt,store:store,cleanBoard:cleanBoard,save:save,syncBoard:syncBoard,paintBoard:paintBoard,WSPEC:WSPEC,wsEdit:wsEdit,hubMsgSet:function(m){hubMsg=m;paintLink()}};
+  var sfIdle=$('#sfIdle'), sfWarn=$('#sfWarn');
+  function syncSafety(){if(!sfIdle) return;sfIdle.value=String(C.safety.idle);sfWarn.value=String(C.safety.warn);if(sfRun)sfRun.value=String(C.safety.run)}
+  sfIdle.addEventListener('change',function(){C.safety.idle=pickOf(sfIdle.value,[0,10,30,60,120],60);save()});
+  sfWarn.addEventListener('change',function(){C.safety.warn=pickOf(sfWarn.value,[0,15,30,60],30);save()});
+
+  var optFull=$('#optFull');
+  var landMQ=(typeof window.matchMedia==='function')?window.matchMedia('(orientation:landscape) and (max-height:520px)'):null;
+  function fullNative(){ if(NB&&NB.immersive){try{NB.immersive(!!store.prefs.full||!!(landMQ&&landMQ.matches))}catch(e){}} }
+  function landChange(){fullNative();syncLayout()}
+  if(landMQ){ if(landMQ.addEventListener) landMQ.addEventListener('change',landChange); else if(landMQ.addListener) landMQ.addListener(landChange); }
+  if(dashOn()) syncLayout();
+  optFull.addEventListener('change',function(){store.prefs.full=optFull.checked;save();fullNative()});
+  var optSound=$('#optSound'), optHaptic=$('#optHaptic'), optRelink=$('#optRelink'), optFx=$('#optFx'), pinBtn=$('#pinBtn');
+  function syncApp(){
+    if(!optSound) return;
+    optSound.checked=store.prefs.sound;optHaptic.checked=store.prefs.haptic;if(optRelink) optRelink.checked=store.prefs.relink;if(optFx){optFx.value=store.prefs.fx;if(window.mk6Lite) window.mk6Lite.mode(store.prefs.fx)}optFull.checked=store.prefs.full;fullNative();
+    $('#lang').value=store.prefs.lang;
+    pinBtn.hidden=!(NB&&NB.pinModel);
+    if(kidLim) kidLim.value=String(store.prefs.kidLimit);
+    applyLock();
+  }
+  optSound.addEventListener('change',function(){store.prefs.sound=optSound.checked;save();if(optSound.checked) beep([700,900],0.09)});
+  if(optFx) optFx.addEventListener('change',function(){store.prefs.fx=optFx.value;save();if(window.mk6Lite) window.mk6Lite.mode(optFx.value)});
+  if(optRelink) optRelink.addEventListener('change',function(){store.prefs.relink=optRelink.checked;save()});
+  optHaptic.addEventListener('change',function(){store.prefs.haptic=optHaptic.checked;save();if(optHaptic.checked) feedback('ok')});
+  pinBtn.addEventListener('click',function(){try{NB.pinModel(store.active,activeProfile().name)}catch(e){toast('This launcher cannot add a shortcut.')}});
+  syncSafety();syncApp();
+
+  // ---- Gamepad button mapping ----
+  var BTN_NAMES={0:'A',1:'B',2:'X',3:'Y',4:'LB',5:'RB',10:'L3',11:'R3',12:'D-pad up',13:'D-pad down',14:'D-pad left',15:'D-pad right'};
+  function buildGpMap(){
+    var box=$('#gpMap');if(!BTN_NAMES||!box||!box.appendChild) return;
+    box.innerHTML='';
+    PAD_BTNS.forEach(function(b){
+      var row=document.createElement('label');row.className='pm';
+      var nm=document.createElement('span');nm.textContent=BTN_NAMES[b];
+      var sel=document.createElement('select');
+      var o=document.createElement('option');o.value='';o.textContent='Nothing';sel.appendChild(o);
+      o=document.createElement('option');o.value='z';o.textContent='Stop all channels';sel.appendChild(o);
+      o=document.createElement('option');o.value='R';o.textContent='Record / stop recording';sel.appendChild(o);
+      o=document.createElement('option');o.value='P';o.textContent='Play / stop recording';sel.appendChild(o);
+      activeIdx().forEach(function(i){
+        var op=document.createElement('option');op.value='l'+i;op.textContent=tagOf(i)+' · '+C.ch[i].name+' light on/off';sel.appendChild(op);
+        op=document.createElement('option');op.value='t'+i;op.textContent=tagOf(i)+' · '+C.ch[i].name+' Turbo (hold)';sel.appendChild(op);
+      });
+      activeIdx().forEach(function(i){
+        [['f','forward'],['r','reverse']].forEach(function(d){
+          var op=document.createElement('option');op.value=d[0]+i;op.textContent=tagOf(i)+' · '+C.ch[i].name+' '+d[1];sel.appendChild(op);
+        });
+      });
+      [['rp','Dial selector: previous position'],['rn','Dial selector: next position'],['rg','Dial selector: on/off']].forEach(function(d){
+        var op=document.createElement('option');op.value=d[0];op.textContent=d[1];sel.appendChild(op);
+      });
+      C.seq.forEach(function(q){var op=document.createElement('option');op.value='s:'+q.id;op.textContent='Run: '+q.name;sel.appendChild(op)});
+      var cur=C.pad.map[b]||'';
+      if(cur&&!Array.prototype.some.call(sel.options,function(x){return x.value===cur})){delete C.pad.map[b];cur=''}
+      sel.value=cur;
+      sel.addEventListener('change',function(){
+        releasePad();
+        if(sel.value) C.pad.map[b]=sel.value; else delete C.pad.map[b];
+        save();
+      });
+      row.appendChild(nm);row.appendChild(sel);box.appendChild(row);
+    });
+  }
+
+  buildGpMap();
+
+  // ---- Gamepad (browser Gamepad API; standard mapping) ----
+  var GP={on:[false,false],trig:false,btn:{},stat:'',had:false,hold:{},mb:{}};
+  function padInfo(){
+    try{
+      var l=navigator.getGamepads?navigator.getGamepads():[];
+      for(var i=0;i<l.length;i++) if(l[i]&&l[i].connected) return l[i];
+    }catch(e){}
+    return null;
+  }
+  function padDz(v,d){var a=Math.abs(+v||0);return a<d?0:(v<0?-1:1)*Math.min(1,(a-d)/(1-d))}
+  function showKnob(k,x,y){
+    var st=sticks[k];if(!st) return;
+    var R=Math.max(8,(st.pad.getBoundingClientRect().width-st.knob.getBoundingClientRect().width*0.6)/2-7);
+    st.knob.classList.toggle('rest',x===0&&y===0);
+    st.knob.style.transform='translate('+(x*R)+'px,'+(-y*R)+'px)';
+    st.pad.style.setProperty('--m',Math.min(1,Math.hypot(x,y)).toFixed(2));
+  }
+  function releasePad(){
+    var bp=(C.layout==='board'&&typeof BD_PADS!=='undefined')?BD_PADS.filter(function(p){return p.jp.isConnected}):[];
+    for(var k=0;k<2;k++) if(GP.on[k]){GP.on[k]=false;if(bp[k]) applyJoy(bp[k].it,0,0); else{showKnob(k,0,0);applyStick(k,0,0)}}
+    if(GP.tb) Object.keys(GP.tb).forEach(function(b){var q=GP.tb[b];setT(q.c,q.p,false);S.turbo[q.c]=false;delete GP.tb[b]});
+    if(GP.trig){GP.trig=false;if(C.pad.trig>=0) setT(C.pad.trig,0,false)}
+    Object.keys(GP.hold).forEach(function(b){setT(GP.hold[b],0,false);delete GP.hold[b]});
+  }
+  function padEdge(g,n){
+    var b=g.buttons[n],down=!!(b&&(b.pressed||b.value>0.5)),was=!!GP.btn[n];
+    GP.btn[n]=down;return down&&!was;
+  }
+  function padStatus(g){
+    var t=!g?'No gamepad found. Pair it in Android Bluetooth settings, then press any button.'
+      :(C.pad.on?'Connected: '+String(g.id).slice(0,40):'Connected but switched off');
+    if(t!==GP.stat){GP.stat=t;gpStat.textContent=t}
+  }
+  function padPoll(){
+    var g=padInfo();
+    padStatus(g);
+    if(!!g!==GP.had){GP.had=!!g;if(g) feedback('ok'); else{feedback('lost');GP.mb={}}}
+    if(!g||!C.pad.on){releasePad();return}
+    if(padEdge(g,8)) setEstop(true);
+    if(padEdge(g,9)) setEstop(false);
+    var m=C.pad.map||{};
+    Object.keys(m).forEach(function(b){
+      var a=m[b],pb=g.buttons[+b],down=!!(pb&&(pb.pressed||pb.value>0.5)),was=!!GP.mb[b];
+      GP.mb[b]=down;
+      if(down) noteInput();
+      if(a==='rp'||a==='rn'||a==='rg'){
+        if(down&&!was&&!S.estop&&!S.play){
+          var rw0=bdW.filter(function(q){return q.rsd&&q.rsd.k.isConnected})[0];
+          if(rw0){
+            var rd1=rw0.rsd;
+            if(a==='rg'){rd1.tog();feedback('hold')}
+            else rd1.mv(Math.max(0,Math.min(rd1.n-1,rd1.cur()+(a==='rn'?1:-1))));
+          }
+        }
+      }
+      else if(a.charAt(0)==='s'){if(down&&!was) runSeq(a.slice(2))}
+      else if(a==='z'){if(down&&!was&&!S.play&&!S.estop) zeroAll()}
+      else if(a==='R'){if(down&&!was){if(S.rec) stopRecord(); else startRecord()}}
+      else if(a==='P'){if(down&&!was){if(S.play) stopPlay(true); else startPlay(null,{loop:S.loop})}}
+      else if(a.charAt(0)==='l'){
+        var lc=+a.slice(1);
+        if(down&&!was&&isActive(lc)&&!S.estop&&!S.play){if(C.ch[lc].kind!=='light'){C.ch[lc].kind='light';save();syncChannel(lc)}setT(lc,rt.t[lc]>0?0:C.ch[lc].bright,false)}
+      }
+    });
+    if(S.estop||S.play){releasePad();return}
+    Object.keys(m).forEach(function(b){
+      var a=m[b],c0=a.charAt(0);
+      if(c0==='t'){
+        var tch=+a.slice(1);if(!isActive(tch)) return;
+        GP.tb=GP.tb||{};
+        if(GP.mb[b]&&!GP.tb[b]){GP.tb[b]={c:tch,p:rt.t[tch]};S.turbo[tch]=true;setT(tch,rt.t[tch]<0?-100:100,false)}
+        else if(!GP.mb[b]&&GP.tb[b]){var q0=GP.tb[b];delete GP.tb[b];setT(q0.c,q0.p,false);S.turbo[q0.c]=false}
+        return;
+      }
+      if(c0!=='f'&&c0!=='r') return;
+      if(a==='rp'||a==='rn'||a==='rg') return;
+      var ch=+a.slice(1);
+      if(!isActive(ch)) return;
+      if(GP.mb[b]){setT(ch,c0==='f'?100:-100,false);GP.hold[b]=ch}
+      else if(GP.hold[b]!==undefined){setT(GP.hold[b],0,false);delete GP.hold[b]}
+    });
+    var d=C.pad.dead/100, ax=g.axes||[];
+    var xs=[[padDz(ax[0],d),padDz(ax[1],d)],[padDz(ax[2],d),padDz(ax[3],d)]];
+    var bp=C.layout==='board'?BD_PADS.filter(function(p){return p.jp.isConnected}):[];
+    var n=(C.layout==='dual'||bp.length>1)?2:1;
+    for(var k=0;k<n;k++){
+      var x=xs[k][0],y=-xs[k][1],act=x!==0||y!==0;
+      if(act) noteInput();
+      if(act||GP.on[k]){
+        if(bp[k]){if(!bp[k].busy()) applyJoy(bp[k].it,x,y)}
+        else{applyStick(k,x,y);showKnob(k,x,y)}
+      }
+      GP.on[k]=act;
+    }
+    if(C.pad.trig>=0&&isActive(C.pad.trig)){
+      var rt_=g.buttons[7]?g.buttons[7].value:0, lt_=g.buttons[6]?g.buttons[6].value:0;
+      var tv=rt_-lt_; if(Math.abs(tv)<0.05) tv=0;
+      if(tv!==0) noteInput();
+      if(tv!==0||GP.trig) setT(C.pad.trig,tv*100,false);
+      GP.trig=tv!==0;
+    }
+  }
+  if(typeof window.addEventListener==='function') window.addEventListener('gamepaddisconnected',function(){releasePad()});
+  // ---- Language (English / Bahasa Melayu) and first-run guide ----
+  var MS={'Target line':'Garisan sasaran','Target value':'Nilai sasaran',
+    'Console':'Konsol','Mould King 6.0 · up to 3 hubs':'Mould King 6.0 · sehingga 3 hub',
+    'Simulation on':'Simulasi hidup','Simulation off':'Simulasi mati','Connect hub':'Sambung hub','Hub active':'Hub aktif','Pairing…':'Memasangkan…',
+    'Release':'Lepas','Turn the hub link on or off':'Hidupkan atau matikan sambungan hub',
+    'E-Stop is on. Every channel is locked at 0. Tap Release E-Stop to continue.':'E-Stop aktif. Semua saluran dikunci pada 0. Tekan Lepas untuk sambung semula.',
+    'E-Stop is on: every channel is locked at 0':'E-Stop aktif: semua saluran dikunci pada 0','E-Stop released':'E-Stop dilepaskan',
+    'Bluetooth is off':'Bluetooth dimatikan','Permission denied':'Kebenaran ditolak','BLE advertising not supported':'Siaran BLE tidak disokong','Bluetooth error':'Ralat Bluetooth','Error':'Ralat',
+    'Model':'Model','Model name':'Nama model','Colour':'Warna','Standard':'Standard','Dual stick':'Dua stick',
+    'New model':'Model baharu','Delete':'Padam','Confirm delete':'Sahkan padam','Confirm':'Sahkan','Model colour':'Warna model','Layout':'Susun atur',
+    'Model list is full.':'Senarai model penuh.','New model created from the current settings':'Model baharu dicipta daripada tetapan semasa',
+    'Quick actions':'Tindakan pantas',
+    'Channels':'Saluran','Reverse':'Undur','Forward':'Depan','Stop':'Henti','Channel settings':'Tetapan saluran','Maximum power':'Kuasa maksimum','Start power':'Kuasa mula','Dashboard when the phone is sideways':'Dashboard bila telefon mengiring','Edit':'Ubah','Add widget':'Tambah widget','E-Stop':'E-Stop','+ Add':'+ Tambah','Reset':'Set semula','Exit':'Keluar','Done':'Selesai','Reset layout':'Set semula susunan','Exit dashboard':'Keluar dashboard','Layout reset.':'Susunan disetkan semula.','No space. Make room or remove a widget first.':'Tiada ruang. Kosongkan ruang atau buang satu widget dahulu.','The board is full (16 controls).':'Papan penuh (16 kawalan).','Test power':'Kuasa ujian','Used by Calibration and Test hub. Ignores Limit and Speed, so raise it until the motor just moves.':'Digunakan oleh Kalibrasi dan Uji hub. Had kuasa dan Kelajuan diabaikan, jadi naikkan sehingga motor baru bergerak.',
+    'Fine control (expo)':'Kawalan halus (expo)','Slider':'Gelangsar','Hold':'Tahan','Control type':'Jenis kawalan','Response curve':'Lengkung tindak balas',
+    'Channel':'Saluran','Channel power':'Kuasa saluran','Channel name':'Nama saluran','Power channels':'Saluran kuasa','not sent':'tidak dihantar',
+    'Sticks':'Stick','Left stick':'Stick kiri','Right stick':'Stick kanan','Axis':'Paksi','Tank':'Tangki','Stick mode':'Mod stick',
+    'Drive (up/down)':'Pandu (atas/bawah)','Steer (left/right)':'Stereng (kiri/kanan)','Left motor':'Motor kiri','Right motor':'Motor kanan','None':'Tiada',
+    'Repeat':'Ulang kali','Setup wizard':'Wizard persediaan','Vehicle type':'Jenis kenderaan','Tracked vehicle (two tracks)':'Kenderaan track (dua track)','Car with steering':'Kereta dengan stereng','Digger or crane (tracks, arm, bucket, swing)':'Jentera atau kren (track, lengan, baldi, putar)','Add lights':'Tambah lampu','Add a winch':'Tambah winch','Create model':'Cipta model','Cancel':'Batal',
+    'Channel A and B drive the tracks. Use the Joystick layout: push forward to drive, sideways to turn.':'Saluran A dan B menggerakkan track. Guna susun atur Joystick: tolak ke depan untuk memandu, ke sisi untuk membelok.',
+    'Channel A drives and channel B steers. Use the Joystick layout: up and down drives, left and right steers.':'Saluran A memandu dan saluran B mengemudi. Guna susun atur Joystick: atas dan bawah memandu, kiri dan kanan mengemudi.',
+    'Channels A and B drive the tracks, C, D and E move the arm, bucket and swing. Uses the Dual stick layout.':'Saluran A dan B menggerakkan track, C, D dan E menggerakkan lengan, baldi dan putaran. Guna susun atur Dua stick.',
+    'Model created. Rename the channels or change the layout any time.':'Model dicipta. Anda boleh namakan semula saluran atau tukar susun atur bila-bila masa.',
+'Switch (SPDT)':'Suis (SPDT)','Switch settings':'Tetapan suis','Output A':'Output A','Output B':'Output B','Centre off position':'Kedudukan tengah mati','Reverse output A':'Songsang output A','Reverse output B':'Songsang output B','Pick two different channels.':'Pilih dua saluran berbeza.','Slider settings':'Tetapan slider','Mix settings':'Tetapan campuran','Dial settings':'Tetapan dail','Steering wheel':'Stereng','Gear lever':'Tuas gear','D-pad':'Pad arah','Tidy':'Susun','Wheel':'Stereng','Lever':'Tuas','Widgets tidied. Back undoes it.':'Widget disusun. Back untuk batal.','Steering wheel settings':'Tetapan stereng','Full lock at':'Kunci penuh pada','On release':'Bila dilepas','Return to centre':'Kembali ke tengah','Stay':'Kekal','D-pad settings':'Tetapan pad arah','Drive mode':'Mod pemanduan','Tank (2 motors)':'Tank (2 motor)','Car (drive + steer)':'Kereta (pacu + stereng)','Ramp time (0 = instant)':'Masa ramp (0 = serta-merta)','Hold to move':'Tahan untuk bergerak','Tap to toggle':'Ketik untuk togol','Dial selector: previous position':'Suis dail: kedudukan sebelum','Dial selector: next position':'Suis dail: kedudukan seterusnya','Dial selector: on/off':'Suis dail: hidup/mati','Dial selector':'Suis dail','Selector settings':'Tetapan suis dail','Output power':'Kuasa output','Positions':'Kedudukan','Hub':'Hub','Hub 1':'Hub 1','Hub 2':'Hub 2','Hub 3':'Hub 3','Both ways':'Dua arah','Forward only':'Ke depan sahaja','On/off ramp time (0 = instant)':'Masa ramp on/off (0 = serta-merta)','Turbo settings':'Tetapan turbo','Direction & limit':'Arah & had','Reverse direction':'Songsang arah','Power limit':'Had kuasa','Snap to':'Lekat pada','Turbo power':'Kuasa turbo','Tap to lock on':'Ketik untuk kunci hidup','Brightness':'Kecerahan','Blink':'Kelip','Repeat':'Ulang','Speed':'Laju','Loop':'Gelung','On':'Hidup','Steady':'Tetap','Slow':'Perlahan','Fast':'Laju','Toggle settings':'Tetapan togol','Ramp settings':'Tetapan naik perlahan','Auto-stop settings':'Tetapan henti auto','Timer settings':'Tetapan pemasa','Widget settings':'Tetapan widget','Power':'Kuasa','Target power':'Kuasa sasaran','Ramp time':'Masa naik','Stop after':'Henti selepas','Alert after (0 = off)':'Amaran selepas (0 = mati)','Off':'Mati','Decrease':'Kurang','Increase':'Tambah','Auto-stop':'Henti auto','Ramp':'Naik perlahan','Arc meter':'Meter arka','Meter settings':'Tetapan meter','Target line':'Garisan sasaran','Target value':'Nilai sasaran','Monitor':'Pemantau','4 motors + driver':'4 motor + pemandu','LED and arc meter, slider, scope and ramp for one channel':'Meter LED dan arka, slider, scope dan ramp untuk satu saluran','Four arc meters on top, joystick and scope below':'Empat meter arka di atas, joystick dan scope di bawah','Main value':'Nilai utama','Widget':'Widget','Hub output':'Output hub','Colour theme':'Tema warna','Blue-orange':'Biru-oren','Mono':'Mono','Time window':'Tetingkap masa','LED meter':'Meter LED','Scope':'Osiloskop','Duration':'Tempoh','ON':'AKTIF','Gear':'Gear','Gear settings':'Tetapan gear','Session timer':'Pemasa sesi','Dial':'Dail','R (reverse)':'R (undur)','Add gear':'Tambah gear','Remove gear':'Buang gear','Save':'Simpan','Cancel':'Batal','Session timer reset.':'Pemasa sesi ditetapkan semula.','No alert \u00b7 hold to reset':'Tiada amaran \u00b7 tahan untuk set semula','Light settings':'Tetapan lampu','Test hub':'Uji hub','Kid':'Kanak-kanak','Full':'Penuh','Power profile':'Profil kuasa','Save current limit as profile':'Simpan had semasa sebagai profil','Save profile':'Simpan profil','Profile saved.':'Profil disimpan.','Stick range (maximum output)':'Julat stick (output maksimum)','Hub names (optional)':'Nama hub (pilihan)','Hub 1 name':'Nama hub 1','Hub 2 name':'Nama hub 2','Hub 3 name':'Nama hub 3','Turbo':'Turbo','Stop test':'Henti ujian','Release the E-Stop first.':'Lepaskan E-Stop dahulu.','Stop the current playback first.':'Henti main semula semasa dahulu.','Toggle':'Togol','Toggle settings':'Tetapan togol','LED button':'Butang LED','Latch switch':'Suis selak','Direction':'Arah','Style':'Gaya','Power':'Kuasa','Speed':'Kelajuan','Start after':'Mula selepas','Now':'Sekarang','Light':'Lampu','Brightness':'Kecerahan','Blink':'Kelip','Steady':'Tetap','Slow blink':'Kelip perlahan','Fast blink':'Kelip laju','Pulse':'Denyut','Mix':'Campur','Share of power for each channel (same order as above)':'Bahagian kuasa untuk setiap saluran','Pick at least one channel.':'Pilih sekurang-kurangnya satu saluran.','Pick different channels.':'Pilih saluran yang berbeza.','Light channel':'Saluran lampu','ON':'HIDUP','OFF':'MATI',
+    'Record & replay':'Rakam & main semula','Record':'Rakam','Play':'Main','Loop':'Ulang','Ready':'Sedia','Recordings':'Rakaman','Recording name':'Nama rakaman',
+    'No recordings yet':'Belum ada rakaman','Stop recording':'Henti rakam','Connect the hub first.':'Sambung hub dahulu.',
+    'Sequences':'Jujukan','Sequence':'Jujukan','Sequence name':'Nama jujukan','Add step':'Tambah langkah','Run':'Jalan','New sequence':'Jujukan baharu','Copy':'Salin',
+    'Power %':'Kuasa %','Seconds':'Saat','Together':'Serentak','Wait (all stopped)':'Tunggu (semua henti)','No sequence yet.':'Belum ada jujukan.','No sequences yet':'Belum ada jujukan',
+    'Move up':'Naik','Move down':'Turun','Delete step':'Padam langkah',
+    'Each sequence becomes a quick action button. Steps run one after another; tick "together" to start a step with the one above.':'Setiap jujukan menjadi butang tindakan pantas. Langkah berjalan satu demi satu; tanda "Serentak" untuk memulakan langkah bersama langkah di atasnya.',
+    'Gamepad':'Gamepad','Use gamepad':'Guna gamepad','Stick dead zone':'Zon mati stick','Trigger channel (RT forward, LT reverse)':'Saluran picu (RT depan, LT undur)',
+    'Left stick = stick 1, right stick = stick 2 (Dual stick layout). Back = E-Stop, Start = release. The sticks use the channels chosen in the stick cards.':'Stick kiri = stick 1, stick kanan = stick 2 (susun atur Dua stick). Back = E-Stop, Start = lepas. Stick menggunakan saluran yang dipilih dalam kad stick.',
+    'No gamepad found. Pair it in Android Bluetooth settings, then press any button.':'Tiada gamepad ditemui. Pasangkan dalam tetapan Bluetooth Android, kemudian tekan mana-mana butang.',
+    'Connected but switched off':'Disambung tetapi dimatikan','Button mapping':'Pemetaan butang','Nothing':'Tiada','Stop all channels':'Henti semua saluran',
+    'D-pad up':'D-pad atas','D-pad down':'D-pad bawah','D-pad left':'D-pad kiri','D-pad right':'D-pad kanan',
+    'Limits & hubs':'Had & hub','Limits & auto-stop':'Had & henti automatik','Power limit (all channels)':'Had kuasa (semua saluran)','Acceleration smoothing':'Pelicinan pecutan',
+    'Sliders return to 0 when released':'Gelangsar kembali ke 0 bila dilepas','Return to 0 when released':'Kembali ke 0 bila dilepas','Lock':'Kunci','Locked':'Dikunci','Calibration':'Kalibrasi','Start':'Mula','Correct':'Betul','Reversed':'Terbalik','Repeat':'Ulang','Cancel':'Batal','Player mode':'Mod pemain','Lock settings':'Kunci tetapan','Hold to unlock':'Tahan untuk buka kunci','Hold to exit':'Tahan untuk keluar','Release':'Lepas','Cancelled.':'Dibatalkan.',
+    'Runs each channel forward at the test power for 1.5 seconds. Lift the model off the ground first. Say whether it moved the right way and the app fixes the direction for you.':'Setiap saluran dijalankan ke depan pada kuasa rendah selama 1.5 saat. Angkat model dari tanah dahulu. Beritahu sama ada ia bergerak ke arah yang betul dan app akan betulkan arah untuk anda.',
+    'Connect the hub first, then press Start.':'Sambung hub dahulu, kemudian tekan Mula.',
+    'Connect the hub first (top right), then press Start.':'Sambung hub dahulu (kanan atas), kemudian tekan Mula.',
+    'Release E-Stop and stop any sequence or recording first.':'Lepaskan E-Stop dan hentikan sebarang jujukan atau rakaman dahulu.',
+    'Stopped. Connect the hub, release E-Stop and try again.':'Dihentikan. Sambung hub, lepaskan E-Stop dan cuba lagi.',
+    'Done. Every channel is checked.':'Siap. Semua saluran telah diperiksa.',
+    'Player mode shows only big sequence buttons and E-Stop. Lock settings hides everything that changes the model. Hold the button for 2 seconds to unlock or leave.':'Mod pemain hanya menunjukkan butang jujukan besar dan E-Stop. Kunci tetapan menyembunyikan semua yang mengubah model. Tahan butang selama 2 saat untuk buka kunci atau keluar.',
+    'No sequences yet. Leave player mode and make one first.':'Belum ada jujukan. Keluar dari mod pemain dan buat satu dahulu.',
+    'Settings locked. Hold the button in the App card for 2 seconds to unlock.':'Tetapan dikunci. Tahan butang dalam kad App selama 2 saat untuk buka kunci.','Settings locked. To unlock, go to Settings › App and hold the unlock button for 2 seconds.':'Tetapan dikunci. Untuk buka kunci, pergi ke Tetapan › Aplikasi dan tahan butang buka kunci selama 2 saat.',
+    'Slow':'Perlahan','Rename model in the list':'Namakan semula model dalam senarai','Done renaming':'Selesai menamakan semula','Vertical or horizontal':'Menegak atau mengufuk','Tilt on every Board joystick and slider':'Condong pada setiap joystik dan slider Board','Full screen (hide system bars)':'Skrin penuh (sembunyi bar sistem)','Touch and hold a joystick or slider, then tilt the phone.':'Sentuh dan tahan joystik atau slider, kemudian condongkan telefon.','Tilt steering':'Pusing dengan condong','This phone has no tilt sensor.':'Telefon ini tiada sensor condong.',
+    'Tilt sensor: no data yet':'Sensor condong: belum ada data','Tilt sensor is ready. Touch and hold a joystick or slider, then tilt the phone.':'Sensor condong sedia. Sentuh dan tahan joystik atau slider, kemudian condongkan telefon.',
+    'No tilt sensor data yet. Check that the phone has an accelerometer.':'Belum ada data sensor condong. Pastikan telefon ada sensor pecutan.',
+    'Touch and hold the joystick with one thumb. Up and down drives. Tilt the phone left or right like a steering wheel to steer. It works with the left joystick, or the first joystick on the Board. Hold the phone upright or sideways, not flat.':'Sentuh dan tahan joystik dengan satu ibu jari. Atas dan bawah untuk memandu. Condongkan telefon ke kiri atau kanan seperti stereng untuk memusing. Ia berfungsi dengan joystik kiri, atau joystik pertama pada Board. Pegang telefon tegak atau mengiring, bukan mendatar.','Hold':'Tahan','Double joystick':'Joystik berkembar','Double stick':'Stik berkembar','Mode':'Mod','Add to board':'Tambah ke papan','Done editing':'Siap sunting','Channel':'Saluran','Drive':'Pandu','Steer':'Pusing','Left motor':'Motor kiri','Right motor':'Motor kanan','None':'Tiada',
+    'Pick different channels for each motor.':'Pilih saluran berbeza untuk setiap motor.','Axis (drive + steer)':'Paksi (pandu + pusing)','Tank (left + right)':'Tangki (kiri + kanan)','Hold buttons':'Butang tahan','Slider':'Gelangsar','Sequence':'Jujukan','Wide':'Lebar','Add':'Tambah','Edit board':'Sunting papan',
+    'The board is empty. Tap Edit board to add controls.':'Papan kosong. Tekan Sunting papan untuk tambah kawalan.','The board is full (12 controls).':'Papan penuh (12 kawalan).','Nothing to add. Make a sequence first.':'Tiada untuk ditambah. Buat jujukan dahulu.',
+    'Steer by tilting the phone (experimental)':'Pusing dengan condongkan telefon (eksperimen)','Tilt for full steering':'Condong untuk pusing penuh','Low sensitivity (60\u00b0)':'Kepekaan rendah (60\u00b0)','Medium (45\u00b0)':'Sederhana (45\u00b0)','High sensitivity (30\u00b0)':'Kepekaan tinggi (30\u00b0)','Reverse tilt direction':'Terbalikkan arah condong','No tilt sensor found on this phone.':'Tiada sensor condong pada telefon ini.','Normal':'Biasa','Fast':'Laju','Board':'Papan',
+    'Stop a channel after running this long':'Henti saluran selepas berjalan selama ini','Player mode power limit':'Had kuasa mod pemain',
+    'Edit recording':'Sunting rakaman','Half speed':'Separuh laju','Slower (0.75x)':'Lebih perlahan (0.75x)','Faster (1.5x)':'Lebih laju (1.5x)','Double speed':'Dua kali laju',
+    'Save as new':'Simpan sebagai baru','From (s)':'Dari (s)','To (s)':'Hingga (s)','Trim to new':'Potong ke baru','Join to end':'Sambung ke hujung','Copy':'Salin',
+    'Back up automatically every week':'Sandar automatik setiap minggu','Back up now':'Sandar sekarang',
+    'No backup yet. The file goes to Downloads/MK6-Console-backup.json.':'Belum ada sandaran. Fail disimpan di Downloads/MK6-Console-backup.json.',
+    'Backup saved to the Downloads folder.':'Sandaran disimpan dalam folder Downloads.','Backup failed. Use Export models instead.':'Sandaran gagal. Guna Export models.',
+    'Set a start before the end.':'Tetapkan mula sebelum tamat.','That edit does not fit. Try a shorter one.':'Suntingan itu terlalu panjang. Cuba yang lebih pendek.',
+    'Hub link lost. Motors stopped.':'Sambungan hub terputus. Motor dihentikan.',
+    'Bluetooth was switched off. Motors stopped.':'Bluetooth dimatikan. Motor dihentikan.','Bluetooth was switched off':'Bluetooth dimatikan','Sticks return to 0 when released':'Stick kembali ke 0 bila dilepas','Auto-stop when idle':'Henti automatik bila tiada input','Warn after long full power':'Amaran selepas kuasa penuh lama',
+    'Off':'Mati','Hubs (module number of each)':'Hub (nombor modul setiap satu)',
+    'Frames sent':'Bingkai dihantar','Frame log':'Log bingkai',
+    'Each frame is six values from -100 to +100, one per channel, for every active hub. This page is running in simulation: no Bluetooth is used, frames are only logged.':'Setiap bingkai ialah enam nilai dari -100 hingga +100, satu setiap saluran, untuk setiap hub aktif. Halaman ini berjalan dalam simulasi: Bluetooth tidak digunakan, bingkai hanya dicatat.',
+    'Frames are broadcast over Bluetooth straight to the Mould King hubs. Put each hub in Bluetooth mode, tap Connect hub and wait until it says Hub active. With several hubs each one is updated in turn, so expect slightly slower response.':'Bingkai disiarkan melalui Bluetooth terus ke hub Mould King. Letakkan setiap hub dalam mod Bluetooth, tekan Sambung hub dan tunggu sehingga tertulis Hub aktif. Dengan beberapa hub, setiap satu dikemas kini bergilir, jadi tindak balas sedikit lebih perlahan.',
+    'Backup':'Sandaran','Export models':'Eksport model','Import models':'Import model','Apply import':'Gunakan import','Model data':'Data model',
+    'Exports every model, including recordings, as one file.':'Mengeksport semua model, termasuk rakaman, sebagai satu fail.',
+    'That file is too large to import.':'Fail itu terlalu besar untuk diimport.','That is not valid model data.':'Itu bukan data model yang sah.',
+    'No models found in that data.':'Tiada model ditemui dalam data itu.','Nothing could be imported.':'Tiada apa yang dapat diimport.',
+    'Models saved to file.':'Model disimpan ke fail.','Cancelled.':'Dibatalkan.','Could not save the file.':'Tidak dapat menyimpan fail.','Could not read that file.':'Tidak dapat membaca fail itu.',
+    'Choose where to save the file.':'Pilih tempat menyimpan fail.','Copy this text and keep it somewhere safe.':'Salin teks ini dan simpan di tempat selamat.',
+    'Choose a model file.':'Pilih fail model.','Paste exported model data, then tap Apply import.':'Tampal data model yang dieksport, kemudian tekan Gunakan import.',
+    'App':'Aplikasi','Language':'Bahasa','Sound':'Bunyi','Vibration':'Getaran','Reconnect when I return to the app':'Sambung semula bila saya kembali ke app','Effects':'Kesan visual','Lightweight':'Ringan','Auto (recommended)':'Auto (disyorkan)','Joystick settings':'Tetapan joystick','Applies to this joystick only.':'Untuk joystick ini sahaja.','Deadzone':'Zon mati','Sensitivity':'Kepekaan','Power limit':'Had kuasa','Axis lock':'Kunci paksi','Free':'Bebas','Left / right':'Kiri / kanan','Up / down':'Atas / bawah','Export layout':'Eksport susun atur','Import layout':'Import susun atur','Export / import layout':'Eksport / import susun atur','Import':'Import','Show guide':'Tunjuk panduan','Add model to home screen':'Tambah model ke skrin utama',
+    'This launcher cannot add a shortcut.':'Pelancar ini tidak dapat menambah pintasan.',
+    'Skip':'Langkau','Back':'Kembali','Next':'Seterusnya','Done':'Selesai',
+    'My templates':'Templat saya','Wallpaper (portrait)':'Kertas dinding (menegak)','Wallpaper (landscape)':'Kertas dinding (melintang)','Choose image':'Pilih gambar','Fit: Fill':'Muat: Penuhi','Fit: Stretch':'Muat: Regang','Use default background':'Guna latar lalai','No image was chosen.':'Tiada gambar dipilih.','The image is too large to save.':'Gambar terlalu besar untuk disimpan.','Wallpaper set for landscape.':'Kertas dinding melintang ditetapkan.','Wallpaper set for portrait.':'Kertas dinding menegak ditetapkan.','Default background restored.':'Latar lalai dipulihkan.','Could not open the image picker.':'Tidak dapat membuka pemilih gambar.','Template name':'Nama templat','Save current layout':'Simpan susunan ini','My templates work in every model. Up to 10.':'Templat saya boleh digunakan dalam semua model. Maksimum 10.',
+    'Delete?':'Padam?','Up to 10 templates. Delete one first.':'Maksimum 10 templat. Padam satu dahulu.',
+    'Rename widget':'Namakan semula widget','Widget name':'Nama widget','Widget name (empty = default)':'Nama widget (kosong = asal)',
+    'No recording':'Tiada rakaman',
+    'Record / stop recording':'Rakam / henti rakam','Play / stop recording':'Main / henti rakaman',' light on/off':' lampu hidup/mati',' Turbo (hold)':' Turbo (tahan)',
+    'LOW':'RENDAH','MID':'SEDANG','FULL':'PENUH','BLINK':'KELIP',
+    'Connect the hub first, then press Play.':'Sambung hub dahulu, kemudian tekan Main.','No recording yet. Press Record first.':'Belum ada rakaman. Tekan Rakam dahulu.',
+    'Preview on the screen only. The hub is not connected, so nothing moves.':'Pratonton pada skrin sahaja. Hub belum disambung, jadi tiada yang bergerak.',
+    'Hub connected. Preview stopped. Press Play to run it for real.':'Hub disambung. Pratonton dihentikan. Tekan Main untuk jalankan betul-betul.','Move undone.':'Alihan dibatalkan.','Size undone.':'Saiz dibatalkan.',
+    'That model has no Board layout yet, so it opens in its own layout.':'Model itu belum ada susunan Board, jadi ia dibuka dalam susunannya sendiri.',
+    'Template':'Templat','Layout templates':'Templat susunan','Replaces the current layout. Press Back to undo.':'Menggantikan susunan semasa. Tekan Kembali untuk batal.',
+    'Car / Truck':'Kereta / Trak','Excavator':'Jengkaut','Dual stick':'Dua joystick',
+    'Drive slider, steering slider, lights, Turbo, winch, E-Stop':'Gelangsar pandu, gelangsar stereng, lampu, Turbo, win, E-Stop',
+    'Thin track slider at the sides, double joystick for boom, arm, bucket, swing':'Gelangsar track nipis di tepi, joystick ganda untuk boom, arm, baldi, pusingan',
+    'Two big joysticks, E-Stop, lights and Turbo in the middle':'Dua joystick besar, E-Stop, lampu dan Turbo di tengah',
+    'Welcome to MK6 Console':'Selamat datang ke MK6 Console',
+    'Control up to three Mould King 6.0 hubs from your phone over Bluetooth. This short guide covers the setup.':'Kawal sehingga tiga hub Mould King 6.0 dari telefon anda melalui Bluetooth. Panduan ringkas ini merangkumi persediaan.',
+    'Set each hub number':'Tetapkan nombor setiap hub',
+    'Press the power button on the hub briefly. The LED flashes 1, 2 or 3 times: that is its number (M1, M2, M3). Give every hub a different number, then pick the same numbers under Limits & hubs.':'Tekan butang power pada hub sekejap. LED berkelip 1, 2 atau 3 kali: itulah nombornya (M1, M2, M3). Beri setiap hub nombor berbeza, kemudian pilih nombor yang sama di bawah Had & hub.',
+    'Connect':'Sambung',
+    'Switch the hub into Bluetooth mode and power it on. Tap Connect hub, allow the Bluetooth permission, and wait about 3 seconds until it says Hub active.':'Tukar hub ke mod Bluetooth dan hidupkannya. Tekan Sambung hub, benarkan kebenaran Bluetooth, dan tunggu kira-kira 3 saat sehingga tertulis Hub aktif.',
+    'Drive safely':'Pandu dengan selamat',
+    'E-Stop locks every channel at 0 until you release it. On a gamepad, Back is E-Stop and Start releases it. Motors also stop when the app leaves the screen or after the idle time you set.':'E-Stop mengunci semua saluran pada 0 sehingga anda melepaskannya. Pada gamepad, Back ialah E-Stop dan Start melepaskannya. Motor juga berhenti bila app meninggalkan skrin atau selepas masa tiada input yang anda tetapkan.',
+    'Make it yours':'Jadikan milik anda',
+    'Pick a colour and a theme per model, build sequences and quick action buttons, and map gamepad buttons. You can reopen this guide from the App card.':'Pilih warna dan tema bagi setiap model, bina jujukan dan butang tindakan pantas, dan petakan butang gamepad. Anda boleh buka semula panduan ini dari kad Aplikasi.'
+  };
+  var MS_RE=[
+    [/^of (\u2212?\d+)$/,function(m){return 'dari '+m[1]}],
+    [/^hub (\u2212?\d+)$/,function(m){return 'hub '+m[1]}],
+    [/^Target ([+\u2212]?\d+)$/,function(m){return 'Sasaran '+m[1]}],
+    [/^(Gear|Dial|Ramp|Auto-stop|Switch|Arc meter|LED meter|Scope) \u00b7 (.+)$/,function(m){return ({'Arc meter':'Meter arka','LED meter':'Meter LED',Scope:'Osiloskop',Switch:'Suis',Nudge:'Tolak',Gear:'Gear',Dial:'Dail',Cruise:'Pelayaran',Ramp:'Naik perlahan',Step:'Langkah','Auto-stop':'Henti auto',Position:'Kedudukan'})[m[1]]+' \u00b7 '+m[2]}],
+    [/^(\d+) s limit \u00b7 tap to change$/,function(m){return 'Had '+m[1]+' s \u00b7 ketik untuk tukar'}],
+    [/^Auto-stop: channel (\S+) stopped after (\d+) s\.$/,function(m){return 'Henti auto: saluran '+m[1]+' dihentikan selepas '+m[2]+' s.'}],
+    [/^Gear (\d)$/,function(m){return 'Gear '+m[1]}],
+    [/^Alert (\d+) min \u00b7 hold to reset$/,function(m){return 'Amaran '+m[1]+' min \u00b7 tahan untuk set semula'}],
+    [/^Session (\d+) min\. Check motors and battery\.$/,function(m){return 'Sesi '+m[1]+' min. Semak motor dan bateri.'}],
+    [/^Colour (\d)$/,function(m){return 'Warna '+m[1]}],
+    [/^Name of channel (\S+)$/,function(m){return 'Nama saluran '+m[1]}],
+    [/^Power of channel (\S+)$/,function(m){return 'Kuasa saluran '+m[1]}],
+    [/^Hub (M?\d)$/,function(m){return 'Hub '+m[1]}],
+    [/^Last backup: (.*)\. File: Downloads\/MK6-Console-backup\.json$/,function(m){return 'Sandaran terakhir: '+m[1]+'. Fail: Downloads/MK6-Console-backup.json'}],
+    [/^Channel (\S+) stopped after (\d+) s of running\. Move it back to 0, then start again\.$/,function(m){return 'Saluran '+m[1]+' dihentikan selepas '+m[2]+' s berjalan. Gerakkan kembali ke 0, kemudian mula semula.'}],
+    [/^(Left|Right) stick: (Drive|Steer|Left motor|Right motor)$/,function(m){var t={'Drive':'Pandu','Steer':'Pusing','Left motor':'Motor kiri','Right motor':'Motor kanan'};return (m[1]==='Left'?'Stik kiri: ':'Stik kanan: ')+t[m[2]]}],
+    [/^Tilt: (-?\d+)\u00b0$/,function(m){return 'Condong: '+m[1]+'\u00b0'}],
+    [/^Phone (\d+)%$/,function(m){return 'Telefon '+m[1]+'%'}],
+    [/^Phone battery is low \((\d+)%\)\. Charge it before driving\.$/,function(m){return 'Bateri telefon rendah ('+m[1]+'%). Cas sebelum memandu.'}],
+    [/^Testing channel (\S+) \((.*)\) forward at (\d+)%$/,function(m){return 'Menguji saluran '+m[1]+' ('+m[2]+') ke depan pada '+m[3]+'%'}],
+    [/^Channel (\S+): did it move the right way\?$/,function(m){return 'Saluran '+m[1]+': adakah ia bergerak ke arah yang betul?'}],
+    [/^(\d+) frames$/,function(m){return m[1]+' bingkai'}],
+    [/^Starts in (\d+) s$/,function(m){return 'Bermula dalam '+m[1]+' s'}],
+    [/^Testing (\S+) \((\d+)\/(\d+)\)\. Keep the model clear\.$/,function(m){return 'Menguji '+m[1]+' ('+m[2]+'/'+m[3]+'). Pastikan model di ruang lapang.'}],
+    [/^Recording (\d+:\d\d \/ \d+:\d\d)$/,function(m){return 'Merakam '+m[1]}],
+    [/^Playing (\d+:\d\d \/ \d+:\d\d)( \(loop\))?$/,function(m){return 'Memainkan '+m[1]+(m[2]?' (ulang)':'')}],
+    [/^(\d+) steps? · ([\d.]+) s( \(too long: only the first 90 s run\))?$/,function(m){return m[1]+' langkah · '+m[2]+' s'+(m[3]?' (terlalu panjang: hanya 90 s pertama dijalankan)':'')}],
+    [/^Run: (.+)$/,function(m){return 'Jalankan: '+m[1]}],
+    [/^(.+ · .+) forward$/,function(m){return m[1]+' depan'}],
+    [/^(.+ · .+) reverse$/,function(m){return m[1]+' undur'}],
+    [/^(.+) \(hub off\)$/,function(m){return m[1]+' (hub mati)'}],
+    [/^Connected: (.+)$/,function(m){return 'Disambung: '+m[1]}],
+    [/^Imported (\d+) models?\. Pick them in the Model list\.$/,function(m){return m[1]+' model diimport. Pilih dalam senarai Model.'}],
+    [/^Stopped: no input for (\d+) s$/,function(m){return 'Berhenti: tiada input selama '+m[1]+' s'}],
+    [/^Channel (\S+) has run near full power for (\d+) s\. Let the motor rest\.$/,function(m){return 'Saluran '+m[1]+' telah berjalan hampir kuasa penuh selama '+m[2]+' s. Biarkan motor berehat.'}]
+  ];
+  function msLookup(text){
+    if(Object.prototype.hasOwnProperty.call(MS,text)) return MS[text];
+    for(var i=0;i<MS_RE.length;i++){var m=MS_RE[i][0].exec(text);if(m) return MS_RE[i][1](m)}
+    return null;
+  }
+  var trOrig=typeof WeakMap==='function'?new WeakMap():null, trShown=typeof WeakMap==='function'?new WeakMap():null;
+  var ATTRS=['aria-label','title','placeholder'];
+  function trSkip(el){return !el||el.tagName==='SCRIPT'||el.tagName==='STYLE'||(el.closest&&el.closest('.log'))}
+  function trText(n){
+    if(!trOrig) return;
+    var cur=n.data;
+    if(trShown.get(n)===cur){
+      if(store.prefs.lang!=='ms'){n.data=trOrig.get(n);trShown.delete(n);trOrig.delete(n)}
+      return;
+    }
+    if(store.prefs.lang!=='ms'||trSkip(n.parentElement)) return;
+    var key=cur.trim();if(!key) return;
+    var t=msLookup(key);if(t===null) return;
+    var out=cur.replace(key,function(){return t});
+    trOrig.set(n,cur);trShown.set(n,out);n.data=out;
+  }
+  function trAttr(el,a){
+    if(!trOrig||!el.getAttribute) return;
+    var cur=el.getAttribute(a);if(cur===null) return;
+    var rec=trOrig.get(el)||{};
+    if(rec[a]&&rec[a].shown===cur){
+      if(store.prefs.lang!=='ms'){el.setAttribute(a,rec[a].orig);delete rec[a]}
+      return;
+    }
+    if(store.prefs.lang!=='ms') return;
+    var t=msLookup(cur.trim());if(t===null) return;
+    rec[a]={orig:cur,shown:t};trOrig.set(el,rec);el.setAttribute(a,t);
+  }
+  function trWalk(root){
+    if(!root||!document.createTreeWalker||!trOrig) return;
+    if(root.nodeType===3){trText(root);return}
+    if(root.nodeType!==1) return;
+    var w=document.createTreeWalker(root,4),n,list=[];
+    while((n=w.nextNode())) list.push(n);
+    list.forEach(trText);
+    var els=root.querySelectorAll?[].slice.call(root.querySelectorAll('[aria-label],[title],[placeholder]')):[];
+    if(root.getAttribute) els.push(root);
+    els.forEach(function(e){ATTRS.forEach(function(a){trAttr(e,a)})});
+  }
+  function applyLang(){
+    var de=document.documentElement;
+    if(de&&de.setAttribute) de.setAttribute('lang',store.prefs.lang==='ms'?'ms':'en');
+    if(document.body) trWalk(document.body);
+    $('#lang').value=store.prefs.lang;
+    if(typeof guideRender==='function'&&!$('#guide').hidden) guideRender();
+  }
+  if(document.body&&typeof MutationObserver==='function'){
+    new MutationObserver(function(muts){
+      muts.forEach(function(m){
+        if(m.type==='characterData') trText(m.target);
+        else if(m.type==='attributes') trAttr(m.target,m.attributeName);
+        else m.addedNodes.forEach(trWalk);
+      });
+    }).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:ATTRS});
+  }
+  $('#lang').addEventListener('change',function(){store.prefs.lang=$('#lang').value==='ms'?'ms':'en';save();applyLang()});
+
+  var GUIDE=[
+    ['Welcome to MK6 Console','Control up to three Mould King 6.0 hubs from your phone over Bluetooth. This short guide covers the setup.'],
+    ['Set each hub number','Press the power button on the hub briefly. The LED flashes 1, 2 or 3 times: that is its number (M1, M2, M3). Give every hub a different number, then pick the same numbers under Limits & hubs.'],
+    ['Connect','Switch the hub into Bluetooth mode and power it on. Tap Connect hub, allow the Bluetooth permission, and wait about 3 seconds until it says Hub active.'],
+    ['Drive safely','E-Stop locks every channel at 0 until you release it. On a gamepad, Back is E-Stop and Start releases it. Motors also stop when the app leaves the screen or after the idle time you set.'],
+    ['Make it yours','Pick a colour and a theme per model, build sequences and quick action buttons, and map gamepad buttons. You can reopen this guide from the App card.']
+  ];
+  var gIdx=0, guideEl=$('#guide');
+  function guideRender(){
+    var g=GUIDE[gIdx];
+    $('#gTitle').textContent=g[0];$('#gBody').textContent=g[1];
+    $('#gBack').hidden=gIdx===0;
+    $('#gNext').textContent=gIdx===GUIDE.length-1?'Done':'Next';
+    $('#gSkip').hidden=gIdx===GUIDE.length-1;
+    var dots=$('#gDots');dots.innerHTML='';
+    GUIDE.forEach(function(_,i){var d=document.createElement('i');if(i===gIdx) d.className='on';dots.appendChild(d)});
+    var ex=$('#gExtra');ex.innerHTML='';
+    if(gIdx===0){
+      [['en','English'],['ms','Bahasa Melayu']].forEach(function(l){
+        var b=document.createElement('button');b.type='button';b.className='btn';b.textContent=l[1];
+        b.setAttribute('aria-pressed',String(store.prefs.lang===l[0]));
+        b.addEventListener('click',function(){store.prefs.lang=l[0];save();applyLang()});
+        ex.appendChild(b);
+      });
+    }
+  }
+  function guideOpen(){gIdx=0;guideEl.hidden=false;guideRender()}
+  function guideClose(){guideEl.hidden=true;if(!store.prefs.seen){store.prefs.seen=true;save();if(window.mk6Go) window.mk6Go('tpl')}}
+  $('#gNext').addEventListener('click',function(){if(gIdx>=GUIDE.length-1){guideClose();return}gIdx++;guideRender()});
+  $('#gBack').addEventListener('click',function(){if(gIdx>0){gIdx--;guideRender()}});
+  $('#gSkip').addEventListener('click',guideClose);
+  $('#guideBtn').addEventListener('click',guideOpen);
+  var V2MS={'Back':'Kembali','Done':'Selesai','Home':'Utama','Drive':'Pandu','Models':'Model','Settings':'Tetapan','Main':'Utama',
+    'Not connected':'Belum bersambung','Connect':'Sambung','Disconnect':'Putuskan','Reconnect':'Sambung semula','Active model':'Model aktif','Open':'Buka',
+    'Record':'Rakam','Sequences':'Jujukan','Board':'Papan','Model settings':'Tetapan model','My models':'Model saya','Search models…':'Cari model…',
+    'No model matches your search.':'Tiada model yang sepadan.','New model':'Model baharu','Templates & backup':'Templat & sandaran',
+    'Car with steering':'Kereta berstereng','Drive + steer':'Pandu + stereng','Digger or crane':'Jentera atau kren','Tracks, arm, bucket':'Trek, lengan, baldi',
+    'Tracked vehicle':'Kenderaan trek','Two tracks':'Dua trek','Empty board':'Papan kosong','Build your own':'Susun sendiri','Backup all models':'Sandaran semua model',
+    'Save':'Simpan','Restore':'Pulihkan','Hub':'Hub','Hub & channel test':'Hub & ujian saluran','Safety':'Keselamatan','Model safety profile':'Profil keselamatan model',
+    'Data':'Data','Backup & restore':'Sandaran & pulihkan','Experience':'Pengalaman','Theme':'Tema','Dark mode':'Gelap','Light mode':'Cerah','Language':'Bahasa',
+    'Vibration & sound':'Getaran & bunyi','Light theme (outdoors)':'Tema cerah (luar rumah)','The board is empty':'Papan masih kosong','Pick a template or add your own widgets.':'Pilih templat atau tambah widget sendiri.','Templates':'Templat','Add widget':'Tambah widget','Press Record, drive, then press Record again to stop. Play replays it.':'Tekan Rakam, pandu, kemudian tekan Rakam lagi untuk henti. Main untuk ulang.','No sequences yet':'Belum ada jujukan','A sequence runs steps one after another from one button.':'Jujukan menjalankan langkah satu demi satu dengan satu butang.','Practice mode (no hub)':'Mod latihan (tanpa hub)','More':'Lain-lain','Tilt steering':'Stereng condong','Gamepad':'Gamepad',
+    'App, guide & player mode':'Aplikasi, panduan & mod pemain','Frames sent':'Bingkai dihantar','App':'Aplikasi','No hub connected':'Tiada hub bersambung',
+    'Turn the hub on, press its button for 2 seconds and hold it near the phone.':'Hidupkan hub, tekan butangnya 2 saat dan dekatkan dengan telefon.',
+    'Rename':'Namakan','Channel test':'Ujian saluran','hold to run':'tahan untuk jalan','Hubs on this model':'Hub untuk model ini','Welcome':'Selamat datang',
+    'Control Mould King 6.0 hubs':'Kawal hub Mould King 6.0','straight from your phone':'terus dari telefon','Your own widget board':'Papan widget sendiri',
+    'laid out to fit each model':'susun ikut model','Safety first':'Selamat dahulu','E-Stop and automatic stop':'E-Stop & henti automatik','Start':'Mula',
+    'Try without a hub':'Cuba tanpa hub','Practice on':'Latihan aktif','Practice off':'Latihan mati','Hub active':'Hub aktif','Pairing…':'Menyambung…',
+    'E-Stop is on':'E-Stop aktif','Every channel is locked at 0':'Semua saluran dikunci pada 0','Release':'Lepas','Connection lost':'Sambungan hilang',
+    'Outputs were stopped automatically':'Output dihentikan automatik','Bluetooth is off':'Bluetooth dimatikan','Turn it on to reach the hub':'Hidupkan untuk mencari hub',
+    'Try again':'Cuba lagi','Check Bluetooth and the permission, then try again':'Semak Bluetooth dan kebenaran, kemudian cuba lagi',
+    'Charge it before driving':'Cas dahulu sebelum memandu','OK':'Faham','Practice mode: no hub is used, outputs are only shown.':'Mod latihan: hub tidak digunakan, output hanya dipaparkan.',
+    'Practice mode off.':'Mod latihan dimatikan.','Turn on Practice mode or connect the hub first.':'Hidupkan Mod latihan atau sambung hub dahulu.',
+    'Release E-Stop first.':'Lepaskan E-Stop dahulu.','Practice mode: no hub is used':'Mod latihan: tiada hub digunakan','Connect hub':'Sambung hub','Disconnect hub':'Putuskan hub',
+    'Permission denied':'Kebenaran ditolak','Bluetooth was switched off':'Bluetooth telah dimatikan','BLE advertising not supported':'Telefon tidak menyokong BLE advertising','Bluetooth error':'Ralat Bluetooth'};
+  for(var v2k in V2MS) MS[v2k]=V2MS[v2k];
+  var V2MS2={"A copy of the board is kept every time you finish editing it. Restore one if the layout gets messed up.": "Salinan papan disimpan setiap kali anda selesai menyunting. Pulihkan salah satu jika susunan menjadi kucar-kacir.", "Board history (this model, last 3)": "Sejarah papan (model ini, 3 terakhir)", "No saved boards yet.": "Belum ada papan disimpan.", "Export fills the box with your layout. Copy it to keep or share. To import, paste a layout here and press Import.": "Eksport mengisi kotak dengan susunan anda. Salin untuk simpan atau kongsi. Untuk import, tampal susunan di sini dan tekan Import.", "Start / stop": "Mula / henti", "Swipe to other pairs": "Leret ke pasangan lain", "Close": "Tutup", "Control board": "Papan kawalan", "Emergency stop": "Henti kecemasan", "Release emergency stop": "Lepas henti kecemasan", "Export or import layout": "Eksport atau import susun atur", "Layout text": "Teks susun atur", "Open the board": "Buka papan", "Return to 0 on release": "Kembali ke 0 bila dilepas", "Search models": "Cari model", "Set to zero": "Set ke sifar", "Wide or normal": "Lebar atau biasa", "Move earlier": "Alih ke atas", "Move later": "Alih ke bawah", "Link diagnostics": "Diagnostik sambungan", "Copy report": "Salin laporan", "Report copied.": "Laporan disalin.", "Could not copy.": "Tidak dapat menyalin.", "The hub only listens and never answers, so the phone cannot measure signal strength. If a model stutters, hold the phone closer and watch Bluetooth errors.": "Hub hanya mendengar dan tidak pernah membalas, jadi telefon tidak dapat mengukur kekuatan isyarat. Jika model tersekat-sekat, dekatkan telefon dan perhatikan Ralat Bluetooth.", "Link": "Sambungan", "Send mode": "Mod hantar", "Connected for": "Bersambung selama", "Frames from the app": "Bingkai daripada app", "Sent by Bluetooth": "Dihantar melalui Bluetooth", "Bluetooth errors": "Ralat Bluetooth", "Error time": "Masa ralat", "data too large": "data terlalu besar", "too many advertisers": "terlalu banyak pemancar", "already started": "sudah bermula", "internal Bluetooth error": "ralat dalaman Bluetooth", "not supported by this phone": "tidak disokong telefon ini", "Last error": "Ralat terakhir", "Safety stops (app paused)": "Henti keselamatan (app dijeda)", "Last frame": "Bingkai terakhir", "Transmit power": "Kuasa pancaran", "Native data": "Data Android", "Only in the Android app": "Hanya dalam app Android", "Update rate": "Kadar kemas kini", "Hubs on this model": "Hub untuk model ini", "Practice": "Latihan", "Not connected": "Belum bersambung", "On": "Hidup", "Off": "Mati", "Connecting": "Menyambung", "1 hub": "1 hub", "Several hubs at once": "Beberapa hub serentak", "Several hubs, taking turns": "Beberapa hub, bergilir", "Text size": "Saiz teks", "Normal": "Biasa", "Large": "Besar", "Largest": "Paling besar", "High contrast": "Kontras tinggi", "Text size works in the Android app.": "Saiz teks berfungsi dalam app Android.", "Share this model": "Kongsi model ini", "Share model": "Kongsi model", "Sends the model as a file (board, channels, recordings and sequences). Your friend opens it with MK6 Console.": "Menghantar model sebagai fail (papan, saluran, rakaman dan jujukan). Kawan anda membukanya dengan MK6 Console.", "Could not share the model.": "Tidak dapat berkongsi model.", "That file could not be shared or opened.": "Fail itu tidak dapat dikongsi atau dibuka.", "That file is not an MK6 model.": "Fail itu bukan model MK6.", "Shared from another phone": "Dikongsi dari telefon lain", "Add to my models": "Tambah ke model saya", "Ignore": "Abaikan", "Model added.": "Model ditambah.", "Nothing could be imported.": "Tiada apa yang dapat diimport.", "Show as a quick button": "Tunjuk sebagai butang pantas", "Added to Quick actions on the Drive screen.": "Ditambah ke Tindakan pantas di skrin Pandu.", "Removed from Quick actions.": "Dibuang dari Tindakan pantas."};
+  for(var v2k2 in V2MS2) MS[v2k2]=V2MS2[v2k2];
+  MS_RE.push([/^(\d+) hubs? · (\d+) widgets?$/,function(m){return m[1]+' hub · '+m[2]+' widget'}],
+    [/^Output (\d+)%$/,function(m){return 'Keluaran '+m[1]+'%'}],
+    [/^Phone battery low · (\d+)%$/,function(m){return 'Bateri telefon rendah · '+m[1]+'%'}],
+    [/^(\d+) hubs · (.+)$/,function(m){return m[1]+' hub · '+(msLookup(m[2])||m[2])}]);
+  MS['Templates']='Templat';
+  [['Left wheel','Roda kiri'],['Right wheel','Roda kanan'],['Arm','Lengan'],['Scoop','Penyodok'],['Winch','Win'],['Lights','Lampu'],['Headlights','Lampu depan'],
+   ['Rear lights','Lampu belakang'],['Channel D','Saluran D'],['Channel E','Saluran E'],['Channel F','Saluran F'],['Left track','Trek kiri'],['Right track','Trek kanan'],
+   ['Bucket','Baldi'],['Swing','Putar'],['Steering','Stereng'],['Boom','Boom'],['Motor 1','Motor 1'],['Motor 2','Motor 2'],['Motor 3','Motor 3'],['Motor 4','Motor 4'],
+   ['Basic setup','Tetapan asas'],['2-motor car (example)','Kereta 2 motor (contoh)'],['Excavator (example)','Jentera (contoh)'],['Spin','Pusing'],['Dig cycle','Kitaran gali'],
+   ['My model','Model saya'],['Car / Truck','Kereta / Trak'],['Excavator / crane','Jengkaut / kren'],['Dual stick car','Kereta dua joystick'],['Robot (4 motors)','Robot (4 motor)'],
+   ['My board','Papan saya'],['Advanced','Lanjutan'],['Control layout','Susun atur kawalan'],['Sliders, lights, Turbo, winch','Gelangsar, lampu, Turbo, win'],
+   ['Tracks + double joystick','Trek + joystick berkembar'],['Two joysticks','Dua joystick'],['Four meters + joystick','Empat meter + joystick'],['Start from nothing','Mula dari kosong'],
+   ['Pick a template','Pilih templat'],['Hold the button for half a second.','Tahan butang selama setengah saat.'],['Drive menu','Menu pandu']].forEach(function(x){MS[x[0]]=x[1]});
+  MS['Settings are locked']='Tetapan dikunci';MS['Only driving is available']='Hanya pemanduan dibenarkan';MS['Unlock']='Buka kunci';
+  MS_RE.push([/^(.+) · Output (\d+)%$/,function(m){return (msLookup(m[1])||m[1])+' · Keluaran '+m[2]+'%'}]);
+  MS['Language, sound & vibration']='Bahasa, bunyi & getaran';MS['Hold a channel to run it at the test power.']='Tahan saluran untuk menjalankannya pada kuasa ujian.';
+  MS['‹ Back']='‹ Kembali';MS['Mould King 6.0']='Mould King 6.0';
+  [['Safety stop: the app paused, so every motor was set to 0.','Henti selamat: app tergendala, jadi semua motor ditetapkan ke 0.'],['Active','Aktif'],['Off','Mati'],['Active model','Model aktif'],['Hold for half a second to start','Tahan setengah saat untuk mula'],['Hold for half a second to stop','Tahan setengah saat untuk henti'],
+   ['Template or empty','Templat atau kosong'],['Limits & auto-stop','Had & henti automatik'],['App, guide & player mode','Aplikasi, panduan & mod pemain'],
+   ['Hub numbers & names','Nombor & nama hub'],['hold to run','tahan untuk jalan'],['Output','Keluaran'],['Remove','Buang'],['Add','Tambah'],
+   ['None — add a second hub','Tiada — tambah hub kedua'],['None — add a third hub','Tiada — tambah hub ketiga'],['Record & replay','Rakam & ulang'],
+   ['Stop recording','Henti rakam'],['More','Lagi'],['Back','Kembali'],['Search models…','Cari model…']].forEach(function(x){MS[x[0]]=x[1]});
+  MS['Connect hub']=MS['Connect hub']||'Sambung hub';MS_RE.push([/^(\d+) recordings?$/,function(m){return m[1]+' rakaman'}],[/^(\d+) sequences?$/,function(m){return m[1]+' jujukan'}],
+    [/^Hub (\d) · M(\d)$/,function(m){return 'Hub '+m[1]+' · M'+m[2]}],[/^Channels (.+)–(.+)$/,function(m){return 'Saluran '+m[1]+'–'+m[2]}],
+    [/^Light · ([A-R][0-9]?)$/,function(m){return 'Lampu · '+m[1]}],
+    [/^Model received: (.+)$/,function(m){return 'Model diterima: '+m[1]}],[/^(\d+) models in this file$/,function(m){return m[1]+' model dalam fail ini'}],
+    [/^(\d+) models added\.$/,function(m){return m[1]+' model ditambah.'}],[/^(\d+) per second$/,function(m){return m[1]+' sesaat'}],
+    [/^(.+) ago$/,function(m){return m[1]+' lalu'}],[/^(\d+) s$/,function(m){return m[1]+' saat'}],[/^(\d+) min (\d+) s$/,function(m){return m[1]+' min '+m[2]+' saat'}],
+    [/^(\d+) h (\d+) min$/,function(m){return m[1]+' jam '+m[2]+' min'}],
+    [/^(\d+) · (data too large|too many advertisers|already started|internal Bluetooth error|not supported by this phone|code \d+)$/,function(m){return m[1]+' · '+({'data too large':'data terlalu besar','too many advertisers':'terlalu banyak pemancar','already started':'sudah bermula','internal Bluetooth error':'ralat dalaman Bluetooth','not supported by this phone':'tidak disokong telefon ini'}[m[2]]||m[2].replace('code','kod'))}],
+    [/^Model saved as (.+)$/,function(m){return 'Model disimpan sebagai '+m[1]}],
+    [/^(Connect hub|Hub active|Pairing…|Practice on|Practice off|Not connected)(, battery (\d+)%)?$/,function(m){return (msLookup(m[1])||m[1])+(m[3]?', bateri '+m[3]+'%':'')}],
+    [/^(.+) · (\d) hubs$/,function(m){return (msLookup(m[1])||m[1])+' · '+m[2]+' hub'}]);
+  /* ---------- Layout shell ("Lakaran UI v2"): Home cockpit, focused Drive, model gallery, icon settings, hub test; minimalist icons ---------- */
+  var V2={v:'home'}, R2=document.documentElement;
+  var V2IC={"home": "<path d=\"M3.5 10.8 12 3.6l8.5 7.2V19.5a1.3 1.3 0 0 1-1.3 1.3H15v-6.2H9v6.2H4.8a1.3 1.3 0 0 1-1.3-1.3z\"/>", "drive": "<circle cx=\"12\" cy=\"12\" r=\"8.6\"/><circle cx=\"12\" cy=\"12\" r=\"2.6\"/><path d=\"M12 14.6v6M9.6 11.1 3.6 9.6M14.4 11.1l6-1.5\"/>", "models": "<path d=\"M12 3.2 20 7.6v8.8L12 20.8l-8-4.4V7.6z\"/><path d=\"M4 7.6 12 12l8-4.4M12 12v8.8\"/>", "settings": "<path d=\"M21.02,10.21 L21.02,13.79 L18.96,13.39 L17.90,15.94 L19.65,17.11 L17.11,19.65 L15.94,17.90 L13.39,18.96 L13.79,21.02 L10.21,21.02 L10.61,18.96 L8.06,17.90 L6.89,19.65 L4.35,17.11 L6.10,15.94 L5.04,13.39 L2.98,13.79 L2.98,10.21 L5.04,10.61 L6.10,8.06 L4.35,6.89 L6.89,4.35 L8.06,6.10 L10.61,5.04 L10.21,2.98 L13.79,2.98 L13.39,5.04 L15.94,6.10 L17.11,4.35 L19.65,6.89 L17.90,8.06 L18.96,10.61Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "bt": "<path d=\"M7 7.2l10 9.6-5 4.2V3l5 4.2-10 9.6\"/>", "hub": "<rect x=\"6.5\" y=\"6.5\" width=\"11\" height=\"11\" rx=\"2.2\"/><rect x=\"9.5\" y=\"9.5\" width=\"5\" height=\"5\" rx=\"1\"/><path d=\"M9.5 3.5v3M14.5 3.5v3M9.5 17.5v3M14.5 17.5v3M3.5 9.5h3M3.5 14.5h3M17.5 9.5h3M17.5 14.5h3\"/>", "shield": "<path d=\"M12 3.2l7.6 2.9v5.8c0 4.4-3.2 7.9-7.6 8.9-4.4-1-7.6-4.5-7.6-8.9V6.1z\"/><path d=\"M12 8.2v4.6M12 15.8v.1\"/>", "sync": "<path d=\"M19.5 11A7.5 7.5 0 0 0 6 6.6L4.5 8M4.5 4v4h4\"/><path d=\"M4.5 13A7.5 7.5 0 0 0 18 17.4l1.5-1.4M19.5 20v-4h-4\"/>", "vibe": "<rect x=\"8\" y=\"4\" width=\"8\" height=\"16\" rx=\"2\"/><path d=\"M11 17h2M4.5 9v6M19.5 9v6M2 11v2M22 11v2\"/>", "cap": "<path d=\"M2.8 9.2 12 4.5l9.2 4.7L12 13.9z\"/><path d=\"M6.8 11.4v4.3c0 1.5 2.3 3 5.2 3s5.2-1.5 5.2-3v-4.3M21.2 9.2v5\"/>", "globe": "<circle cx=\"12\" cy=\"12\" r=\"8.6\"/><path d=\"M3.4 12h17.2M12 3.4c2.4 2.4 3.4 5.3 3.4 8.6s-1 6.2-3.4 8.6c-2.4-2.4-3.4-5.3-3.4-8.6s1-6.2 3.4-8.6z\"/>", "rec": "<circle cx=\"12\" cy=\"12\" r=\"8.4\"/><circle cx=\"12\" cy=\"12\" r=\"3.6\"/>", "seq": "<path d=\"M4 6.5h10M4 12h10M4 17.5h6M15.5 14.5l5 3-5 3z\"/>", "pen": "<path d=\"M4 20h4.2L19.2 9a2.1 2.1 0 0 0-3-3L5.2 17z\"/><path d=\"M14.5 7.5l3 3\"/>", "unlink": "<path d=\"M9.5 14.5 7.4 16.6a3 3 0 0 1-4.2-4.2l3-3M14.5 9.5l2.1-2.1a3 3 0 0 1 4.2 4.2l-3 3M8 4.5v2.5M4.5 8H7M16 19.5V17M19.5 16H17\"/>", "plus": "<path d=\"M12 5v14M5 12h14\"/>", "minus": "<path d=\"M5 12h14\"/>", "search": "<circle cx=\"10.8\" cy=\"10.8\" r=\"6.3\"/><path d=\"M15.6 15.6l4.6 4.6\"/>", "more": "<path d=\"M5.5 12h.1M12 12h.1M18.5 12h.1\" stroke-width=\"3\"/>", "chev": "<path d=\"M9.5 6l6 6-6 6\"/>", "down": "<path d=\"M6 9.5l6 6 6-6\"/>", "save": "<path d=\"M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14\"/>", "load": "<path d=\"M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19.5h14\"/>", "grid": "<rect x=\"4\" y=\"4\" width=\"7\" height=\"7\" rx=\"1.6\"/><rect x=\"13\" y=\"4\" width=\"7\" height=\"7\" rx=\"1.6\"/><rect x=\"4\" y=\"13\" width=\"7\" height=\"7\" rx=\"1.6\"/><rect x=\"13\" y=\"13\" width=\"7\" height=\"7\" rx=\"1.6\"/>", "tilt": "<rect x=\"7\" y=\"3.5\" width=\"10\" height=\"17\" rx=\"2\" transform=\"rotate(-18 12 12)\"/><path d=\"M3 18.5c1.5 1.3 3.2 2 5 2.2M21 5.5c-1.5-1.3-3.2-2-5-2.2\"/>", "pad": "<path d=\"M7 8h10a4 4 0 0 1 4 4.6l-.6 3.6a2.3 2.3 0 0 1-4 1l-1.8-2.2H9.4l-1.8 2.2a2.3 2.3 0 0 1-4-1L3 12.6A4 4 0 0 1 7 8z\"/><path d=\"M8 10.5v3M6.5 12h3M15.5 11.3h.1M17.5 13h.1\"/>", "list": "<path d=\"M8.5 6.5h11M8.5 12h11M8.5 17.5h11M4.5 6.5h.1M4.5 12h.1M4.5 17.5h.1\"/>", "q": "<circle cx=\"12\" cy=\"12\" r=\"8.6\" stroke-dasharray=\"2.4 2.4\"/><path d=\"M9.6 9.6a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1.1.9-1.1 1.6v.6M12 16.8v.1\"/>"};
+  function v2Ic(k,cls){return '<svg class="'+(cls||'ic')+'" viewBox="0 0 24 24" aria-hidden="true">'+(V2IC[k]||'')+'</svg>'}
+  var V2PARENT={medit:'models',tpl:'models',hub:'settings',safety:'settings',backup:'settings','m-tilt':'settings','m-pad':'settings','m-app':'settings','m-log':'settings'};
+  var V2TITLE={medit:'Model settings',tpl:'Templates',hub:'Hub',safety:'Limits & auto-stop',backup:'Backup & restore','m-tilt':'Tilt steering','m-pad':'Gamepad','m-app':'App','m-log':'Frames sent'};
+  var V2UI={};try{V2UI=JSON.parse(localStorage.getItem('mk6ui')||'{}')||{}}catch(_){V2UI={}}
+  function v2UiSave(){try{localStorage.setItem('mk6ui',JSON.stringify(V2UI))}catch(_){}}
+  function v2Tab(v){return (v==='home'||v==='drive')?v:(v==='models'||v==='medit'||v==='tpl')?'models':'settings'}
+  function v2Go(v){
+    if(v.indexOf('/')>0) v=v.split('/')[0];
+    V2.v=v;R2.setAttribute('data-v',v);
+    var t=v2Tab(v);
+    if(v!=='drive'&&bdEditing){var be=$('#bdEdit');if(be) be.click()}
+    if(t!==v2LastTab) v2Motion(t);
+    Array.prototype.forEach.call(document.querySelectorAll('#tabbar [data-tab]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.tab===t))});
+    var sub=!!V2PARENT[v];$('#subHead').hidden=!sub;if(sub) $('#subTitle').textContent=V2TITLE[v];
+    $('#subDone').hidden=v!=='medit';
+    try{window.scrollTo(0,0)}catch(_){}
+    if(v==='models') v2Models();
+    if(v==='home') v2Preview();
+    if(v==='drive') v2Pick();
+    if(v==='hub'){v2ChTest(true);v2Slots()}
+    v2Paint();
+    try{window.dispatchEvent(new Event('resize'))}catch(_){}
+  }
+  window.mk6Go=v2Go;
+  (function(){
+    var orig=window.onAppEvent;
+    window.onAppEvent=function(ev){
+      if(ev==='watchdog'){toast('Safety stop: the app paused, so every motor was set to 0.',4000);feedback('lost');return}
+      if(ev==='sharefail'){toast('That file could not be shared or opened.',3500);return}
+      if(orig) return orig.apply(this,arguments);
+    };
+  })();
+  // Android back button: close an open dialog, then go up one screen, then Home; only then leave the app
+  window.mk6Back=function(){
+    var dl=['#dashTpl','#jcDlg','#lxDlg'].map(function(q){return $(q)}).filter(function(e){return e&&!e.hidden});
+    if(dl.length){dl[0].hidden=true;return true}
+    if(!$('#guide').hidden){guideClose();return true}
+    if(bdEditing){var be=$('#bdEdit');if(be) be.click();return true}
+    if(!player.hidden) return true;
+    if(V2PARENT[V2.v]){v2Go(V2PARENT[V2.v]);return true}
+    if(V2.v!=='home'){v2Go('home');return true}
+    return false;
+  };
+  function v2Click(sel,fn){var e=$(sel);if(e) e.addEventListener('click',fn)}
+  function v2Conn(){link.click()}
+  var v2WasLive=!!S.connected;
+  function v2Live(){
+    var live=S.connected&&hubMsg!=='Pairing…';
+    if(live&&!v2WasLive&&(V2.v==='home'||V2.v==='hub')) v2Go('drive');
+    v2WasLive=live;
+  }
+  // Home start/stop: the app's own START/STOP widget graphic, driving the hub link
+  var v2PS=null;
+  (function(){
+    var box=$('#hPS');if(!box) return;
+    var el=document.createElement('div');el.className='bdw psw v2-ps';
+    var pb=document.createElement('button');pb.type='button';pb.className='psb';pb.setAttribute('aria-label','Connect hub');
+    var psv=sv('svg',{viewBox:'0 0 120 116',class:'pssvg'},pb);
+    var pdf=sv('defs',{},psv),pgr=sv('radialGradient',{id:'psgH',cx:'.35',cy:'.3',r:'.9'},pdf);
+    sv('stop',{offset:'0','stop-color':'#5a6376'},pgr);sv('stop',{offset:'.6','stop-color':'#2a303b'},pgr);sv('stop',{offset:'1','stop-color':'#14181f'},pgr);
+    var pglow=sv('g',{style:'filter:blur(4px)',opacity:.55},psv);
+    var pglw=ledRing(pglow,60,58,46.5,40,90,360,7), pring=ledRing(psv,60,58,46.5,40,90,360,7);
+    var pcap=sv('g',{},psv);
+    sv('circle',{cx:60,cy:58,r:39,fill:'#0d1015',stroke:'#6b7280','stroke-width':2},pcap);
+    sv('circle',{cx:60,cy:58,r:35,fill:'url(#psgH)',stroke:'#0d1015','stroke-width':2},pcap);
+    sv('ellipse',{cx:52,cy:42,rx:19,ry:8,fill:'#fff',opacity:.12},pcap);
+    var pic=sv('circle',{cx:60,cy:58,r:31,fill:'none','stroke-width':2.5,stroke:'#E24B4A'},pcap);
+    var pt1=sv('text',{x:60,y:58,'text-anchor':'middle','font-size':14,'font-weight':900,fill:'#e8e8ea'},pcap);pt1.textContent='START';
+    var pt2=sv('text',{x:60,y:71,'text-anchor':'middle','font-size':10,'font-weight':900,fill:'#E24B4A'},pcap);pt2.textContent='STOP';
+    var pst=sv('text',{x:60,y:62,'text-anchor':'middle','font-size':11,'font-weight':900,fill:'#E24B4A'},psv);
+    v2PS={k:'ps',it:{md:0},b:pb,ring:pring,glow:pglw,glowg:pglow,cap:pcap,ic:pic,t1:pt1,t2:pt2,st:pst,col:[],tgt:'',ai:0,t:0};
+    // same behaviour as the START/STOP widget on the board: hold for 0.5 s; a short tap only shows a hint
+    var hdT=0,hdDn=false,hdFired=false;
+    pb.addEventListener('pointerdown',function(e){
+      e.preventDefault();try{pb.setPointerCapture(e.pointerId)}catch(_){}
+      hdDn=true;hdFired=false;pb.classList.add('dn');clearTimeout(hdT);
+      hdT=setTimeout(function(){if(!hdDn) return;hdFired=true;feedback('ok');v2Conn()},500);
+    });
+    ['pointerup','pointercancel','lostpointercapture'].forEach(function(ev){pb.addEventListener(ev,function(e){
+      var was=hdDn;hdDn=false;clearTimeout(hdT);pb.classList.remove('dn');
+      if(ev==='pointerup'&&was&&!hdFired) toast('Hold the button for half a second.',2000);
+    })});
+    pb.addEventListener('contextmenu',function(e){e.preventDefault()});
+    pb.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();v2Conn()}});
+    el.appendChild(pb);box.appendChild(el);
+    setInterval(function(){if(V2.v==='home'&&!document.hidden) paintVw(v2PS)},50);
+  })();
+  // Home preview: a still copy of the active model's board
+  function v2Preview(){
+    var box=$('#hPrev');if(!box) return;
+    box.textContent='';
+    var ok=C.layout==='board'&&C.board.length>0;box.hidden=!ok;if(!ok) return;
+    var g=$('#boardGrid');if(!g) return;
+    var c=g.cloneNode(true);c.removeAttribute('id');
+    Array.prototype.forEach.call(c.querySelectorAll('[id]'),function(e){e.removeAttribute('id')});
+    Array.prototype.forEach.call(c.querySelectorAll('button,input,select'),function(e){e.tabIndex=-1;e.disabled=true});
+    c.setAttribute('aria-hidden','true');
+    var w=document.createElement('div');w.className='v2-previn';w.appendChild(c);box.appendChild(w);
+  }
+  var V2ORD={home:0,drive:1,models:2,settings:3},v2LastTab='home';
+  function v2Motion(t){
+    var m=document.querySelector('main');if(!m) return;
+    var dir=(V2ORD[t]||0)>=(V2ORD[v2LastTab]||0)?'r':'l';v2LastTab=t;
+    m.classList.remove('v2-in-r','v2-in-l');void m.offsetWidth;m.classList.add('v2-in-'+dir);
+  }
+  function v2Tick(){if(store.prefs.haptic&&NB&&NB.haptic){try{NB.haptic('dial')}catch(_){}}}
+  function v2Tick(){if(store.prefs.haptic&&NB&&NB.haptic){try{NB.haptic('dial')}catch(_){}}}
+  Array.prototype.forEach.call(document.querySelectorAll('#tabbar [data-tab]'),function(b){b.addEventListener('click',function(){
+    if(V2.v!==b.dataset.tab) v2Tick();v2Go(b.dataset.tab)})});
+  Array.prototype.forEach.call(document.querySelectorAll('[data-go]'),function(b){b.addEventListener('click',function(){v2Go(b.dataset.go)})});
+  v2Click('#subBack',function(){v2Go(V2PARENT[V2.v]||'home')});
+  v2Click('#subDone',function(){v2Go('drive')});
+  v2Click('#dEdit',function(){v2Go('medit')});
+  v2Click('#hOpen',function(){v2Go('drive')});
+  v2Click('#hConn',v2Conn);v2Click('#hubConn',v2Conn);
+  v2Click('#hubOff',function(){if(S.connected) v2Conn()});
+  // top bar: one pill = Bluetooth | status | battery; tap it to connect (or to open Bluetooth when it is off)
+  (function(){
+    var bi=document.querySelector('.bar-in');if(!bi) return;
+    var b=document.createElement('button');b.type='button';b.id='v2Pill';b.className='v2-pill';b.setAttribute('data-st','off');b.setAttribute('data-bt','on');
+    b.innerHTML=v2Ic('bt','ic pbt')+'<i class="pdv" aria-hidden="true"></i><i class="pdot" aria-hidden="true"></i><span class="ptx"></span><em class="pbat"></em>';
+    b.addEventListener('click',function(){if(S.bt===false){$('#btBtn').click();return}v2Conn()});
+    bi.insertBefore(b,bi.firstChild);
+  })();
+
+  // ---- 2 · Drive: model chip picker, quick record, Record / Sequences fold away ----
+  function v2Pick(){
+    var s=$('#dPick');if(!s) return;s.innerHTML='';
+    store.profiles.forEach(function(p){var o=document.createElement('option');o.value=p.id;o.textContent=profLbl(p);if(p.id===store.active) o.selected=true;s.appendChild(o)});
+  }
+  (function(){var s=$('#dPick');if(s) s.addEventListener('change',function(){if(s.value&&s.value!==store.active){switchProfile(s.value);v2Pick();v2Paint()}})})();
+  v2Click('#dRec',function(){var r=$('#recBtn');if(r&&!r.disabled) r.click()});
+  function v2Fold(card,key,ic,title){
+    if(!card) return null;
+    var h=document.createElement('button');h.type='button';h.className='v2-foldh';
+    h.innerHTML=v2Ic(ic)+'<span></span><small></small>'+v2Ic('down','ic fc');
+    h.querySelector('span').textContent=title;
+    card.insertBefore(h,card.firstChild);card.classList.add('v2-fold');
+    var open=V2UI[key]===true;card.classList.toggle('open',open);h.setAttribute('aria-expanded',String(open));
+    h.addEventListener('click',function(){var o=!card.classList.contains('open');card.classList.toggle('open',o);h.setAttribute('aria-expanded',String(o));V2UI[key]=o;v2UiSave()});
+    return h;
+  }
+  var v2FR=v2Fold($('#recCard'),'fRec','rec','Record & replay'), v2FS=v2Fold($('#seqCard'),'fSeq','seq','Sequences');
+  function v2OpenFold(card,key){
+    v2Go('drive');if(!card) return;card.classList.add('open');var h=card.querySelector('.v2-foldh');if(h) h.setAttribute('aria-expanded','true');V2UI[key]=true;v2UiSave();
+    setTimeout(function(){try{card.scrollIntoView({block:'start',behavior:'smooth'})}catch(_){}},60);
+  }
+  v2Click('#hRec',function(){v2OpenFold($('#recCard'),'fRec')});
+  v2Click('#hSeq',function(){v2OpenFold($('#seqCard'),'fSeq')});
+
+  // Model settings: layout choice, wizard and hub test go under Advanced (Board is the normal way to drive)
+  (function(){
+    var card=document.querySelector('section.model');if(!card) return;
+    var d=document.createElement('details');d.className='adv';var sm=document.createElement('summary');sm.textContent='Advanced';d.appendChild(sm);
+    var inner=document.createElement('div');inner.className='rec-row v2-advrow';d.appendChild(inner);
+    var lay=card.querySelector('.seg[aria-label="Layout"]');
+    var lbl=document.createElement('div');lbl.className='seglbl';lbl.textContent='Control layout';
+    if(lay){d.insertBefore(lbl,inner);d.insertBefore(lay,inner)}
+    ['#profWiz','#profTest'].forEach(function(q){var e=$(q);if(e) inner.appendChild(e)});
+    var note=$('#testNote'),wiz=$('#wizPanel');
+    var after=card.querySelector('.model-row:last-of-type')||card.lastChild;
+    card.insertBefore(d,after.nextSibling);
+    if(note) d.appendChild(note);if(wiz) d.appendChild(wiz);
+  })();
+  // Hub module numbers and names (existing rows) sit on the Hub screen under "Hub numbers & names"
+  (function(){var box=$('#hubRows');['#hub0','#hubN0'].forEach(function(q){var el=$(q);var row=el&&el.closest('.set-row');if(row&&box) box.appendChild(row)})})();
+  v2Click('#hubName',function(){var d=$('#hubAdv');if(d) d.open=true;var n=$('#hubN0');if(n){try{n.scrollIntoView({block:'center'});n.focus()}catch(_){}}});
+
+  // ---- 3 · Models: gallery cards with a sketch of each board ----
+  function v2Sub(p){
+    var c=p.cfg||{},h=(c.hubs||[]).filter(function(x){return x>=0}).length||1,w=(c.board||[]).length;
+    return h+(h===1?' hub':' hubs')+' · '+w+(w===1?' widget':' widgets');
+  }
+  function v2Thumb(c){
+    var o='<svg class="v2-th" viewBox="0 0 48 24" preserveAspectRatio="xMidYMid meet" aria-hidden="true">';
+    var Y='#ffd84a',K='#3a414d',F='#1d222b';
+    if(c.layout==='board'&&c.board&&c.board.length){
+      var x0=0,y0=0;
+      c.board.forEach(function(it,ix){
+        var g=it.g||[(ix%4)*12,Math.floor(ix/4)*8,12,8];
+        var x=g[0]+.5,y=g[1]+.5,w=Math.max(1,g[2]-1),h=Math.max(1,g[3]-1),cx=x+w/2,cy=y+h/2,m=Math.min(w,h);
+        o+='<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="1.3" fill="'+F+'" stroke="'+K+'" stroke-width=".3"/>';
+        var k=it.k;
+        if(k==='s'||k==='y'||k==='lv'){if(h>=w){o+='<rect x="'+(cx-.5)+'" y="'+(y+h*.15)+'" width="1" height="'+(h*.7)+'" rx=".5" fill="#0b0d11"/><circle cx="'+cx+'" cy="'+cy+'" r="'+Math.min(1.6,w*.22)+'" fill="'+Y+'"/>'}else{o+='<rect x="'+(x+w*.12)+'" y="'+(cy-.5)+'" width="'+(w*.76)+'" height="1" rx=".5" fill="#0b0d11"/><circle cx="'+cx+'" cy="'+cy+'" r="'+Math.min(1.6,h*.22)+'" fill="'+Y+'"/>'}}
+        else if(k==='j'||k==='dp'){o+='<circle cx="'+cx+'" cy="'+cy+'" r="'+m*.34+'" fill="#0b0d11" stroke="#4a5260" stroke-width=".3"/><circle cx="'+cx+'" cy="'+cy+'" r="'+m*.13+'" fill="'+Y+'"/>'}
+        else if(k==='d'){[cx-w*.24,cx+w*.24].forEach(function(px){o+='<circle cx="'+px+'" cy="'+cy+'" r="'+Math.min(m*.34,w*.2)+'" fill="#0b0d11" stroke="#4a5260" stroke-width=".3"/><circle cx="'+px+'" cy="'+cy+'" r="'+Math.min(m*.13,w*.08)+'" fill="'+Y+'"/>'})}
+        else if(k==='e'){o+='<circle cx="'+cx+'" cy="'+cy+'" r="'+m*.34+'" fill="#E24B4A"/>'}
+        else if(k==='ps'){o+='<circle cx="'+cx+'" cy="'+cy+'" r="'+m*.32+'" fill="none" stroke="'+Y+'" stroke-width=".9" stroke-dasharray=".9 .6"/>'}
+        else if(k==='f'||k==='n'||k==='rs'||k==='st'||k==='g'){var r=m*.3,cc=2*Math.PI*r;o+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#2e3540" stroke-width=".8"/><circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#1D9E75" stroke-width=".8" stroke-dasharray="'+(cc*.45)+' '+cc+'" transform="rotate(135 '+cx+' '+cy+')"/>'}
+        else if(k==='i'||k==='k'||k==='m'){for(var q=0;q<6;q++){var bx=x+w*.14+q*(w*.72/6);o+='<rect x="'+bx+'" y="'+(y+h*.25)+'" width="'+(w*.72/6*.6)+'" height="'+(h*.5)+'" rx=".3" fill="'+(q<3?'#1D9E75':q<5?'#EF9F27':'#2e3540')+'"/>'}}
+        else{o+='<rect x="'+(cx-w*.3)+'" y="'+(cy-Math.min(1.4,h*.18))+'" width="'+(w*.6)+'" height="'+Math.min(2.8,h*.36)+'" rx="'+Math.min(1.4,h*.18)+'" fill="#2a303b" stroke="#4a5260" stroke-width=".25"/>'+(k==='l'?'<circle cx="'+(cx-w*.2)+'" cy="'+cy+'" r=".7" fill="#E24B4A"/>':'')}
+      });
+    }else if(c.layout==='joy'||c.layout==='dual'){
+      [16,32].forEach(function(px,ix){if(c.layout==='joy'&&ix) return;var qx=c.layout==='joy'?24:px;o+='<circle cx="'+qx+'" cy="12" r="7" fill="#0b0d11" stroke="#4a5260" stroke-width=".4"/><circle cx="'+qx+'" cy="12" r="2.6" fill="'+Y+'"/>'});
+    }else{
+      for(var q=0;q<6;q++){var bx=6+q*6.4;o+='<rect x="'+bx+'" y="3" width="1.2" height="18" rx=".6" fill="#0b0d11"/><circle cx="'+(bx+.6)+'" cy="'+(12+((q*7)%9-4))+'" r="1.6" fill="'+Y+'"/>'}
+    }
+    return o+'</svg>';
+  }
+  function v2Models(){
+    var box=$('#mList');if(!box) return;
+    var q=($('#mSearch').value||'').trim().toLowerCase();box.innerHTML='';var n=0;
+    store.profiles.forEach(function(p){
+      var name=profLbl(p);if(q&&name.toLowerCase().indexOf(q)<0) return;n++;
+      var card=document.createElement('div');card.className='v2-mcard'+(p.id===store.active?' v2on':'');
+      var main=document.createElement('button');main.type='button';main.className='v2-mmain';
+      main.innerHTML='<span class="v2-thw">'+v2Thumb(p.cfg||{})+'</span><b></b><small></small>';
+      main.querySelector('b').textContent=name;main.querySelector('small').textContent=v2Sub(p);
+      var lp=0,lpFired=false;
+      main.addEventListener('pointerdown',function(){lpFired=false;clearTimeout(lp);lp=setTimeout(function(){lpFired=true;feedback('hold');if(p.id!==store.active) switchProfile(p.id);v2Go('medit')},600)});
+      ['pointerup','pointercancel','pointerleave'].forEach(function(ev){main.addEventListener(ev,function(){clearTimeout(lp)})});
+      main.addEventListener('contextmenu',function(e){e.preventDefault()});
+      main.addEventListener('click',function(){if(lpFired){lpFired=false;return}if(p.id!==store.active) switchProfile(p.id);v2Go('drive')});
+      var more=document.createElement('button');more.type='button';more.className='v2-ib v2-more';more.innerHTML=v2Ic('more');more.setAttribute('aria-label','Model settings');
+      more.addEventListener('click',function(){if(p.id!==store.active) switchProfile(p.id);v2Go('medit')});
+      card.appendChild(main);card.appendChild(more);box.appendChild(card);
+    });
+    var add=document.createElement('button');add.type='button';add.className='v2-mcard v2-madd';
+    add.innerHTML=v2Ic('plus','ic big')+'<b></b><small></small>';add.querySelector('b').textContent='New model';add.querySelector('small').textContent='Template or empty';
+    add.addEventListener('click',function(){v2Go('tpl')});
+    if(!q) box.appendChild(add);
+    $('#mNone').hidden=n>0;
+  }
+  (function(){var s=$('#mSearch');if(s) s.addEventListener('input',v2Models)})();
+  var V2TPL={
+    car:{name:'Car / Truck',ch:['Drive','Steering','Lights','Winch','Rear lights','Channel F'],light:[2,4]},
+    exc:{name:'Excavator / crane',ch:['Left track','Right track','Boom','Bucket','Swing','Arm'],light:[]},
+    dual:{name:'Dual stick car',ch:['Drive','Steering','Arm','Bucket','Lights','Channel F'],light:[4]},
+    four:{name:'Robot (4 motors)',ch:['Motor 1','Motor 2','Motor 3','Motor 4','Channel E','Channel F'],light:[]},
+    empty:{name:'My board',ch:null,light:[]}
+  };
+  function v2NewTpl(key){
+    var t=V2TPL[key];if(!t) return;
+    if(store.profiles.length>=MAX_MODELS){toast('Model list is full.');return}
+    var cfg=baseCfg(t.ch||undefined);t.light.forEach(function(i){cfg.ch[i].kind='light'});
+    cfg.layout='board';cfg.dash=true;cfg.board=[];cfg.hubs=C.hubs.slice();
+    var p={id:uid(),name:t.name,cfg:sanitizeCfg(cfg)};store.profiles.push(p);switchProfile(p.id);
+    if(DTPL[key]) dtplApply(DTPL[key],t.name);
+    v2Go('drive');
+    if(key==='empty'){var e=$('#bdEdit');if(e&&e.getAttribute('aria-pressed')!=='true') e.click()}
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-wiz]'),function(b){b.addEventListener('click',function(){v2NewTpl(b.dataset.wiz)})});
+  v2Click('#tSave',function(){$('#exBtn').click()});
+  v2Click('#tLoad',function(){$('#imBtn').click();if(!NB) v2Go('backup')});
+
+  // ---- 4 · Settings: switches and values on the rows ----
+  function v2Practice(on){
+    if(!!store.prefs.practice===on) return;
+    if(S.connected) v2Conn();
+    if(S.connected){S.connected=false;hubMsg=''}
+    hubMsg='';store.prefs.practice=on;save();paintLink();v2Paint();
+    toast(on?'Practice mode: no hub is used, outputs are only shown.':'Practice mode off.');
+  }
+  function v2Fire(el){if(!el) return;try{el.dispatchEvent(new Event('change',{bubbles:true}))}catch(_){}}
+  v2Click('#sPrac',function(){v2Practice(!store.prefs.practice)});
+  v2Click('#sFb',function(){
+    var on=!(store.prefs.sound||store.prefs.haptic);
+    ['#optSound','#optHaptic'].forEach(function(q){var c=$(q);if(c&&c.checked!==on){c.checked=on;v2Fire(c)}});
+    store.prefs.sound=on;store.prefs.haptic=on;save();v2Paint();if(on) feedback('ok');
+  });
+  v2Click('#sLang',function(){var l=$('#lang');l.value=store.prefs.lang==='ms'?'en':'ms';v2Fire(l);v2Paint()});
+
+  // ---- 5 · Hub: output LEDs, channel-test knobs with LED rings, add a second / third hub ----
+  (function(){var b=$('#hubLeds');if(!b) return;for(var q=0;q<14;q++){var i=document.createElement('i');b.appendChild(i)}})();
+  var v2ChKey='',v2Knobs=[];
+  function v2KnobSvg(tag){
+    var o='<svg viewBox="0 0 80 80" class="v2-ksvg" aria-hidden="true">';
+    for(var q=0;q<18;q++){var a=(135+270*(q+.5)/18)*Math.PI/180,r1=31,r2=37;
+      o+='<line class="v2seg" data-q="'+q+'" x1="'+(40+r1*Math.cos(a)).toFixed(1)+'" y1="'+(40+r1*Math.sin(a)).toFixed(1)+'" x2="'+(40+r2*Math.cos(a)).toFixed(1)+'" y2="'+(40+r2*Math.sin(a)).toFixed(1)+'"/>'}
+    o+='<circle cx="40" cy="40" r="26" fill="#0d1015"/><circle cx="40" cy="40" r="24" fill="url(#v2kg)"/><ellipse cx="34" cy="31" rx="12" ry="5" fill="#fff" opacity=".1"/>';
+    o+='<text x="40" y="46" text-anchor="middle" class="kt"></text></svg>';
+    return o;
+  }
+  function v2KnobPaint(k,frac){
+    var segs=k.segs;for(var q=0;q<segs.length;q++){var f=(q+.5)/segs.length,on=f<=frac;var sc=on?(f<=.55?'#1D9E75':f<=.8?'#EF9F27':'#E24B4A'):'';if(segs[q]._c!==sc){segs[q]._c=sc;segs[q].style.stroke=sc}}
+  }
+  function v2ChTest(force){
+    var box=$('#chTest');if(!box) return;
+    var idx=activeIdx(),key=idx.join(',')+'|'+C.hubs.join(',')+'|'+idx.map(function(i){return C.ch[i].name}).join(',');
+    if(!force&&key===v2ChKey) return;v2ChKey=key;box.innerHTML='';v2Knobs=[];
+    idx.forEach(function(i){
+      var b=document.createElement('button');b.type='button';b.className='v2-knob-b';b.setAttribute('aria-pressed','false');
+      b.innerHTML=v2KnobSvg()+'<span class="kl"></span>';
+      b.querySelector('.kt').textContent=tagOf(i);b.querySelector('.kl').textContent=C.ch[i].name;
+      b.setAttribute('aria-label',tagOf(i)+' · '+C.ch[i].name);
+      var k={b:b,segs:[].slice.call(b.querySelectorAll('.v2seg')),i:i,on:false};v2Knobs.push(k);v2KnobPaint(k,0);
+      var down=function(e){
+        if(e&&e.preventDefault) e.preventDefault();try{b.setPointerCapture(e.pointerId)}catch(_){}
+        if(!S.connected){toast(RH()?'Connect the hub first.':'Turn on Practice mode or connect the hub first.');return}
+        if(S.estop){toast('Release E-Stop first.');return}
+        k.on=true;b.setAttribute('aria-pressed','true');noteInput();setT(i,C.testPwr||60,false);feedback('ok');
+      };
+      var up=function(){if(!k.on) return;k.on=false;b.setAttribute('aria-pressed','false');setT(i,0,false)};
+      b.addEventListener('pointerdown',down);['pointerup','pointercancel','lostpointercapture'].forEach(function(ev){b.addEventListener(ev,up)});
+      b.addEventListener('contextmenu',function(e){e.preventDefault()});
+      box.appendChild(b);
+    });
+  }
+  function v2Slots(){
+    var box=$('#hubSlots');if(!box) return;box.innerHTML='';
+    for(var s=1;s<3;s++){
+      var sel=$('#hub'+s);if(!sel) continue;
+      var on=C.hubs[s]>=0;
+      if(!on&&s===2&&C.hubs[1]<0) continue;
+      var c=document.createElement('section');c.className='card v2-slot';
+      var nm=on?('Hub '+(s+1)+' · M'+(C.hubs[s]+1)):('Hub '+(s+1));
+      c.innerHTML='<div class="v2-mrow"><span class="v2-grow"><b></b><small></small></span><button class="btn v2-icbtn" type="button"></button></div>';
+      c.querySelector('b').textContent=nm;c.querySelector('small').textContent=on?'Channels '+tagOf(s*6)+'–'+tagOf(s*6+5):'None — add a second hub';
+      if(s===2&&!on) c.querySelector('small').textContent='None — add a third hub';
+      var bt=c.querySelector('button');bt.innerHTML=v2Ic(on?'minus':'plus')+'<span></span>';bt.querySelector('span').textContent=on?'Remove':'Add';
+      (function(sel,on,s){bt.addEventListener('click',function(){
+        if(on){sel.value='-1'}else{var used=C.hubs.filter(function(x){return x>=0});var free=[0,1,2].filter(function(m){return used.indexOf(m)<0})[0];if(free==null) return;sel.value=String(free)}
+        v2Fire(sel);setTimeout(function(){v2Slots();v2ChTest(true)},50);
+      })})(sel,on,s);
+      box.appendChild(c);
+    }
+  }
+
+  // Alerts on Home: one main action each, using the app's own card and button
+  function v2Alert(box,title,sub,act,fn,act2,fn2){
+    var d=document.createElement('section');d.className='card';
+    var h=document.createElement('h2');h.textContent=title;var p=document.createElement('p');p.className='note';p.style.marginTop='0';p.textContent=sub;
+    d.appendChild(h);d.appendChild(p);
+    if(act){var r=document.createElement('div');r.className='rec-row';var k=document.createElement('button');k.type='button';k.className='btn';k.textContent=act;k.addEventListener('click',fn);r.appendChild(k);
+      if(act2){var k2=document.createElement('button');k2.type='button';k2.className='btn';k2.textContent=act2;k2.addEventListener('click',fn2);r.appendChild(k2)}d.appendChild(r)}
+    box.appendChild(d);
+  }
+  var v2AlKey='';
+  function v2Alerts(){
+    var box=$('#hAlerts');if(!box) return;
+    var lost=!$('#lostBanner').hidden, bat=$('#bat'), low=!!(bat&&!bat.hidden&&bat.classList.contains('low'));
+    var pct=low?(bat.textContent.match(/\d+/)||[''])[0]:'';
+    var bad=!S.connected&&RH()&&hubMsg&&hubMsg!=='Pairing…'?hubMsg:'';
+    var key=[S.estop,lost,S.bt,low,pct,bad,store.prefs.lang,!!store.prefs.lock,v2Inbox?v2Inbox.name:''].join('|');if(key===v2AlKey) return;v2AlKey=key;
+    box.innerHTML='';
+    if(v2Inbox){var ib=v2Inbox;v2Alert(box,'Model received: '+ib.name,ib.n>1?ib.n+' models in this file':'Shared from another phone','Add to my models',function(){
+        var before=store.profiles.length;importText(ib.text);v2Inbox=null;v2AlKey='';
+        var added=store.profiles.length-before;
+        if(added>0){switchProfile(store.profiles[store.profiles.length-1].id);toast(added===1?'Model added.':added+' models added.');v2Go('drive')}
+        else{toast(store.profiles.length>=MAX_MODELS?'Model list is full.':'Nothing could be imported.',3500);v2Alerts()}
+      },'Ignore',function(){v2Inbox=null;v2AlKey='';v2Alerts()})}
+    if(S.estop) v2Alert(box,'E-Stop is on','Every channel is locked at 0','Release',function(){setEstop(false)});
+    if(lost) v2Alert(box,'Connection lost','Outputs were stopped automatically','Reconnect',function(){$('#lostBanner').hidden=true;if(!S.connected) v2Conn();v2Paint()});
+    if(S.bt===false) v2Alert(box,'Bluetooth is off','Turn it on to reach the hub','Open',function(){$('#btBtn').click()});
+    else if(bad&&!lost) v2Alert(box,bad,'Check Bluetooth and the permission, then try again','Try again',v2Conn);
+    if(low) v2Alert(box,'Phone battery low · '+pct+'%','Charge it before driving','OK',function(){bat.classList.remove('low');v2AlKey='';v2Alerts()});
+    if(store.prefs.lock) v2Alert(box,'Settings are locked','Only driving is available','Unlock',function(){v2Go('m-app');try{$('#lockBtn').scrollIntoView({block:'center'})}catch(_){}});
+  }
+
+  // write a text only when the English source changes, so translated text is not rewritten every frame
+  function v2T(el,t){if(el&&el._v2t!==t){el._v2t=t;el.textContent=t}}
+  function v2Paint(){
+    var busy=S.connected&&hubMsg==='Pairing…', real=RH();
+    var txt=real?(busy?'Pairing…':S.connected?'Hub active':(hubMsg||'Not connected')):NB?(S.connected?'Practice on':'Practice off'):(S.connected?'Simulation on':'Simulation off');
+    var st=!S.connected?'off':busy?'busy':'on';
+    var nm=(C.hubNames&&C.hubNames[C.hubs[0]])||'', n=activeSlots().length;
+    var hs=$('#hState');v2T(hs,txt);hs.setAttribute('data-st',st);
+    v2T($('#hHint'),S.connected?'Hold for half a second to stop':'Hold for half a second to start');
+    v2T($('#hLastName'),profLbl(activeProfile()));v2T($('#hLastSub'),v2Sub(activeProfile()));
+    v2T($('#hRecN'),String(C.rec.length));v2T($('#hSeqN'),String(C.seq.length));
+    v2T($('#dName'),profLbl(activeProfile()));
+    var dr=$('#dRec');if(dr){dr.setAttribute('aria-pressed',String(!!S.rec));dr.setAttribute('aria-label',S.rec?'Stop recording':'Record')}
+    if(v2FR) v2T(v2FR.querySelector('small'),C.rec.length+(C.rec.length===1?' recording':' recordings'));
+    if(v2FS) v2T(v2FS.querySelector('small'),C.seq.length+(C.seq.length===1?' sequence':' sequences'));
+    var pl=$('#v2Pill');
+    if(pl){
+      var ptx=real?(hubMsg||(S.connected?'Hub active':'Connect hub')):NB?(S.connected?'Practice on':'Practice off'):(S.connected?'Simulation on':'Simulation off');
+      if(st==='on'&&pl._st&&pl._st!=='on'){pl.classList.remove('v2-pulse');void pl.offsetWidth;pl.classList.add('v2-pulse')}
+      pl._st=st;
+      pl.setAttribute('data-st',st);pl.setAttribute('data-bt',S.bt===false?'off':'on');
+      v2T(pl.querySelector('.ptx'),ptx);
+      var hb=$('#hbat'),bm=hb&&!hb.hidden?(hb.textContent.match(/(\d+)%/)||[]):[];
+      var pb=pl.querySelector('.pbat');v2T(pb,bm[1]?bm[1]+'%':'');pb.classList.toggle('low',!!(hb&&hb.classList.contains('low')));
+      pl.setAttribute('aria-label',(S.bt===false?'Bluetooth is off. ':'')+ptx+(bm[1]?', battery '+bm[1]+'%':''));
+    }
+    // settings values
+    v2T($('#sHubSt'),busy?'…':S.connected?'Active':'Off');
+    var lo=$('#limitOut');v2T($('#sLimV'),lo?lo.textContent:'');
+    v2T($('#sLangV'),store.prefs.lang==='ms'?'BM':'EN');
+    $('#sFb').setAttribute('aria-checked',String(!!(store.prefs.sound||store.prefs.haptic)));
+    $('#sPrac').setAttribute('aria-checked',String(!!store.prefs.practice));
+    // hub screen
+    $('#hubEmpty').hidden=!!S.connected;$('#hubCard').hidden=!S.connected;
+    v2T($('#hubTitle'),'Mould King 6.0 · M'+(C.hubs[0]+1)+(nm?' · '+nm:''));
+    v2T($('#hubMod'),'M'+(C.hubs[0]+1));
+    v2T($('#hubSub'),txt+(n>1?' · '+n+' hubs':''));
+    var mx=0;activeIdx().forEach(function(i){mx=Math.max(mx,Math.abs(rt.o[i]||0))});mx=Math.round(mx);
+    v2T($('#hubPct'),mx+'%');
+    var leds=$('#hubLeds');if(leds&&V2.v==='hub'){var L=leds.children;for(var q=0;q<L.length;q++){var f=(q+.5)/L.length,lc=f*100<=mx?(f<=.55?'g':f<=.8?'o':'r'):'';if(L[q].className!==lc) L[q].className=lc}}
+    if(V2.v==='hub'){v2ChTest(false);v2Knobs.forEach(function(k){v2KnobPaint(k,Math.min(1,Math.abs(rt.o[k.i]||0)/100))})}
+    if(store.prefs.lock&&['safety','m-tilt','m-pad','tpl','medit','models'].indexOf(V2.v)>=0) v2Go(V2PARENT[V2.v]||'home');
+    v2Alerts();
+    v2Gfx(st);
+    v2Diag(false);
+  }
+
+  // ---- Hub link diagnostics (numbers from the native Bluetooth side) ----
+  var V2ERR={1:'data too large',2:'too many advertisers',3:'already started',4:'internal Bluetooth error',5:'not supported by this phone'};
+  var v2DiagT=0,v2DiagRows=[];
+  function v2Dur(ms){if(!(ms>=0)) return '—';var s=Math.round(ms/1000);if(s<60) return s+' s';var m=Math.floor(s/60);if(m<60) return m+' min '+(s%60)+' s';return Math.floor(m/60)+' h '+(m%60)+' min'}
+  function v2DiagData(){
+    var d={};try{d=NB&&NB.stats?JSON.parse(NB.stats()||'{}'):{}}catch(_){d={}}
+    var M={off:'Off',connecting:'Connecting',single:'1 hub',parallel:'Several hubs at once',rotate:'Several hubs, taking turns'};
+    var rows=[];
+    rows.push(['Link',S.connected?(RH()?'Hub active':'Practice'):'Not connected',S.connected?'ok':'bad']);
+    rows.push(['Bluetooth',S.bt===false?'Off':'On',S.bt===false?'bad':'ok']);
+    if(NB&&NB.stats){
+      rows.push(['Send mode',M[d.mode]||'—','']);
+      rows.push(['Connected for',d.mode&&d.mode!=='off'?v2Dur(d.up):'—','']);
+      rows.push(['Frames from the app',String(d.frames||0),'']);
+      rows.push(['Sent by Bluetooth',String(d.ok||0),'']);
+      var f=d.fail||0;rows.push(['Bluetooth errors',String(f),f?'bad':'ok']);
+      if(f&&d.err) rows.push(['Last error',(V2ERR[d.err]||('code '+d.err)),'bad']);
+      if(f&&d.errAgo>=0) rows.push(['Error time',v2Dur(d.errAgo)+' ago','']);
+      rows.push(['Safety stops (app paused)',String(d.watchdog||0),d.watchdog?'warn':'']);
+      rows.push(['Last frame',d.lastFrameAgo>=0?v2Dur(d.lastFrameAgo)+' ago':'—','']);
+      if(d.tx!=null) rows.push(['Transmit power',d.tx+' dBm','']);
+    }else rows.push(['Native data','Only in the Android app','']);
+    rows.push(['Update rate',(1000/(window.mk6Rate?mk6Rate():50)).toFixed(0)+' per second','']);
+    rows.push(['Hubs on this model',String(activeSlots().length),'']);
+    return rows;
+  }
+  function v2Diag(force){
+    var dg=$('#hubDiag');if(!dg||!dg.open||V2.v!=='hub') return;
+    var now=Date.now();if(!force&&now-v2DiagT<1000) return;v2DiagT=now;
+    var rows=v2DiagData(),dl=$('#diagList');
+    if(v2DiagRows.length!==rows.length){dl.innerHTML='';v2DiagRows=rows.map(function(){var t=document.createElement('dt'),v=document.createElement('dd');dl.appendChild(t);dl.appendChild(v);return [t,v]})}
+    rows.forEach(function(r,i){v2T(v2DiagRows[i][0],r[0]);v2T(v2DiagRows[i][1],r[1]);if(v2DiagRows[i][1].className!==r[2]) v2DiagRows[i][1].className=r[2]});
+  }
+  (function(){var dg=$('#hubDiag');if(dg) dg.addEventListener('toggle',function(){v2DiagRows=[];v2Diag(true)})})();
+  v2Click('#diagCopy',function(){
+    var t='MK6 Console diagnostics\n'+v2DiagData().map(function(r){return r[0]+': '+r[1]}).join('\n')+'\nApp: '+navigator.userAgent.replace(/.*(Android [0-9.]+).*?(Chrome\/[0-9]+).*/,'$1 · $2');
+    var ok=false;try{var ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();ok=document.execCommand('copy');ta.remove()}catch(_){}
+    if(!ok&&navigator.clipboard){navigator.clipboard.writeText(t).then(function(){toast('Report copied.')},function(){toast('Could not copy.')});return}
+    toast(ok?'Report copied.':'Could not copy.');
+  });
+  // ---- Graphics upgrades: no-hub widgets, empty states, light theme ----
+  function v2Tog(el,c,on){if(el&&el.classList.contains(c)!==on) el.classList.toggle(c,on)}
+  function v2Ill(k){
+    var I={board:'<rect x="6" y="5" width="138" height="74" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="5 4"/>'+
+        '<rect x="18" y="15" width="34" height="24" rx="5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3"/><rect x="58" y="15" width="34" height="24" rx="5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3"/><rect x="98" y="15" width="34" height="24" rx="5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3"/>'+
+        '<g class="y" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"><circle cx="75" cy="60" r="12"/><path d="M75 54v12M69 60h12"/></g>',
+      rec:'<g fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="22" cy="22" r="17"/></g><circle class="y" cx="22" cy="22" r="6.5" fill="currentColor"/>',
+      seq:'<g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="4" y="4" width="36" height="36" rx="9"/><path d="M11 15h13M11 22h13M11 29h8"/></g><path class="y" d="M28 25l7 4.5-7 4.5z" fill="currentColor"/>'};
+    var vb=k==='board'?'0 0 150 84':'0 0 44 44';
+    return '<svg class="ill" viewBox="'+vb+'" aria-hidden="true">'+I[k]+'</svg>';
+  }
+  function v2EmptyBox(id,k,title,sub,small){
+    var d=document.createElement('div');d.className='v2-empty'+(small?' sm':'');d.id=id;d.hidden=true;
+    d.innerHTML=v2Ill(k)+'<div><b></b><p></p></div>';d.querySelector('b').textContent=title;d.querySelector('p').textContent=sub;
+    return d;
+  }
+  var v2E={};
+  (function(){
+    var bc=$('#boardCard'),bn=$('#bdNote');
+    if(bc&&bn){
+      var e=v2EmptyBox('v2BdEmpty','board','The board is empty','Pick a template or add your own widgets.');
+      var r=document.createElement('div');r.className='rec-row';
+      var a=document.createElement('button');a.type='button';a.className='btn pri';a.textContent='Templates';a.addEventListener('click',function(){v2Go('tpl')});
+      var w=document.createElement('button');w.type='button';w.className='btn';w.textContent='Add widget';w.addEventListener('click',function(){var be=$('#bdEdit');if(be&&!bdEditing) be.click()});
+      r.appendChild(a);r.appendChild(w);e.appendChild(r);bn.parentNode.insertBefore(e,bn.nextSibling);v2E.bd=e;
+    }
+    var rc=$('#recCard'),rs=$('#recStat');
+    if(rc&&rs){var e2=v2EmptyBox('v2RecEmpty','rec','No recordings yet','Press Record, drive, then press Record again to stop. Play replays it.',true);rc.insertBefore(e2,rc.querySelector('.rec-row'));v2E.rec=e2}
+    var sc=$('#seqCard');
+    if(sc){
+      var e3=v2EmptyBox('v2SeqEmpty','seq','No sequences yet','A sequence runs steps one after another from one button.',true);
+      var r3=document.createElement('div');r3.className='rec-row';r3.style.marginTop='10px';
+      var nb=document.createElement('button');nb.type='button';nb.className='btn pri';nb.textContent='New sequence';nb.addEventListener('click',function(){var x=$('#seqNew');if(x) x.click()});
+      r3.appendChild(nb);var e3w=document.createElement('div');e3w.className='v2-empty';e3w.id='v2SeqEmptyW';e3w.hidden=true;e3w.style.padding='4px 0 6px';
+      e3.hidden=false;e3w.appendChild(e3);e3w.appendChild(r3);var h=sc.querySelector('.v2-foldh');sc.insertBefore(e3w,h?h.nextSibling:sc.firstChild);v2E.seq=e3w;
+    }
+  })();
+  function v2Theme(){
+    var lt=store.prefs.ui==='light';if((R2.getAttribute('data-ui')==='light')!==lt) R2.setAttribute('data-ui',lt?'light':'dark');
+    var sl=$('#sLight');if(sl) sl.setAttribute('aria-checked',String(lt));
+    // Android status / navigation bars follow the theme
+    if(R2._bar!==lt){R2._bar=lt;try{if(NB&&NB.theme) NB.theme(lt)}catch(_){}}
+    var hc=!!store.prefs.hc;if(R2.hasAttribute('data-hc')!==hc){if(hc) R2.setAttribute('data-hc','');else R2.removeAttribute('data-hc')}
+    var sh=$('#sHC');if(sh) sh.setAttribute('aria-checked',String(hc));
+    var fs=store.prefs.fs||100;if(R2._fs!==fs){R2._fs=fs;try{if(NB&&NB.textZoom) NB.textZoom(fs)}catch(_){}}
+    v2T($('#sTextV'),fs>=130?'Largest':fs>=115?'Large':'Normal');
+  }
+  v2Click('#sHC',function(){store.prefs.hc=!store.prefs.hc;save();v2Theme();feedback('ok')});
+  v2Click('#sText',function(){var f=store.prefs.fs||100;store.prefs.fs=f>=130?100:f>=115?130:115;save();v2Theme();feedback('ok');
+    if(!(NB&&NB.textZoom)) toast('Text size works in the Android app.')});
+
+  // ---- Share one model as a file; open a model file sent by a friend ----
+  function v2SafeName(n){return (String(n||'model').replace(/[^A-Za-z0-9 ._()-]+/g,'_').trim().slice(0,40)||'model')+'.mk6.json'}
+  v2Click('#mShare',function(){
+    var p=activeProfile();if(!p) return;
+    var json=JSON.stringify({app:'mk6console',version:3,share:1,profiles:[{name:p.name,label:p.label||'',cfg:p.cfg}]});
+    var fn=v2SafeName(profLbl(p));
+    if(NB&&NB.shareFile){try{NB.shareFile(fn,json,tr('Share model'));return}catch(_){}}
+    try{var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));a.download=fn;document.body.appendChild(a);a.click();
+      setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1000);toast('Model saved as '+fn)}catch(_){toast('Could not share the model.')}
+  });
+  var v2Inbox=null;
+  window.onSharedModel=function(text){
+    var d=null;try{d=JSON.parse(text)}catch(_){}
+    var list=d&&Array.isArray(d.profiles)?d.profiles:(d&&d.cfg?[d]:null);
+    if(!list||!list.length){toast('That file is not an MK6 model.',3500);return}
+    v2Inbox={text:text,name:String(list[0].name||'Model').slice(0,24),n:list.length};
+    v2AlKey='';if(V2.v!=='home') v2Go('home');else v2Alerts();
+  };
+  v2Click('#sLight',function(){store.prefs.ui=store.prefs.ui==='light'?'dark':'light';save();v2Theme();feedback('ok')});
+  function v2Gfx(st){
+    // 4 · no hub: dim the board widgets (not E-Stop / START-STOP) and tag them "No hub"
+    v2Tog(R2,'v2-nohub',st!=='on');v2Tog(R2,'v2-editing',!!bdEditing);
+    var nt=store.prefs.lang==='ms'?'Tiada hub':'No hub';if(R2._nt!==nt){R2._nt=nt;R2.style.setProperty('--v2nh',JSON.stringify(nt))}
+    var bg=$('#boardGrid');if(bg){for(var q=0;q<bg.children.length;q++){var c=bg.children[q];if(!c._es){c._es=1;if(c.querySelector('.dw-es')) c.classList.add('v2-es')}}}
+    // 5 · empty states
+    var noBd=C.layout==='board'&&!C.board.length&&!bdEditing;
+    if(v2E.bd){if(v2E.bd.hidden===noBd) v2E.bd.hidden=!noBd;v2Tog($('#boardCard'),'v2-none',noBd)}
+    var noRec=!C.rec.length&&!S.rec;
+    if(v2E.rec){if(v2E.rec.hidden===noRec) v2E.rec.hidden=!noRec;v2Tog($('#recCard'),'v2-none',noRec)}
+    var noSeq=!C.seq.length;
+    if(v2E.seq){if(v2E.seq.hidden===noSeq) v2E.seq.hidden=!noSeq;v2Tog($('#seqCard'),'v2-none',noSeq)}
+    // 6 · theme
+    v2Theme();
+  }
+  setInterval(function(){v2Paint();v2Live()},250);
+
+  // ---- 6 · Landscape: driving only; Edit / Reset / Lock / Exit behind one "more" button ----
+  (function(){
+    var bar=$('#dashBar');if(!bar) return;
+    var m=document.createElement('button');m.type='button';m.className='btn v2-dbmore';m.id='dbMore';m.setAttribute('aria-label','More');m.setAttribute('aria-expanded','false');m.innerHTML=v2Ic('more');
+    m.addEventListener('click',function(){var o=!R2.classList.contains('v2-dbopen');R2.classList.toggle('v2-dbopen',o);m.setAttribute('aria-expanded',String(o))});
+    bar.appendChild(m);
+  })();
+
+  // Guide (first run) keeps its look; page 1 also offers "Try without a hub"
+  (function(){
+    var orig=guideRender;
+    guideRender=function(){
+      orig();
+      if(gIdx!==0) return;
+      var b=document.createElement('button');b.type='button';b.className='btn';b.textContent='Try without a hub';
+      b.addEventListener('click',function(){guideClose();v2Practice(true);if(!S.connected) v2Conn();v2Go('drive')});
+      $('#gExtra').appendChild(b);
+    };
+  })();
+
+  // the first syncAll() runs before the board is set up; draw the board once everything exists
+  try{syncBoard()}catch(_){}
+  v2Theme();
+  v2Go('home');
+  applyLang();
+  if(!store.prefs.seen) guideOpen();
+  window.mk6Ready=true;
+  (function(){var sp=$('#v2Splash');if(!sp) return;var w=Math.max(0,650-performance.now());
+    setTimeout(function(){sp.classList.add('done');setTimeout(function(){if(sp.parentNode) sp.parentNode.removeChild(sp)},300)},w)})();
+
+  // Update rate: 20 Hz while driving or touching, 4 Hz when idle, 1 Hz when the page is hidden (saves battery).
+  var tkT=0,tkD=50;
+  function tkBusy(){
+    if(S.rec||S.play||ptrDown>0||bdEditing) return true;
+    if(performance.now()-lastInput<3000) return true;
+    if(tiltActive()||(C.pad&&C.pad.on&&GP.had)) return true;
+    for(var i=0;i<NMAX;i++) if(isActive(i)&&C.ch[i].kind!=='light'&&(rt.t[i]!==0||Math.round(rt.o[i])!==0)) return true;
+    return false;
+  }
+  function tkLoop(){
+    clearTimeout(tkT);
+    try{tick()}catch(e){}
+    tkD=document.hidden?1000:(tkBusy()?50:250);
+    tkT=setTimeout(tkLoop,tkD);
+  }
+  function tkWake(){if(tkD>50){tkD=50;tkLoop()}}
+  document.addEventListener('visibilitychange',function(){if(!document.hidden) tkWake()});
+  window.mk6Rate=function(){return tkD};
+  tkLoop();
+})();
+}catch(e){try{console.error(e)}catch(_){}}
+
+/* ---- block 3 ---- */
+try{
+(function(){
+  var sel='.pad, .bdw input[type=range], .pwr';
+  document.addEventListener('pointerdown',function(e){var t=e.target&&e.target.closest&&e.target.closest(sel);if(t)t.classList.add('touch')},true);
+  function off(){var l=document.querySelectorAll('.touch');for(var i=0;i<l.length;i++)l[i].classList.remove('touch')}
+  document.addEventListener('pointerup',off,true);document.addEventListener('pointercancel',off,true);window.addEventListener('blur',off);
+})();
+}catch(e){try{console.error(e)}catch(_){}}
+
+/* ---- block 4 ---- */
+try{
+(function(){
+  // scale the joystick design with the pad: 300px single / 230px double = 1
+  function fit(p){var w=p.offsetWidth;if(!w)return;var ref=p.closest('.bd-pads,.cols.dual,.pads')?230:300;p.style.setProperty('--s',(w/ref).toFixed(3))}
+  var ro=window.ResizeObserver?new ResizeObserver(function(es){es.forEach(function(e){fit(e.target)})}):null;
+  // new pads are registered with the ResizeObserver, which sizes them after layout (no forced layout on every DOM change)
+  function scan(){var l=document.querySelectorAll('.pad');for(var i=0;i<l.length;i++){var p=l[i];if(!p._ro){p._ro=1;if(ro)ro.observe(p);else fit(p)}}}
+  var scT=0;function scanSoon(){if(scT) return;scT=requestAnimationFrame(function(){scT=0;scan()})}
+  new MutationObserver(scanSoon).observe(document.body,{childList:true,subtree:true});
+  if(!ro) window.addEventListener('resize',function(){var l=document.querySelectorAll('.pad');for(var i=0;i<l.length;i++) fit(l[i])});
+  scan();
+})();
+}catch(e){try{console.error(e)}catch(_){}}
+
+/* ---- block 5 ---- */
+try{
+(function(){
+  // Hard lock: while a finger is on a joystick pad, the page must never scroll (some Android WebViews ignore touch-action)
+  var lock=false;
+  function onPad(e){var t=e.target;return !!(t&&t.closest&&t.closest('.pad'))}
+  document.addEventListener('touchstart',function(e){lock=onPad(e);if(lock&&e.cancelable) e.preventDefault()},{passive:false,capture:true});
+  document.addEventListener('touchmove',function(e){if((lock||onPad(e))&&e.cancelable) e.preventDefault()},{passive:false,capture:true});
+  document.addEventListener('touchend',function(e){if(!e.touches||!e.touches.length) lock=false},{passive:true,capture:true});
+  document.addEventListener('touchcancel',function(){lock=false},{passive:true,capture:true});
+  // Second guard: while a joystick or a board slider is held, keep the page exactly where it was
+  var held=0, hy=0, hx=0;
+  function ctl(t){return !!(t&&t.closest&&t.closest('.pad, .bdw input[type=range], .pwr'))}
+  document.addEventListener('pointerdown',function(e){if(ctl(e.target)){held++;hy=window.scrollY;hx=window.scrollX}},true);
+  function rel(){held=0}
+  document.addEventListener('pointerup',rel,true);document.addEventListener('pointercancel',rel,true);window.addEventListener('blur',rel);
+  window.addEventListener('scroll',function(){if(held&&(window.scrollY!==hy||window.scrollX!==hx)) window.scrollTo(hx,hy)},{passive:true});
+  // A range input that keeps focus makes Android WebView scroll it into view every time its value is
+  // updated from code (e.g. a slider that mirrors a joystick). Never let sliders keep focus.
+  function dropFocus(){var a=document.activeElement;if(a&&a.tagName==='INPUT'&&a.type==='range'){try{a.blur()}catch(_){}}}
+  document.addEventListener('pointerup',function(){setTimeout(dropFocus,0)},true);
+  document.addEventListener('pointercancel',function(){setTimeout(dropFocus,0)},true);
+  document.addEventListener('pointerdown',function(e){if(e.target&&e.target.closest&&e.target.closest('.pad')) dropFocus()},true);
+  document.addEventListener('focusin',function(e){var t=e.target;if(t&&t.tagName==='INPUT'&&t.type==='range'&&!held) setTimeout(function(){if(!held&&document.activeElement===t) dropFocus()},0)},true);
+})();
+}catch(e){try{console.error(e)}catch(_){}}
+
+/* ---- block 6 ---- */
+try{
+(function(){
+  // Slider glow follows the slider value: 0 = no glow, 100 = full glow. Sliders of the same channel match.
+  function g(el){var mn=+el.min,mx=+el.max,v=+el.value;if(!(mx>mn))return;var z=mn<0?0:mn,span=Math.max(mx-z,z-mn)||1;
+    var q=Math.min(1,Math.abs(v-z)/span).toFixed(2);if(el._g!==q){el._g=q;el.style.setProperty('--g',q)}}
+  function all(){var l=document.querySelectorAll('.bdw input[type=range], .pwr');for(var i=0;i<l.length;i++)g(l[i])}
+  document.addEventListener('input',function(e){var t=e.target;if(t&&t.matches&&t.matches('.bdw input[type=range], .pwr'))g(t)},true);
+  setInterval(all,80);all();
+})();
+}catch(e){try{console.error(e)}catch(_){}}
+
+/* ---- block 7 ---- */
+try{
+(function(){
+  var SEL='.bdw input[type=range], .pwr';
+  // Double-tap a slider: back to 0
+  var last=null;
+  document.addEventListener('pointerup',function(e){
+    var t=e.target;if(!(t&&t.matches&&t.matches(SEL))) return;
+    var now=Date.now();
+    if(last&&last.el===t&&now-last.t<320&&Math.abs(e.clientX-last.x)<30&&Math.abs(e.clientY-last.y)<30){
+      last=null;
+      setTimeout(function(){if(+t.value!==0){t.value='0';t.dispatchEvent(new Event('input',{bubbles:true}));t.dispatchEvent(new Event('change',{bubbles:true}))}},0);
+      return;
+    }
+    last={el:t,t:now,x:e.clientX,y:e.clientY};
+  },true);
+  // Short vibration when a slider passes through 0 (follows the Vibration setting)
+  function tick(){
+    var hp=true;try{hp=JSON.parse(localStorage.getItem('mk6v2')||'{}').prefs.haptic!==false}catch(_){}
+    if(!hp) return;
+    var nb=window.MK6Bridge;
+    if(nb&&nb.haptic){try{nb.haptic('tick')}catch(_){}}else if(navigator.vibrate){try{navigator.vibrate(13)}catch(_){}}
+  }
+  document.addEventListener('input',function(e){
+    var t=e.target;if(!(t&&t.matches&&t.matches(SEL))) return;
+    var v=+t.value, sg=v>0?1:v<0?-1:0, p=t._sg;
+    if(p!==undefined&&p!==0&&sg!==p) tick();
+    t._sg=sg;
+  },true);
+  document.addEventListener('pointerdown',function(e){var t=e.target;if(t&&t.matches&&t.matches(SEL)){var v=+t.value;t._sg=v>0?1:v<0?-1:0}},true);
+})();
+}catch(e){try{console.error(e)}catch(_){}}
+
+/* ---- block 8 ---- */
+try{
+(function(){
+  function p(el){var mn=+el.min||0,mx=+el.max||100,v=+el.value;var q=mx>mn?((v-mn)/(mx-mn)*100):0;var t=q.toFixed(1)+'%';if(el._p!==t){el._p=t;el.style.setProperty('--p',t)}}
+  function all(){var l=document.querySelectorAll('main input[type=range]:not(.pwr)');for(var i=0;i<l.length;i++) if(!l[i].closest('.bdw')) p(l[i])}
+  document.addEventListener('input',function(e){var t=e.target;if(t&&t.type==='range'&&!t.classList.contains('pwr')) p(t)},true);
+  setInterval(all,300);all();
+})();
+}catch(e){try{console.error(e)}catch(_){}}
+
+/* ---- block 9 ---- */
+try{
+(function(){
+  // Light the pad arrows by how hard each axis is pushed (reads the knob position, so it works for touch, gamepad and playback)
+  function prep(p){if(p._parw) return;p._parw=1;['u','d','l','r'].forEach(function(k){var i=document.createElement('i');i.className='parw '+k;p.insertBefore(i,p.firstChild)})}
+  function tick(){
+    if(document.hidden) return;
+    var l=document.querySelectorAll('.pad');
+    for(var n=0;n<l.length;n++){
+      var p=l[n], kn=p.querySelector('.knob');if(!kn||!p.offsetWidth) continue;prep(p);
+      var tr=kn.style.transform||'';if(p._tr===tr&&p._pk!==undefined) continue;p._tr=tr;var m=/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/.exec(tr), dx=0, dy=0;
+      if(m){dx=+m[1];dy=+m[2]}
+      var now=Date.now();if(!p._R||now-p._Rt>1500){p._R=Math.max(8,(p.offsetWidth-kn.offsetWidth*0.6)/2-7);p._Rt=now}var R=p._R;
+      var x=Math.max(-1,Math.min(1,dx/R)), y=Math.max(-1,Math.min(1,-dy/R));
+      var v={pu:y>0?y:0,pd:y<0?-y:0,pr:x>0?x:0,pl:x<0?-x:0}, key='';
+      for(var k in v){v[k]=v[k]<0.05?0:Math.min(1,0.25+v[k]*0.75);key+=v[k].toFixed(2)}
+      if(p._pk===key) continue;p._pk=key;
+      var ch=p.querySelectorAll(':scope>.parw');for(var c2=0;c2<ch.length;c2++){var cl=ch[c2].classList[1];ch[c2].style.opacity=v['p'+cl]}
+    }
+  }
+  setInterval(tick,40);
+})();
+}catch(e){try{console.error(e)}catch(_){}}
+
+/* ---- block 10 ---- */
+try{
+(function(){
+  // Live performance HUD: long-press the "MK6 CONSOLE" title (about 1 second) to show or hide it.
+  var el=null,on=false,raf=0,last=0,dts=[],timer=0,po=null,lo={n:0,dur:0,scr:0,rend:0,blk:0},dpr=window.devicePixelRatio||1,press=0;
+  function loop(t){if(!on) return;if(last) dts.push(t-last);last=t;raf=requestAnimationFrame(loop)}
+  function report(){
+    if(!el) return;
+    var n=dts.length,sum=0,mx=0,sl=0,i;
+    for(i=0;i<n;i++){sum+=dts[i];if(dts[i]>mx)mx=dts[i];if(dts[i]>25)sl++}
+    var s=dts.slice().sort(function(a,b){return a-b}),p95=n?s[Math.min(n-1,Math.floor(n*0.95))]:0,med=n?s[Math.floor(n/2)]:0;
+    var fps=sum?Math.round(n*1000/sum):0;
+    var t='fps '+fps+' (frame '+med.toFixed(1)+'ms)  p95 '+p95.toFixed(1)+'  max '+mx.toFixed(0)+'  slow '+sl;
+    if(po){
+      var k=lo.n||1;
+      t+='\nlong frames '+lo.n+'  avg '+(lo.dur/k).toFixed(0)+'ms  script '+(lo.scr/k).toFixed(0)+'  render '+(lo.rend/k).toFixed(0)
+    }else t+='\n(no long-frame timing on this WebView)';
+    t+='\nlite level '+(window.mk6Lite?window.mk6Lite.get():0)+' (tap lite to reset)';t+='\n'+window.innerWidth+'x'+window.innerHeight+' @'+dpr.toFixed(2)+'  '+(document.documentElement.classList.contains('dash')?'dashboard':'page');
+    el.textContent=t;dts=[];lo={n:0,dur:0,scr:0,rend:0,blk:0};
+  }
+  function start(){
+    if(on) return;on=true;last=0;dts=[];
+    el=document.createElement('div');el.id='perfHud';
+    el.style.cssText='position:fixed;top:2px;left:50%;transform:translateX(-50%);z-index:99999;pointer-events:none;font:11px/1.35 monospace;white-space:pre;background:rgba(0,0,0,.78);color:#9fe870;padding:3px 8px;border-radius:6px;max-width:92vw';
+    document.body.appendChild(el);
+    var bar=document.createElement('div');bar.id='perfBar';
+    bar.style.cssText='position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;gap:6px;font:12px monospace';
+    var T={
+      shadow:'*{box-shadow:none!important;text-shadow:none!important;filter:none!important}',
+      thumb:'input[type=range]::-webkit-slider-thumb{background:#e8a020!important;border-radius:50%!important}',
+      bg:'*{background-image:none!important}',
+      vert:'.bdv,.vert{visibility:hidden!important}',
+      glow:'*{--g:0!important;animation:none!important;transition:none!important}'
+    };
+    var lb=document.createElement('button');lb.textContent='lite';lb.style.cssText='pointer-events:auto;background:#222;color:#9fe870;border:1px solid #9fe870;border-radius:6px;padding:4px 8px;font:inherit';
+    lb.addEventListener('click',function(e){e.stopPropagation();if(window.mk6Lite)window.mk6Lite.set(0)});bar.appendChild(lb);
+    Object.keys(T).forEach(function(k){
+      var b=document.createElement('button'),st=null;b.textContent=k;
+      b.style.cssText='pointer-events:auto;background:#222;color:#9fe870;border:1px solid #9fe870;border-radius:6px;padding:4px 8px;font:inherit';
+      b.addEventListener('click',function(e){e.stopPropagation();if(st){st.remove();st=null;b.style.background='#222'}else{st=document.createElement('style');st.textContent=T[k];document.head.appendChild(st);b.style.background='#365314'}});
+      bar.appendChild(b)});
+    document.body.appendChild(bar);
+    try{po=new PerformanceObserver(function(l){l.getEntries().forEach(function(e){lo.n++;lo.dur+=e.duration;var sc=0;(e.scripts||[]).forEach(function(x){sc+=x.duration});lo.scr+=sc;if(e.renderStart) lo.rend+=Math.max(0,e.startTime+e.duration-e.renderStart)})});po.observe({type:'long-animation-frame',buffered:false})}catch(_){po=null}
+    raf=requestAnimationFrame(loop);timer=setInterval(report,1000);
+  }
+  function stop(){
+    on=false;cancelAnimationFrame(raf);clearInterval(timer);if(po){try{po.disconnect()}catch(_){}po=null}
+    if(el&&el.parentNode) el.parentNode.removeChild(el);el=null;var pb=document.getElementById('perfBar');if(pb)pb.remove();document.querySelectorAll('style').forEach(function(x){if(/box-shadow:none!important;text-shadow|slider-thumb\{background:#e8a020|background-image:none!important\}$|visibility:hidden!important\}$|--g:0!important/.test(x.textContent)&&x.textContent.length<200)x.remove()});
+  }
+  var h=document.querySelector('.brand h1')||document.querySelector('.brand');
+  if(h){
+    h.addEventListener('pointerdown',function(){clearTimeout(press);press=setTimeout(function(){on?stop():start()},900)});
+    ['pointerup','pointercancel','pointerleave'].forEach(function(ev){h.addEventListener(ev,function(){clearTimeout(press)})});
+  }
+})();
+}catch(e){try{console.error(e)}catch(_){}}
+
+/* ---- block 11 ---- */
+try{
+(function(){
+  // Auto-lite: measure frame rate while the Dashboard is shown; if it stays low, drop effects one level at a time (max 3).
+  var KEY='mk6lite',lvl=0,raf=0,last=0,dts=[],t0=0,bad=0,root=document.documentElement,fxm='auto',autoLvl=0;
+  try{lvl=Math.max(0,Math.min(3,parseInt(localStorage.getItem(KEY)||'0',10)||0))}catch(_){}
+  autoLvl=lvl;
+  function apply(){for(var i=1;i<=3;i++) root.classList.toggle('lite'+i,i<=lvl)}
+  function save(){try{localStorage.setItem(KEY,String(lvl))}catch(_){}}
+  function loop(t){
+    raf=requestAnimationFrame(loop);
+    if(fxm!=='auto'||document.hidden||!root.classList.contains('dash')||lvl>=3){last=0;t0=0;bad=0;dts=[];return}
+    if(last&&t-last<250) dts.push(t-last); last=t; if(!t0) t0=t;
+    if(t-t0>=2500){
+      var n=dts.length,s=dts.slice().sort(function(a,b){return a-b}),med=n?s[n>>1]:0;
+      dts=[];t0=t;
+      if(n>=15&&med>32){ if(++bad>=2){bad=0;lvl++;autoLvl=lvl;apply();save();window.dispatchEvent(new Event('mk6lite'))} } else bad=0;
+    }
+  }
+  window.mk6Lite={get:function(){return lvl},set:function(n){lvl=Math.max(0,Math.min(3,n|0));autoLvl=lvl;bad=0;apply();save()},
+    mode:function(m){fxm=(m==='full'||m==='lite')?m:'auto';bad=0;lvl=fxm==='full'?0:fxm==='lite'?3:autoLvl;apply()}};
+  try{var st0=JSON.parse(localStorage.getItem('mk6v2')||'null');if(st0&&st0.prefs&&st0.prefs.fx) window.mk6Lite.mode(st0.prefs.fx)}catch(_){}
+  apply();raf=requestAnimationFrame(loop);
+})();
+}catch(e){try{console.error(e)}catch(_){}}
+
+/* ---- block 12 ---- */
+try{
+(function(){
+  var T=40,DX=0,DY=0,root=document.documentElement;
+  function upd(i){
+    var o=i._ok;if(!o) return;
+    var kv=parseFloat(i.style.zoom)||1,L=i.getBoundingClientRect().height,Ts=T*kv;
+    if(!L) return;
+    var mn=+i.min,mx=+i.max,f=mx>mn?(i.value-mn)/(mx-mn):0.5,k=(((0.5-f)*(L-(T+5)*kv))+DY*kv).toFixed(1);
+    var sk=Ts.toFixed(1);
+    if(i._sk!==sk){i._sk=sk;o.style.width=o.style.height=sk+'px';o.style.margin=(-Ts/2).toFixed(1)+'px 0 0 '+(-Ts/2).toFixed(1)+'px';i._yk=null}
+    if(i._yk!==k){i._yk=k;o.style.transform='translate('+(DX*kv)+'px,'+k+'px)'}
+    var g=i.style.getPropertyValue('--g');if(i._gk!==g){i._gk=g;o.style.setProperty('--g',g||'0')}
+  }
+  function scan(){
+    if(!root.classList.contains('dash')||document.hidden) return;
+    var l=document.querySelectorAll('.bdv input[type=range]:not(.ovr)');
+    for(var n=0;n<l.length;n++){
+      var i=l[n];
+      if(!i._ok){var rc=i.cloneNode(false);rc.removeAttribute('id');rc.className=(rc.className?rc.className+' ':'')+'ovr';rc.tabIndex=-1;rc.setAttribute('aria-hidden','true');rc.value='0';i.parentNode.insertBefore(rc,i);var o=document.createElement('div');o.className='ovk';i.parentNode.appendChild(o);i._ok=o;i.addEventListener('input',function(){upd(this)})}
+      upd(i);
+    }
+  }
+  window.__ovk={set:function(x,y,t){DX=x;DY=y;T=t||T;document.querySelectorAll('.bdv input[type=range]:not(.ovr)').forEach(function(i){i._yk=null;i._sk=null})}};
+  setInterval(scan,40);
+})();
+}catch(e){try{console.error(e)}catch(_){}}

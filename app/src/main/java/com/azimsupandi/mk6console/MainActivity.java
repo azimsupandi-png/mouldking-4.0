@@ -31,7 +31,11 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.provider.MediaStore;
 import android.util.Base64;
+import android.graphics.Color;
 import android.view.View;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
+import android.widget.FrameLayout;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
@@ -43,6 +47,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -55,11 +61,11 @@ import java.util.Locale;
  * Hosts the MK6 Console web UI (assets/index.html) in a WebView and exposes
  * native features to it through the {@code MK6Bridge} JavaScript interface.
  *
- * JS -> native: MK6Bridge.start/send/stop/haptic/tilt/immersive/battery/btOn/
+ * JS -> native: MK6Bridge.start/send/stop/stats/haptic/tilt/immersive/battery/btOn/
  *               btSettings/exportFile/importFile/pickWallpaper/autoBackup/
- *               pinModel/shortcuts
+ *               pinModel/shortcuts/theme/textZoom/shareFile
  * native -> JS: window.onHubState, onAppEvent, onTilt, onFileResult,
- *               onImportText, onWallpaper, openModel
+ *               onImportText, onWallpaper, openModel, onSharedModel
  */
 public class MainActivity extends Activity {
 
@@ -77,6 +83,10 @@ public class MainActivity extends Activity {
     private static final int REQ_WALL = 44;
 
     private WebView web;
+    private FrameLayout root;
+    private boolean barLight;
+    private int barColor = 0xFF1B1E23;
+    private String pendingShared;
     private Mk6Advertiser mk6;
     private Vibrator vibrator;
     private SensorManager sm;
@@ -163,7 +173,11 @@ public class MainActivity extends Activity {
         }
 
         web = new WebView(this);
-        setContentView(web);
+        root = new FrameLayout(this);
+        root.setBackgroundColor(barColor);
+        root.addView(web, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        setContentView(root);
+        setupEdgeToEdge();
         web.setHapticFeedbackEnabled(false);
         web.setLongClickable(false);
         WebSettings s = web.getSettings();
@@ -173,12 +187,14 @@ public class MainActivity extends Activity {
 
         vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         readModelExtra(getIntent());
+        readSharedFile(getIntent());
 
         web.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
                 pageReady = true;
                 deliverModel();
+                deliverShared();
             }
 
             @Override
@@ -197,6 +213,7 @@ public class MainActivity extends Activity {
         setIntent(intent);
         readModelExtra(intent);
         deliverModel();
+        readSharedFile(intent);
     }
 
     @Override
@@ -317,19 +334,75 @@ public class MainActivity extends Activity {
 
     // ---------------------------------------------------------------- helpers
 
+    /** Full screen hides the system bars; otherwise the page sits between them (edge-to-edge, padded by insets). */
+    @SuppressWarnings("deprecation")
     private void applyFull() {
-        int flags = fullScreen
-                ? View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+        int flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_FULLSCREEN
-                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                : 0;
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN;
+        if (fullScreen) {
+            flags |= View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+        }
+        if (barLight && Build.VERSION.SDK_INT < 30) {
+            flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+        }
         try {
             getWindow().getDecorView().setSystemUiVisibility(flags);
         } catch (RuntimeException ignored) {
         }
+        applyBarLook();
+        if (root != null) root.requestApplyInsets();
+    }
+
+    /** Status / navigation bar icons dark on the light theme, light on the dark theme. */
+    private void applyBarLook() {
+        if (root != null) root.setBackgroundColor(barColor);
+        if (Build.VERSION.SDK_INT >= 30) {
+            try {
+                WindowInsetsController c = getWindow().getInsetsController();
+                if (c != null) {
+                    int mask = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                            | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+                    c.setSystemBarsAppearance(barLight ? mask : 0, mask);
+                }
+            } catch (RuntimeException ignored) {
+            }
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void setupEdgeToEdge() {
+        try {
+            if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
+            getWindow().setStatusBarColor(Color.TRANSPARENT);
+            getWindow().setNavigationBarColor(Color.TRANSPARENT);
+            if (Build.VERSION.SDK_INT >= 29) {
+                getWindow().setNavigationBarContrastEnforced(false);
+                getWindow().setStatusBarContrastEnforced(false);
+            }
+        } catch (RuntimeException ignored) {
+        }
+        root.setOnApplyWindowInsetsListener((v, insets) -> {
+            int l = 0, t = 0, r = 0, b = 0;
+            if (!fullScreen) {
+                if (Build.VERSION.SDK_INT >= 30) {
+                    android.graphics.Insets in = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+                    l = in.left; t = in.top; r = in.right; b = in.bottom;
+                } else {
+                    l = insets.getSystemWindowInsetLeft(); t = insets.getSystemWindowInsetTop();
+                    r = insets.getSystemWindowInsetRight(); b = insets.getSystemWindowInsetBottom();
+                }
+            }
+            web.setPadding(0, 0, 0, 0);
+            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) web.getLayoutParams();
+            if (lp.leftMargin != l || lp.topMargin != t || lp.rightMargin != r || lp.bottomMargin != b) {
+                lp.setMargins(l, t, r, b);
+                web.setLayoutParams(lp);
+            }
+            return insets;
+        });
     }
 
     private void buzz(long[] pattern) {
@@ -508,6 +581,45 @@ public class MainActivity extends Activity {
         intent.removeExtra("model");
     }
 
+    /** A model file opened or shared from another app (WhatsApp, Files, e-mail…). */
+    private void readSharedFile(Intent intent) {
+        if (intent == null) return;
+        Uri uri = null;
+        String action = intent.getAction();
+        if (Intent.ACTION_VIEW.equals(action)) uri = intent.getData();
+        else if (Intent.ACTION_SEND.equals(action)) {
+            Object o = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+            if (o instanceof Uri) uri = (Uri) o;
+        }
+        if (uri == null) return;
+        final Uri u = uri;
+        intent.setData(null);
+        intent.removeExtra(Intent.EXTRA_STREAM);
+        new Thread(() -> {
+            String text = null;
+            try {
+                text = readLimited(u);
+            } catch (Exception ignored) {
+            }
+            final String t = text;
+            runOnUiThread(() -> {
+                if (t == null) {
+                    notifyApp("sharefail");
+                    return;
+                }
+                pendingShared = t;
+                deliverShared();
+            });
+        }).start();
+    }
+
+    private void deliverShared() {
+        if (!pageReady || pendingShared == null || web == null) return;
+        String js = "window.onSharedModel&&window.onSharedModel(" + JSONObject.quote(pendingShared) + ")";
+        pendingShared = null;
+        web.post(() -> web.evaluateJavascript(js, null));
+    }
+
     private void deliverModel() {
         if (!pageReady || pendingModel == null || web == null) return;
         String js = "window.openModel&&window.openModel(" + JSONObject.quote(pendingModel) + ")";
@@ -581,6 +693,26 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> mk6.setFrame(parsed));
         }
 
+        /** Link diagnostics for the Hub screen (JSON text). */
+        @JavascriptInterface
+        public String stats() {
+            final String[] out = {"{}"};
+            final java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
+            runOnUiThread(() -> {
+                try {
+                    out[0] = mk6.stats();
+                } finally {
+                    done.countDown();
+                }
+            });
+            try {
+                done.await(300, java.util.concurrent.TimeUnit.MILLISECONDS);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+            return out[0];
+        }
+
         @JavascriptInterface
         public void stop() {
             runOnUiThread(() -> mk6.stop());
@@ -610,6 +742,62 @@ public class MainActivity extends Activity {
                 fullScreen = on;
                 applyFull();
             });
+        }
+
+        /** Light theme: light bars with dark icons; dark theme: dark bars with light icons. */
+        @JavascriptInterface
+        public void theme(boolean light) {
+            runOnUiThread(() -> {
+                barLight = light;
+                barColor = light ? 0xFFFFFFFF : 0xFF1B1E23;
+                applyFull();
+            });
+        }
+
+        /** Text size in percent (100 = normal). */
+        @JavascriptInterface
+        public void textZoom(int pct) {
+            int p = Math.max(85, Math.min(150, pct));
+            runOnUiThread(() -> {
+                if (web != null) web.getSettings().setTextZoom(p);
+            });
+        }
+
+        /** Share one model as a .json file through the Android share sheet. */
+        @JavascriptInterface
+        public void shareFile(String fileName, String json, String title) {
+            String safe = fileName == null ? "model.mk6.json" : fileName.replaceAll("[^A-Za-z0-9 ._()-]", "_");
+            if (safe.isEmpty() || safe.length() > 80) safe = "model.mk6.json";
+            final String name = safe;
+            new Thread(() -> {
+                try {
+                    byte[] bytes = (json == null ? "" : json).getBytes(StandardCharsets.UTF_8);
+                    if (bytes.length == 0 || bytes.length > MAX_IMPORT_BYTES) throw new IOException("size");
+                    File dir = ShareProvider.dir(MainActivity.this);
+                    File[] old = dir.listFiles();
+                    if (old != null) for (File f : old) //noinspection ResultOfMethodCallIgnored
+                        f.delete();
+                    try (FileOutputStream os = new FileOutputStream(new File(dir, name))) {
+                        os.write(bytes);
+                    }
+                    Uri uri = ShareProvider.uriFor(name);
+                    runOnUiThread(() -> {
+                        try {
+                            Intent send = new Intent(Intent.ACTION_SEND);
+                            send.setType("application/json");
+                            send.putExtra(Intent.EXTRA_STREAM, uri);
+                            send.putExtra(Intent.EXTRA_SUBJECT, title != null ? title : name);
+                            send.setClipData(android.content.ClipData.newRawUri(name, uri));
+                            send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                            startActivity(Intent.createChooser(send, title != null ? title : name));
+                        } catch (RuntimeException e) {
+                            notifyApp("sharefail");
+                        }
+                    });
+                } catch (Exception e) {
+                    notifyApp("sharefail");
+                }
+            }).start();
         }
 
         @JavascriptInterface
