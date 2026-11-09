@@ -1537,37 +1537,33 @@ html.v2-nohub:not(.v2-editing):not(.dash) #boardGrid > .bdw:not(.psw):not(.v2-es
 #seqCard.v2-none > :not(.v2-foldh):not(.v2-empty){display:none!important}
 
 /* ---------- Graphics upgrade 6 · light theme for outdoors (board widgets keep their dark look) ---------- */
-html[data-ui=light]{--bg:#E8EBEF;--panel:#FFFFFF;--well:#EEF1F4;--line:#D3D9E0;--fg:#14181D;--muted:#5D6773;--acc-t:#9A6E00;--ok:#14855F;--danger:#C9302F;color-scheme:light}
-html[data-ui=light] body{background:#E8EBEF!important;background-image:none!important}
+html[data-ui=light]:not(.dash){--bg:#E8EBEF;--panel:#FFFFFF;--well:#EEF1F4;--line:#D3D9E0;--fg:#14181D;--muted:#5D6773;--acc-t:#9A6E00;--ok:#14855F;--danger:#C9302F;color-scheme:light}
+html[data-ui=light]:not(.dash) body{background:#E8EBEF!important;background-image:none!important}
 html[data-ui=light]:not(.dash) .card,html[data-ui=light][data-skin="studs"]:not(.dash) .card{background:#fff!important;border:1px solid #D3D9E0!important;box-shadow:0 1px 2px rgba(20,24,29,.06),0 6px 16px rgba(20,24,29,.06)!important;color:var(--fg)}
-html[data-ui=light] .bar,html[data-ui=light] .v2-nav{background:#fff!important;border-color:#D3D9E0!important;box-shadow:0 1px 6px rgba(20,24,29,.06)!important}
-html[data-ui=light] .btn:not(.bdw *),html[data-ui=light] .txt:not(.bdw *),html[data-ui=light] select:not(.bdw *){background:#fff!important;border-color:#C9D0D8!important;color:#14181D!important;box-shadow:none!important;text-shadow:none!important}
-html[data-ui=light] .btn[aria-pressed="true"]:not(.bdw *),html[data-ui=light] .v2-empty .btn.pri{background:var(--acc)!important;border-color:var(--acc)!important;color:#1b1b1b!important}
-html[data-ui=light] .btn:disabled{opacity:.45}
-html[data-ui=light] select option{background:#fff;color:#14181D}
-html[data-ui=light] .v2-grp,html[data-ui=light] .v2-chip b,html[data-ui=light] .v2-nav button[aria-pressed=true],html[data-ui=light] .v2-hst[data-st=busy],html[data-ui=light] .v2-pill[data-st=busy] .ptx,
-html[data-ui=light] .v2-outrow b,html[data-ui=light] .v2-hubic em,html[data-ui=light] .v2-knob-b[aria-pressed=true] .kl,html[data-ui=light] .v2-madd,html[data-ui=light] .testnote{color:var(--acc-t)!important}
-html[data-ui=light] .v2-madd{border-color:#C68700}
-html[data-ui=light] .v2-li > .ic:first-child,html[data-ui=light] .v2-ib,html[data-ui=light] .v2-pill:not([data-bt=off]) .pbt,html[data-ui=light] .v2-hubic{color:#5D6773}
-html[data-ui=light] .v2-ib:active{background:rgba(0,0,0,.05)}
-html[data-ui=light] .v2-sw:not([aria-checked=true]) .tg{background:#C9D0D8}html[data-ui=light] .v2-sw:not([aria-checked=true]) .tg::after{background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25)}
-html[data-ui=light] .v2-pill{background:#fff;box-shadow:0 1px 3px rgba(20,24,29,.08)}
-html[data-ui=light] .v2-nav button{color:#7A848F}
-html[data-ui=light] h2{color:#14181D}
-html[data-ui=light] .v2-thw{background:#1d222b}
-html[data-ui=light] .v2-ksvg .kt{fill:#e8e8ea}
-html[data-ui=light] .v2-prev{background:#E8EBEF}
-html[data-ui=light] .v2-empty svg.ill{color:#9AA3AD}
-html[data-ui=light] .v2-empty svg.ill .y{color:#C68700}
+html[data-ui=light]:not(.dash) .bar,html[data-ui=light]:not(.dash) .v2-nav{background:#fff!important;border-color:#D3D9E0!important;box-shadow:0 1px 6px rgba(20,24,29,.06)!important}
+html[data-ui=light]:not(.dash) .btn:not(.bdw *),html[data-ui=light]:not(.dash) .txt:not(.bdw *),html[data-ui=light]:not(.dash) select:not(.bdw *){background:#fff!important;border-color:#C9D0D8!important;color:#14181D!important;box-shadow:none!important;text-shadow:none!important}
+html[data-ui=light]:not(.dash) .btn[aria-pressed="true"]:not(.bdw *),html[data-ui=light]:not(.dash) .v2-empty .btn.pri{background:var(--acc)!important;border-color:var(--acc)!important;color:#1b1b1b!important}
+html[data-ui=light]:not(.dash) .btn:disabled{opacity:.45}
+html[data-ui=light]:not(.dash) select option{background:#fff;color:#14181D}
+html[data-ui=light]:not(.dash) .v2-grp,html[data-ui=light]:not(.dash) .v2-chip b,html[data-ui=light]:not(.dash) .v2-nav button[aria-pressed=true],html[data-ui=light]:not(.dash) .v2-hst[data-st=busy],html[data-ui=light]:not(.dash) .v2-pill[data-st=busy] .ptx,
+html[data-ui=light]:not(.dash) .v2-outrow b,html[data-ui=light]:not(.dash) .v2-hubic em,html[data-ui=light]:not(.dash) .v2-knob-b[aria-pressed=true] .kl,html[data-ui=light]:not(.dash) .v2-madd,html[data-ui=light]:not(.dash) .testnote{color:var(--acc-t)!important}
+html[data-ui=light]:not(.dash) .v2-madd{border-color:#C68700}
+html[data-ui=light]:not(.dash) .v2-li > .ic:first-child,html[data-ui=light]:not(.dash) .v2-ib,html[data-ui=light]:not(.dash) .v2-pill:not([data-bt=off]) .pbt,html[data-ui=light]:not(.dash) .v2-hubic{color:#5D6773}
+html[data-ui=light]:not(.dash) .v2-ib:active{background:rgba(0,0,0,.05)}
+html[data-ui=light]:not(.dash) .v2-sw:not([aria-checked=true]) .tg{background:#C9D0D8}html[data-ui=light]:not(.dash) .v2-sw:not([aria-checked=true]) .tg::after{background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+html[data-ui=light]:not(.dash) .v2-pill{background:#fff;box-shadow:0 1px 3px rgba(20,24,29,.08)}
+html[data-ui=light]:not(.dash) .v2-nav button{color:#7A848F}
+html[data-ui=light]:not(.dash) h2{color:#14181D}
+html[data-ui=light]:not(.dash) .v2-thw{background:#1d222b}
+html[data-ui=light]:not(.dash) .v2-ksvg .kt{fill:#e8e8ea}
+html[data-ui=light]:not(.dash) .v2-prev{background:#E8EBEF}
+html[data-ui=light]:not(.dash) .v2-empty svg.ill{color:#9AA3AD}
+html[data-ui=light]:not(.dash) .v2-empty svg.ill .y{color:#C68700}
 /* widgets stay dark: give them back the dark colour set */
-html[data-ui=light] .bdw,html[data-ui=light] .v2-knob{--bg:#101216;--panel:#1b1e23;--well:#07080b;--line:#343a43;--fg:#F3F1EA;--muted:#A3A8AE;--acc-t:#FFC400;--ok:#1D9E75;--danger:#E24B4A;color:var(--fg);color-scheme:dark}
-html[data-ui=light] .bdw:not(.v2-ps){background-color:#15181d}
-html[data-ui=light] #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,29,.25)}
+html[data-ui=light]:not(.dash) .bdw,html[data-ui=light]:not(.dash) .v2-knob{--bg:#101216;--panel:#1b1e23;--well:#07080b;--line:#343a43;--fg:#F3F1EA;--muted:#A3A8AE;--acc-t:#FFC400;--ok:#1D9E75;--danger:#E24B4A;color:var(--fg);color-scheme:dark}
+html[data-ui=light]:not(.dash) .bdw:not(.v2-ps){background-color:#15181d}
+html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,29,.25)}
 /* landscape dashboard in the light theme: light page, widgets stay dark; with no hub the widget content dims, not the whole card */
-html[data-ui=light].dash body{background:#E8EBEF!important}
-html[data-ui=light].dash #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,29,.28)!important}
-html[data-ui=light].dash.nolink .bdw{opacity:1!important}
-html[data-ui=light].dash.nolink .bdw:not(.psw) > *{opacity:.45;filter:saturate(.4)}
 </style>
 </head>
 <body>

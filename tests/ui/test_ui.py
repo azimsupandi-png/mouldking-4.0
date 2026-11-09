@@ -209,10 +209,31 @@ async def t_extras(b):
     check('no JS errors (extras)', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+CONTRAST_JS = r"""(()=>{function rgb(c){var m=c.match(/[\d.]+/g);return m?m.map(Number):null}
+function lum(c){var a=c.slice(0,3).map(function(v){v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*a[0]+.7152*a[1]+.0722*a[2]}
+function bg(e){while(e){var cs=getComputedStyle(e),c=rgb(cs.backgroundColor);if(c&&(c.length<4||c[3]>.6))return c;if(cs.backgroundImage&&cs.backgroundImage!=='none'&&e!==document.body&&e!==document.documentElement)return null;e=e.parentElement}return [255,255,255]}
+var bad=[],w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT),n;
+while(n=w.nextNode()){var t=n.nodeValue.trim();if(!t||!/[A-Za-z0-9]/.test(t))continue;var e=n.parentElement;if(!e||!e.getClientRects().length||e.closest('[hidden],svg,#v2Splash,.toast'))continue;
+var cs=getComputedStyle(e);if(cs.visibility==='hidden'||+cs.opacity<.5)continue;var b=bg(e);if(!b)continue;var f=rgb(cs.color);
+var L1=lum(f),L2=lum(b),r=(Math.max(L1,L2)+.05)/(Math.min(L1,L2)+.05);if(r<3)bad.push(t.slice(0,30)+' '+r.toFixed(1))}
+return bad})()"""
+
+async def t_light_contrast(b):
+    ctx, pg = await page(b)
+    await pg.evaluate("document.getElementById('hConn').click();onHubState('ready');mk6Go('settings');document.getElementById('sLight').click()")
+    bad = {}
+    for v in ['home', 'drive', 'models', 'settings', 'hub', 'medit', 'tpl']:
+        await pg.evaluate(f"mk6Go('{v}')")
+        await pg.wait_for_timeout(300)
+        r = await pg.evaluate(CONTRAST_JS)
+        if r: bad[v] = r[:4]
+    check('light theme: all text readable (contrast 3:1 or more) on 7 screens', not bad, bad)
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
