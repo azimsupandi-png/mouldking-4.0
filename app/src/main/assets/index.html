@@ -1493,19 +1493,8 @@ html[data-hc] .card,html[data-hc] .v2-li,html[data-hc] .v2-pill{border-color:var
 .v2-diag dd.ok{color:var(--ok)}.v2-diag dd.bad{color:var(--danger)}.v2-diag dd.warn{color:var(--acc-t,var(--acc))}
 .v2-diagn{font-size:12.5px;margin:10px 2px}
 #hubDiag > summary{justify-content:space-between}
-/* while booting only the splash is drawn; the rest is styled and laid out once the app code runs */
-html.booting body>*:not(#v2Splash){content-visibility:hidden}
-/* ---------- Graphics upgrade 1 · splash: knob with an LED ring that lights once ---------- */
-#v2Splash{position:fixed;inset:0;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#12161A;pointer-events:none;transition:opacity .25s ease-out;animation:v2spOut .3s ease-out 2.6s forwards}
-#v2Splash.done{opacity:0}
-#v2Splash svg{width:132px;height:132px}
-#v2Splash .sl{opacity:.18;animation:v2spOn .12s ease-out forwards}
-#v2Splash b{font:800 17px var(--f-body);color:#e8e8ea;letter-spacing:.02em}
-#v2Splash small{font:600 12px var(--f-body);color:#8a93a0;margin-top:-8px}
-@keyframes v2spOn{to{opacity:1}}
-@keyframes v2spOut{to{opacity:0;visibility:hidden}}
-@media (prefers-reduced-motion:reduce){#v2Splash .sl{animation:none;opacity:1}}
-
+/* while booting nothing is drawn (the window background shows); the page is styled and laid out once the app code runs */
+html.booting body>*{content-visibility:hidden}
 /* ---------- Graphics upgrade 3 · connected: the status pill pulses green once ---------- */
 .v2-pill.v2-pulse .pdot{animation:v2pulse 1.1s ease-out 1}
 .v2-pill.v2-pulse{animation:v2pillIn .5s ease-out 1}
@@ -1567,7 +1556,6 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
 </style>
 </head>
 <body>
-<div id="v2Splash" aria-hidden="true"><svg viewBox="0 0 132 132"><defs><radialGradient id="v2spk" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#5a6376"/><stop offset=".6" stop-color="#2a303b"/><stop offset="1" stop-color="#14181f"/></radialGradient></defs><g stroke="#FFC400" stroke-width="6.5" stroke-linecap="round"><line class="sl" x1="72.4" y1="17.4" x2="73.6" y2="8.5" style="animation-delay:0ms"/><line class="sl" x1="84.8" y1="20.7" x2="88.2" y2="12.4" style="animation-delay:22ms"/><line class="sl" x1="95.8" y1="27.1" x2="101.3" y2="20.0" style="animation-delay:44ms"/><line class="sl" x1="104.9" y1="36.2" x2="112.0" y2="30.7" style="animation-delay:66ms"/><line class="sl" x1="111.3" y1="47.2" x2="119.6" y2="43.8" style="animation-delay:88ms"/><line class="sl" x1="114.6" y1="59.6" x2="123.5" y2="58.4" style="animation-delay:110ms"/><line class="sl" x1="114.6" y1="72.4" x2="123.5" y2="73.6" style="animation-delay:132ms"/><line class="sl" x1="111.3" y1="84.8" x2="119.6" y2="88.2" style="animation-delay:154ms"/><line class="sl" x1="104.9" y1="95.8" x2="112.0" y2="101.3" style="animation-delay:176ms"/><line class="sl" x1="95.8" y1="104.9" x2="101.3" y2="112.0" style="animation-delay:198ms"/><line class="sl" x1="84.8" y1="111.3" x2="88.2" y2="119.6" style="animation-delay:220ms"/><line class="sl" x1="72.4" y1="114.6" x2="73.6" y2="123.5" style="animation-delay:242ms"/><line class="sl" x1="59.6" y1="114.6" x2="58.4" y2="123.5" style="animation-delay:264ms"/><line class="sl" x1="47.2" y1="111.3" x2="43.8" y2="119.6" style="animation-delay:286ms"/><line class="sl" x1="36.2" y1="104.9" x2="30.7" y2="112.0" style="animation-delay:308ms"/><line class="sl" x1="27.1" y1="95.8" x2="20.0" y2="101.3" style="animation-delay:330ms"/><line class="sl" x1="20.7" y1="84.8" x2="12.4" y2="88.2" style="animation-delay:352ms"/><line class="sl" x1="17.4" y1="72.4" x2="8.5" y2="73.6" style="animation-delay:374ms"/><line class="sl" x1="17.4" y1="59.6" x2="8.5" y2="58.4" style="animation-delay:396ms"/><line class="sl" x1="20.7" y1="47.2" x2="12.4" y2="43.8" style="animation-delay:418ms"/><line class="sl" x1="27.1" y1="36.2" x2="20.0" y2="30.7" style="animation-delay:440ms"/><line class="sl" x1="36.2" y1="27.1" x2="30.7" y2="20.0" style="animation-delay:462ms"/><line class="sl" x1="47.2" y1="20.7" x2="43.8" y2="12.4" style="animation-delay:484ms"/><line class="sl" x1="59.6" y1="17.4" x2="58.4" y2="8.5" style="animation-delay:506ms"/></g><circle cx="66" cy="66" r="41" fill="#0d1015"/><circle cx="66" cy="66" r="38" fill="url(#v2spk)"/><ellipse cx="57" cy="50" rx="18" ry="7" fill="#fff" opacity=".1"/><text x="66" y="73" text-anchor="middle" font-family="system-ui,sans-serif" font-size="21" font-weight="900" fill="#FFC400">MK6</text></svg><b>MK6 Console</b><small>Mould King 6.0</small></div>
 
 <header class="bar">
   <div class="bar-in">
@@ -2103,7 +2091,7 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
 </nav>
 
 <script>
-/* Paint the splash first, then load the app code (saves ~0.3 s before anything shows on slow phones). */
+/* Load the app code after the first frame, so the window appears at once. */
 (function(){setTimeout(function(){document.documentElement.classList.remove('booting')},4000);function go(){var s=document.createElement('script');s.src='app.js';s.async=false;document.body.appendChild(s)}
 if(window.requestAnimationFrame) requestAnimationFrame(function(){requestAnimationFrame(function(){setTimeout(go,0)})});else setTimeout(go,0)})();
 </script>

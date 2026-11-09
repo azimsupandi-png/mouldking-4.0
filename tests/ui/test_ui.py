@@ -147,8 +147,6 @@ async def t_features(b):
 
 async def t_graphics(b):
     ctx, pg = await page(b)
-    await pg.wait_for_timeout(900)
-    check('splash is removed after start', await pg.evaluate("!document.getElementById('v2Splash')"))
     r = await pg.evaluate("mk6Go('drive');new Promise(r=>setTimeout(()=>r([document.documentElement.classList.contains('v2-nohub'),[...document.querySelectorAll('#boardGrid > .bdw.v2-es')].length]),400))")
     check('no hub: widgets dimmed, E-Stop widget kept bright', r[0] and r[1] >= 1, r)
     await pg.evaluate("mk6Go('home');document.getElementById('hConn').click()")
@@ -213,7 +211,7 @@ CONTRAST_JS = r"""(()=>{function rgb(c){var m=c.match(/[\d.]+/g);return m?m.map(
 function lum(c){var a=c.slice(0,3).map(function(v){v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*a[0]+.7152*a[1]+.0722*a[2]}
 function bg(e){while(e){var cs=getComputedStyle(e),c=rgb(cs.backgroundColor);if(c&&(c.length<4||c[3]>.6))return c;if(cs.backgroundImage&&cs.backgroundImage!=='none'&&e!==document.body&&e!==document.documentElement)return null;e=e.parentElement}return [255,255,255]}
 var bad=[],w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT),n;
-while(n=w.nextNode()){var t=n.nodeValue.trim();if(!t||!/[A-Za-z0-9]/.test(t))continue;var e=n.parentElement;if(!e||!e.getClientRects().length||e.closest('[hidden],svg,#v2Splash,.toast'))continue;
+while(n=w.nextNode()){var t=n.nodeValue.trim();if(!t||!/[A-Za-z0-9]/.test(t))continue;var e=n.parentElement;if(!e||!e.getClientRects().length||e.closest('[hidden],svg,.toast'))continue;
 var cs=getComputedStyle(e);if(cs.visibility==='hidden'||+cs.opacity<.5)continue;var b=bg(e);if(!b)continue;var f=rgb(cs.color);
 var L1=lum(f),L2=lum(b),r=(Math.max(L1,L2)+.05)/(Math.min(L1,L2)+.05);if(r<3)bad.push(t.slice(0,30)+' '+r.toFixed(1))}
 return bad})()"""

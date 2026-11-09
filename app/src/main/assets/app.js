@@ -1,4 +1,4 @@
-/* MK6 Console app code. Loaded with defer so the page (and its splash) can paint first.
+/* MK6 Console app code. Loaded after the first frame so the window appears at once.
    Each block is wrapped on its own so one failing block cannot stop the others. */
 
 document.documentElement.classList.remove('booting');
@@ -4818,8 +4818,6 @@ try{
   applyLang();
   if(!store.prefs.seen) guideOpen();
   window.mk6Ready=true;
-  (function(){var sp=$('#v2Splash');if(!sp) return;var w=Math.max(0,650-performance.now());
-    setTimeout(function(){sp.classList.add('done');setTimeout(function(){if(sp.parentNode) sp.parentNode.removeChild(sp)},300)},w)})();
 
   // Update rate: 20 Hz while driving or touching, 4 Hz when idle, 1 Hz when the page is hidden (saves battery).
   var tkT=0,tkD=50;

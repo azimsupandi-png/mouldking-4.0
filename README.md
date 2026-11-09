@@ -9,8 +9,8 @@ min Android 8 (API 26).
 
 | Path | What |
 |---|---|
-| `app/src/main/assets/index.html` | UI markup + CSS, splash (painted first) |
-| `app/src/main/assets/app.js` | UI code, loaded after the first frame so the splash shows at once |
+| `app/src/main/assets/index.html` | UI markup + CSS |
+| `app/src/main/assets/app.js` | UI code, loaded after the first frame |
 | `app/src/main/assets/img/` | Knob images |
 | `app/src/main/java/.../MainActivity.java` | WebView host + `MK6Bridge` (BLE start/stop/stats, haptics, tilt, files, wallpaper, backups, shortcuts, theme bars, text size, sharing); edge-to-edge insets |
 | `app/src/main/java/.../ShareProvider.java` | Read-only provider for sharing one model file with other apps |
@@ -27,7 +27,7 @@ Every push runs the tests first; the APK is built and published only if they pas
   while moving), idle, stop, two hubs in rotation mode, and the link diagnostics.
 * `tests/ui/test_ui.py` – headless Chromium with a fake `MK6Bridge`: hub paths, practice
   mode, hold-to-start/stop with real touch events, idle DOM writes and update rate,
-  no overflow at 360 px, gallery/hub/lock/back, splash, no-hub widgets, empty states, light
+  no overflow at 360 px, gallery/hub/lock/back, no-hub widgets, empty states, light
   theme, diagnostics, text size / contrast, model sharing, recordings as quick buttons, and a
   click on every control of 13 screens.
 
