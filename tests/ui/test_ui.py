@@ -400,6 +400,13 @@ async def t_seven(b):
     check('12 focus mode hides the bar buttons and widget labels', r == [True, 'none', 'hidden'], r)
     r = await pg.evaluate("['dbCruise','dbFocus'].map(function(id){var b=document.getElementById(id).getBoundingClientRect(),k=document.getElementById(id).querySelector('svg')||null,c;if(k){c=k.getBoundingClientRect()}else{var g=document.createRange();g.selectNodeContents(document.getElementById(id));c=g.getBoundingClientRect()}return Math.round(Math.abs((c.top+c.bottom)/2-(b.top+b.bottom)/2)+Math.abs((c.left+c.right)/2-(b.left+b.right)/2))})")
     check('12 Cruise and focus content is centred in their buttons', all(x <= 3 for x in r), r)
+    await pg.evaluate("document.getElementById('dbFocus').click();onHubState('ready')")
+    POS = "[...document.getElementById('boardGrid').children].map(e=>{var r=e.getBoundingClientRect();return [Math.round(r.left),Math.round(r.top),getComputedStyle(e).position]})"
+    p0 = await pg.evaluate(POS)
+    await pg.evaluate("document.getElementById('dbCruise').click();document.querySelectorAll('#boardGrid > .bdw').forEach(function(e){e.setAttribute('data-crz','CRUISE +100')})")
+    await pg.wait_for_timeout(100)
+    p1 = await pg.evaluate(POS)
+    check('2 cruise tag in landscape leaves every widget in its place', p0 == p1 and all(x[2] == 'absolute' for x in p1), [p0[:2], p1[:2]])
     await ctx.close()
 
 async def t_open_relink(b):

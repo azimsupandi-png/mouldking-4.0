@@ -1554,8 +1554,8 @@ html[data-macc] .v2-mchip .v2-knob.sm,html[data-macc] #scrHome .v2-mrow .v2-knob
 html.dash-l:not(.v2-dbopen) #dashBar > .btn.v2-dbkeep{display:inline-flex!important}
 #dashBar > .btn.v2-dbkeep{align-items:center!important;justify-content:center!important;line-height:1!important;padding-top:0!important;padding-bottom:0!important;min-width:44px}
 #dashBar > .btn.v2-dbkeep .ic{display:block;margin:0}
-#boardGrid > .bdw[data-crz]{position:relative}
-#boardGrid > .bdw[data-crz]::before{content:attr(data-crz);position:absolute;right:10px;bottom:8px;z-index:3;padding:2px 8px;border-radius:9px;background:var(--acc);color:#1b1b1b;font:800 10.5px var(--f-body);letter-spacing:.03em;pointer-events:none}
+#boardGrid > .bdw[data-crz]:not(.dw){position:relative}
+#boardGrid > .bdw[data-crz]::before{content:attr(data-crz);position:absolute;right:10px;top:8px;z-index:3;padding:2px 8px;border-radius:9px;background:var(--acc);color:#1b1b1b;font:800 10.5px var(--f-body);letter-spacing:.03em;pointer-events:none}
 #dbFocus .ic{width:18px;height:18px}
 /* ---------- 3 · steering eases at speed ---------- */
 .v2-ssbox{margin:12px 0 4px}.v2-ssrow{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;margin:8px 2px 0}
