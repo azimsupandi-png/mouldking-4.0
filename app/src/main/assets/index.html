@@ -1363,7 +1363,8 @@ html[data-v=home]:not(.dash) main > #scrHome{display:flex!important;flex-directi
 .v2-li{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;margin:0 0 8px;padding:0 12px 0 14px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--fg);font:600 14.5px var(--f-body);text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .v2-li > .ic:first-child{color:#c5ccd6}
 .v2-li > span{flex:1 1 auto;min-width:0}
-.v2-li small{font-size:13px;color:var(--muted);font-weight:600}
+.v2-li > span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v2-li small{flex:none;max-width:42%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px;color:var(--muted);font-weight:600}
 .v2-li .v2ch{width:16px;height:16px;color:var(--muted)}
 .v2-li:active{background:var(--well)}
 .tg{flex:none;position:relative;width:44px;height:26px;border-radius:13px;background:#3a414c;transition:background .15s}
@@ -1377,7 +1378,8 @@ details.v2-adv[open] > summary .ic{transform:rotate(180deg)}
 section.model details.adv{margin-top:14px}
 .v2-advrow{margin-top:10px}
 .v2-sub{align-items:center;gap:4px}
-.v2-sub h2{margin:0}
+.v2-sub h2{margin:0;padding:0!important;border:0!important;font-size:20px!important;letter-spacing:0!important;text-transform:none!important;color:var(--fg)!important}
+.v2-sub h2::before{display:none!important}
 
 /* ---------- 5 · Hub: card with output LEDs, channel-test knobs ---------- */
 html[data-v=hub]:not(.dash) main > #scrHub{display:flex!important;flex-direction:column;gap:14px}
@@ -6187,13 +6189,14 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
   MS_RE.push([/^(.+) · Output (\d+)%$/,function(m){return (msLookup(m[1])||m[1])+' · Keluaran '+m[2]+'%'}]);
   MS['Language, sound & vibration']='Bahasa, bunyi & getaran';MS['Hold a channel to run it at the test power.']='Tahan saluran untuk menjalankannya pada kuasa ujian.';
   MS['‹ Back']='‹ Kembali';MS['Mould King 6.0']='Mould King 6.0';
-  [['Active model','Model aktif'],['Hold for half a second to start','Tahan setengah saat untuk mula'],['Hold for half a second to stop','Tahan setengah saat untuk henti'],
+  [['Active','Aktif'],['Off','Mati'],['Active model','Model aktif'],['Hold for half a second to start','Tahan setengah saat untuk mula'],['Hold for half a second to stop','Tahan setengah saat untuk henti'],
    ['Template or empty','Templat atau kosong'],['Limits & auto-stop','Had & henti automatik'],['App, guide & player mode','Aplikasi, panduan & mod pemain'],
    ['Hub numbers & names','Nombor & nama hub'],['hold to run','tahan untuk jalan'],['Output','Keluaran'],['Remove','Buang'],['Add','Tambah'],
    ['None — add a second hub','Tiada — tambah hub kedua'],['None — add a third hub','Tiada — tambah hub ketiga'],['Record & replay','Rakam & ulang'],
    ['Stop recording','Henti rakam'],['More','Lagi'],['Back','Kembali'],['Search models…','Cari model…']].forEach(function(x){MS[x[0]]=x[1]});
   MS['Connect hub']=MS['Connect hub']||'Sambung hub';MS_RE.push([/^(\d+) recordings?$/,function(m){return m[1]+' rakaman'}],[/^(\d+) sequences?$/,function(m){return m[1]+' jujukan'}],
     [/^Hub (\d) · M(\d)$/,function(m){return 'Hub '+m[1]+' · M'+m[2]}],[/^Channels (.+)–(.+)$/,function(m){return 'Saluran '+m[1]+'–'+m[2]}],
+    [/^Light · ([A-R][0-9]?)$/,function(m){return 'Lampu · '+m[1]}],
     [/^(.+) · (\d) hubs$/,function(m){return (msLookup(m[1])||m[1])+' · '+m[2]+' hub'}]);
   /* ---------- Layout shell ("Lakaran UI v2"): Home cockpit, focused Drive, model gallery, icon settings, hub test; minimalist icons ---------- */
   var V2={v:'home'}, R2=document.documentElement;
@@ -6464,7 +6467,7 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
     return o;
   }
   function v2KnobPaint(k,frac){
-    var segs=k.segs;for(var q=0;q<segs.length;q++){var f=(q+.5)/segs.length,on=f<=frac;segs[q].style.stroke=on?(f<=.55?'#1D9E75':f<=.8?'#EF9F27':'#E24B4A'):''}
+    var segs=k.segs;for(var q=0;q<segs.length;q++){var f=(q+.5)/segs.length,on=f<=frac;var sc=on?(f<=.55?'#1D9E75':f<=.8?'#EF9F27':'#E24B4A'):'';if(segs[q]._c!==sc){segs[q]._c=sc;segs[q].style.stroke=sc}}
   }
   function v2ChTest(force){
     var box=$('#chTest');if(!box) return;
@@ -6557,7 +6560,7 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
       pl.setAttribute('aria-label',(S.bt===false?'Bluetooth is off. ':'')+ptx+(bm[1]?', battery '+bm[1]+'%':''));
     }
     // settings values
-    v2T($('#sHubSt'),txt);
+    v2T($('#sHubSt'),busy?'…':S.connected?'Active':'Off');
     var lo=$('#limitOut');v2T($('#sLimV'),lo?lo.textContent:'');
     v2T($('#sLangV'),store.prefs.lang==='ms'?'BM':'EN');
     $('#sFb').setAttribute('aria-checked',String(!!(store.prefs.sound||store.prefs.haptic)));
@@ -6569,7 +6572,7 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
     v2T($('#hubSub'),txt+(n>1?' · '+n+' hubs':''));
     var mx=0;activeIdx().forEach(function(i){mx=Math.max(mx,Math.abs(rt.o[i]||0))});mx=Math.round(mx);
     v2T($('#hubPct'),mx+'%');
-    var leds=$('#hubLeds');if(leds){var L=leds.children;for(var q=0;q<L.length;q++){var f=(q+.5)/L.length;L[q].className=f*100<=mx?(f<=.55?'g':f<=.8?'o':'r'):''}}
+    var leds=$('#hubLeds');if(leds&&V2.v==='hub'){var L=leds.children;for(var q=0;q<L.length;q++){var f=(q+.5)/L.length,lc=f*100<=mx?(f<=.55?'g':f<=.8?'o':'r'):'';if(L[q].className!==lc) L[q].className=lc}}
     if(V2.v==='hub'){v2ChTest(false);v2Knobs.forEach(function(k){v2KnobPaint(k,Math.min(1,Math.abs(rt.o[k.i]||0)/100))})}
     if(store.prefs.lock&&['safety','m-tilt','m-pad','tpl','medit','models'].indexOf(V2.v)>=0) v2Go(V2PARENT[V2.v]||'home');
     v2Alerts();
