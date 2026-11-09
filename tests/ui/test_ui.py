@@ -337,20 +337,21 @@ async def t_seven(b):
     SL = "document.querySelector('#boardGrid .bdw[data-k=s] input[type=range]')"
     await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
     await pg.wait_for_timeout(300)
-    # 2 cruise: hold A at 70, tap Cruise, let go -> A keeps going; touch it again -> hands back
+    # 2 cruise (latch): tap Cruise, push A to 70 and let go -> A keeps going; bring it near 0 and let go -> stops
+    await pg.evaluate("document.getElementById('dCruise').click()")
     await pg.evaluate(SL+".dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));var r="+SL+";r.value=70;r.dispatchEvent(new Event('input',{bubbles:true}))")
     await pg.wait_for_timeout(200)
-    await pg.evaluate("document.getElementById('dCruise').click()")
     await pg.evaluate("var r="+SL+";r.value=0;r.dispatchEvent(new Event('input',{bubbles:true}));r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}))")
     await pg.wait_for_timeout(1500)
-    a = await pg.evaluate("+(window.__last||'0').split(',')[0]")
-    check('2 cruise: channel A keeps running after the finger lets go', a >= 60, a)
-    await pg.evaluate("var r="+SL+";r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=20;r.dispatchEvent(new Event('input',{bubbles:true}))")
+    r = await pg.evaluate("[+(window.__last||'0').split(',')[0],document.querySelector('#boardGrid .bdw[data-k=s]').getAttribute('data-crz')]")
+    check('2 cruise: channel A keeps running after the finger lets go', r[0] >= 60 and (r[1] or '').startswith('CRUISE'), r)
+    await pg.evaluate("var r="+SL+";r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=4;r.dispatchEvent(new Event('input',{bubbles:true}))")
     await pg.wait_for_timeout(200)
     await pg.evaluate("var r="+SL+";r.value=0;r.dispatchEvent(new Event('input',{bubbles:true}));r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}))")
     await pg.wait_for_timeout(1500)
     r = await pg.evaluate("[+(window.__last||'0').split(',')[0],document.getElementById('dCruise').getAttribute('aria-pressed')]")
-    check('2 cruise: touching the control takes over and cruise ends', r == [0, 'false'], r)
+    check('2 cruise: bringing the control back to the middle stops it, cruise stays on', r == [0, 'true'], r)
+    await pg.evaluate("document.getElementById('dCruise').click()")
     # 3 steering eases at speed: B at full while A runs at 100 -> B reduced to 55%
     await pg.evaluate("mk6Go('medit');document.getElementById('ssOn').click();document.getElementById('ssSt').value='1';document.getElementById('ssSt').dispatchEvent(new Event('change'));document.getElementById('ssTh').value='0';document.getElementById('ssTh').dispatchEvent(new Event('change'));mk6Go('drive')")
     await pg.wait_for_timeout(200)
@@ -397,6 +398,8 @@ async def t_seven(b):
     await pg.wait_for_timeout(300)
     r = await pg.evaluate("[document.documentElement.classList.contains('v2-focus'),getComputedStyle(document.getElementById('dbEdit')).display,getComputedStyle(document.querySelector('#boardGrid .bdw-h')).visibility]")
     check('12 focus mode hides the bar buttons and widget labels', r == [True, 'none', 'hidden'], r)
+    r = await pg.evaluate("['dbCruise','dbFocus'].map(function(id){var b=document.getElementById(id).getBoundingClientRect(),k=document.getElementById(id).querySelector('svg')||null,c;if(k){c=k.getBoundingClientRect()}else{var g=document.createRange();g.selectNodeContents(document.getElementById(id));c=g.getBoundingClientRect()}return Math.round(Math.abs((c.top+c.bottom)/2-(b.top+b.bottom)/2)+Math.abs((c.left+c.right)/2-(b.left+b.right)/2))})")
+    check('12 Cruise and focus content is centred in their buttons', all(x <= 3 for x in r), r)
     await ctx.close()
 
 async def t_open_relink(b):

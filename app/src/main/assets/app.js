@@ -380,15 +380,22 @@ try{
 
   /* Play-time limit: f ramps from 1 to 0 over 3 s when the time is up */
   var PLAY={f:1,used:0,last:0,warned:false,extra:false,end:0};
-  /* Cruise: keeps the value a control had when Cruise was tapped, after the finger lets go; touching that control again hands it back */
-  var CRZ={on:false,v:{},arm:{}};
-  function crzT(i){
-    var t=rt.t[i];if(!CRZ.on||CRZ.v[i]==null) return t;
-    if(!CRZ.arm[i]){if(t===0){CRZ.arm[i]=true;return CRZ.v[i]}return t}
-    if(t!==0){delete CRZ.v[i];delete CRZ.arm[i];if(!Object.keys(CRZ.v).length) crzOff(true);return t}
-    return CRZ.v[i];
+  /* Cruise: while it is on, a control you let go of keeps its last value (steering and lights still return).
+     Touch the control to change it; bring it back near the middle and let go to stop it. */
+  var CRZ={on:false,v:{},skip:false};
+  function crzSteer(i){
+    if(C.ss&&C.ss.on&&C.ss.st===i) return true;
+    return C.board.some(function(it){return it.k==='st'&&it.c===i});
   }
-  function crzOff(quiet){if(!CRZ.on) return;CRZ.on=false;CRZ.v={};CRZ.arm={};if(!quiet) feedback('ok')}
+  function crzT(i){
+    var t=rt.t[i];if(!CRZ.on||S.play||t!==0) return t;
+    return CRZ.v[i]!=null?CRZ.v[i]:0;
+  }
+  function crzLatch(i,pv,nv){
+    if(!CRZ.on||CRZ.skip||S.estop||S.play||!C.ch[i]||C.ch[i].kind==='light'||crzSteer(i)) return;
+    if(nv===0&&pv!==0){if(Math.abs(pv)>=10) CRZ.v[i]=pv; else delete CRZ.v[i]}
+  }
+  function crzOff(quiet){if(!CRZ.on) return;CRZ.on=false;CRZ.v={};if(!quiet) feedback('ok')}
   /* ---------- Power curve ---------- */
   function powerFor(a,c){
     if(a<=1) return 0;
@@ -438,7 +445,7 @@ try{
         var c=it.c;
         if(S.estop||rt.t[c]===0||!isFinite(rt.t[c])){AUTOT[c]=0;return}
         if(!AUTOT[c]) AUTOT[c]=now;
-        if(now-AUTOT[c]>=it.s*1000){AUTOT[c]=0;setT(c,0,false);toast('Auto-stop: channel '+tagOf(c)+' stopped after '+it.s+' s.',5000);feedback('warn')}
+        if(now-AUTOT[c]>=it.s*1000){AUTOT[c]=0;CRZ.skip=true;if(CRZ.v[c]!=null) delete CRZ.v[c];setT(c,0,false);CRZ.skip=false;toast('Auto-stop: channel '+tagOf(c)+' stopped after '+it.s+' s.',5000);feedback('warn')}
       }
     });
     Object.keys(RAMP).forEach(function(k){
@@ -866,7 +873,8 @@ try{
   function setT(i,v,fromUI,force){
     if(runBlk&&runBlk[i]&&!force){ if(v===0||S.estop) runBlk[i]=false; else return }
     if(S.estop) v=0; else if(S.play&&!force) return;
-    rt.t[i]=clamp(Math.round(v),-100,100)||0;
+    var nv0=clamp(Math.round(v),-100,100)||0;crzLatch(i,rt.t[i],nv0);
+    rt.t[i]=nv0;
     if(!fromUI||S.estop) refs[i].rng.value=rt.t[i];
     refs[i].val.textContent=fmt(rt.t[i]);
     if(refs[i].preB) refs[i].preB.forEach(function(b){b.classList.toggle('on',+b.dataset.v===rt.t[i])});
@@ -2751,6 +2759,7 @@ try{
       var el=document.createElement('div');
       el.className='bdw'+((it.w===2||it.k==='d')&&!dash?' w2':'')+(it.h===2&&!dash?' h2':'')+(bdEditing?' editing':'');
       el.setAttribute('data-k',it.k);if(it.k==='e') el.classList.add('v2-es');
+      if(typeof it.c==='number'&&it.c>=0) el.setAttribute('data-c',it.c);if(typeof it.d==='number'&&it.d>=0) el.setAttribute('data-d',it.d);
       var w={it:it,drag:false,out:null,rng:null};
       if(it.k==='e'){
         var eb=document.createElement('button');eb.type='button';eb.className='dw-es';eb.setAttribute('aria-label','Emergency stop');
@@ -2778,7 +2787,7 @@ try{
             if(jsx===null) return;var dx=e.clientX-jsx,dy=e.clientY-jsy;jsx=null;
             if(Math.abs(dx)>36&&Math.abs(dx)>1.6*Math.abs(dy)&&!S.estop&&!S.play){
               var nx=(jcur+(dx<0?1:jprs.length-1))%jprs.length,np=jprs[nx];
-              [it.c,it.d].forEach(function(c){if(c>=0) setT(c,0,false)});
+              CRZ.skip=true;[it.c,it.d].forEach(function(c){if(c>=0){delete CRZ.v[c];setT(c,0,false)}});CRZ.skip=false;
               it.c=np[0];it.d=np[1];BD_SL={it:it,d:dx<0?1:-1};save();syncBoard();feedback('ok');
             }
           });
@@ -4250,7 +4259,7 @@ try{
   for(var v2k2 in V2MS2) MS[v2k2]=V2MS2[v2k2];
   var V2MS3={"Eco": "Eco", "Sport": "Sport", "Drive mode": "Mod pandu", "Live output (tap for the big view)": "Keluaran langsung (ketik untuk paparan besar)", "Play time limit (a day)": "Had masa main (sehari)", "2 minutes of play time left.": "Tinggal 2 minit masa main.", "Play time is up. Motors are slowing down.": "Masa main tamat. Motor sedang perlahan.", "Hold for 2 seconds to change (parents).": "Tahan 2 saat untuk tukar (ibu bapa).", "Play time limit off.": "Had masa main dimatikan.", "5 more minutes.": "Tambah 5 minit.", "Play time is up": "Masa main tamat", "Come back tomorrow, or a parent can add 5 minutes": "Main lagi esok, atau ibu bapa boleh tambah 5 minit", "+5 min (hold 2 s)": "+5 minit (tahan 2 s)", "Live output meter": "Meter keluaran langsung", "Left-handed (landscape)": "Mod kidal (landskap)", "Model colour": "Warna model", "Yellow": "Kuning", "Red": "Merah", "Blue": "Biru", "Green": "Hijau", "Purple": "Ungu", "White": "Putih", "Trim (runs straight)": "Trim (jalan lurus)", "Trim buttons on the widget": "Butang trim pada widget", "Trim left": "Trim kiri", "Trim right": "Trim kanan", "Trim reset to 0.": "Trim diset semula ke 0.", "Trim · tap to reset": "Trim · ketik untuk set semula", "Size": "Saiz", "Widget type": "Jenis widget", "All": "Semua", "Lights & buttons": "Lampu & butang", "Meters": "Meter", "Tap a button on the picture, or press it on the gamepad.": "Ketik butang pada gambar, atau tekan pada gamepad.", "Quick settings": "Tetapan pantas", "Unlock": "Buka kunci", "Dark theme": "Tema gelap", "Light theme": "Tema cerah", "hold 2 s": "tahan 2 s", "Release E-Stop (hold 1 s)": "Lepas E-Stop (tahan 1 s)", "Drive up to three Mould King 6.0 hubs from your phone. This guide shows the real buttons, step by step.": "Pandu sehingga tiga hub Mould King 6.0 dari telefon anda. Panduan ini menunjukkan butang sebenar, langkah demi langkah.", "Start": "Mula", "Turn the hub on, then hold START for half a second. The ring turns yellow when the hub answers.": "Hidupkan hub, kemudian tahan START selama setengah saat. Cincin bertukar kuning bila hub menjawab.", "Move the controls to drive. Lift your finger and they go back to 0.": "Gerakkan kawalan untuk memandu. Angkat jari dan ia kembali ke 0.", "E-Stop stops every motor at once. Tap it again to release.": "E-Stop menghentikan semua motor serta-merta. Ketik sekali lagi untuk lepas.", "Your models": "Model anda", "Make your own board, start from a template, or share a model with a friend.": "Buat papan sendiri, mula daripada templat, atau kongsi model dengan kawan.", "Welcome to MK6 Console": "Selamat datang ke MK6 Console", "Lock settings": "Kunci tetapan", "Disconnect": "Putuskan"};
   for(var v2k3 in V2MS3) if(!MS[v2k3]) MS[v2k3]=V2MS3[v2k3];
-  var V2MS4={"Cruise": "Cruise", "Cruise off.": "Cruise dimatikan.", "Connect the hub first.": "Sambungkan hub dahulu.", "Hold a control first, then tap Cruise.": "Tahan kawalan dahulu, kemudian ketik Cruise.", "Cruise on. Let go: the model keeps going. Touch the control to take over.": "Cruise hidup. Lepaskan: model terus bergerak. Sentuh kawalan untuk ambil alih.", "Steering eases at speed": "Stereng ikut kelajuan", "Steering": "Stereng", "Throttle": "Pendikit", "Steering at full speed": "Stereng pada kelajuan penuh", "At full throttle the steering turns only this much, so the model does not tip over in fast turns.": "Pada pendikit penuh, stereng hanya berpusing setakat ini supaya model tidak terbalik semasa membelok laju.", "Bluetooth is back. Reconnecting the hub. Motors are at zero.": "Bluetooth hidup semula. Menyambung semula hub. Motor pada sifar.", "Reconnect automatically (back in the app, Bluetooth on again, or app opened)": "Sambung semula automatik (kembali ke app, Bluetooth hidup semula, atau app dibuka)", "Reconnecting the hub from last time. Motors are at zero.": "Menyambung semula hub seperti kali lepas. Motor pada sifar.", "Icon & photo": "Ikon & foto", "Model icon": "Ikon model", "Choose photo": "Pilih foto", "Remove photo": "Buang foto", "No icon": "Tiada ikon", "Car": "Kereta", "Excavator": "Jengkaut", "Crane": "Kren", "Truck": "Lori", "Tractor": "Traktor", "Boat": "Bot", "Photo set for this model.": "Foto ditetapkan untuk model ini.", "Photo removed.": "Foto dibuang.", "That image could not be read.": "Imej itu tidak dapat dibaca.", "No image was chosen.": "Tiada imej dipilih.", "Practice: virtual model": "Latihan: model maya", "tap to put the model back in the middle": "ketik untuk letak model di tengah semula", "Undo": "Batal", "Redo": "Ulang", "Focus mode": "Mod fokus", "Focus mode. Tap the focus button at the top to leave.": "Mod fokus. Ketik butang fokus di atas untuk keluar."};
+  var V2MS4={"Cruise": "Cruise", "Connect the hub first.": "Sambungkan hub dahulu.", "Cruise off. Held controls go back to 0.": "Cruise dimatikan. Kawalan yang ditahan kembali ke 0.", "Cruise on: a control you let go of keeps its value. Bring it back to the middle to stop it. Steering and lights still return.": "Cruise hidup: kawalan yang dilepaskan kekal pada nilainya. Bawa kembali ke tengah untuk berhenti. Stereng dan lampu tetap kembali.", "Cruise on": "Cruise hidup", "Steering eases at speed": "Stereng ikut kelajuan", "Steering": "Stereng", "Throttle": "Pendikit", "Steering at full speed": "Stereng pada kelajuan penuh", "At full throttle the steering turns only this much, so the model does not tip over in fast turns.": "Pada pendikit penuh, stereng hanya berpusing setakat ini supaya model tidak terbalik semasa membelok laju.", "Bluetooth is back. Reconnecting the hub. Motors are at zero.": "Bluetooth hidup semula. Menyambung semula hub. Motor pada sifar.", "Reconnect automatically (back in the app, Bluetooth on again, or app opened)": "Sambung semula automatik (kembali ke app, Bluetooth hidup semula, atau app dibuka)", "Reconnecting the hub from last time. Motors are at zero.": "Menyambung semula hub seperti kali lepas. Motor pada sifar.", "Icon & photo": "Ikon & foto", "Model icon": "Ikon model", "Choose photo": "Pilih foto", "Remove photo": "Buang foto", "No icon": "Tiada ikon", "Car": "Kereta", "Excavator": "Jengkaut", "Crane": "Kren", "Truck": "Lori", "Tractor": "Traktor", "Boat": "Bot", "Photo set for this model.": "Foto ditetapkan untuk model ini.", "Photo removed.": "Foto dibuang.", "That image could not be read.": "Imej itu tidak dapat dibaca.", "No image was chosen.": "Tiada imej dipilih.", "Practice: virtual model": "Latihan: model maya", "tap to put the model back in the middle": "ketik untuk letak model di tengah semula", "Undo": "Batal", "Redo": "Ulang", "Focus mode": "Mod fokus", "Focus mode. Tap the focus button at the top to leave.": "Mod fokus. Ketik butang fokus di atas untuk keluar."};
   for(var v2k4 in V2MS4) if(!MS[v2k4]) MS[v2k4]=V2MS4[v2k4];
   MS_RE.push([/^(\d+) hubs? · (\d+) widgets?$/,function(m){return m[1]+' hub · '+m[2]+' widget'}],
     [/^Output (\d+)%$/,function(m){return 'Keluaran '+m[1]+'%'}],
@@ -5076,16 +5085,24 @@ try{
   // =====================================================================================
   // ---- 2 · Cruise: hold a control, tap Cruise, let go: the value stays until you touch that control again ----
   function v2Cruise(){
-    if(CRZ.on){crzOff();toast('Cruise off.');v2CrzPaint();return}
+    if(CRZ.on){crzOff();toast('Cruise off. Held controls go back to 0.');v2CrzPaint();return}
     if(!S.connected){toast('Connect the hub first.');return}
-    var v={},n=0;for(var i=0;i<rt.t.length;i++){var t=rt.t[i];if(C.ch[i]&&C.ch[i].kind!=='light'&&Math.abs(t)>=5){v[i]=t;n++}}
-    if(!n){toast('Hold a control first, then tap Cruise.',3500);return}
-    CRZ.v=v;CRZ.arm={};CRZ.on=true;feedback('ok');toast('Cruise on. Let go: the model keeps going. Touch the control to take over.',4000);v2CrzPaint();
+    CRZ.on=true;CRZ.v={};feedback('ok');
+    toast('Cruise on: a control you let go of keeps its value. Bring it back to the middle to stop it. Steering and lights still return.',5000);v2CrzPaint();
   }
   function v2CrzPaint(){
-    var lab='Cruise';if(CRZ.on){var k=Object.keys(CRZ.v);if(k.length) lab=(CRZ.v[k[0]]>0?'+':'')+Math.round(CRZ.v[k[0]])+'%'}
+    var ks=Object.keys(CRZ.v),lab=CRZ.on?(ks.length?'Cruise \u00b7 '+ks.length:'Cruise on'):'Cruise';
     ['#dCruise','#dbCruise'].forEach(function(q){var b=$(q);if(!b) return;if(b.getAttribute('aria-pressed')!==String(CRZ.on)) b.setAttribute('aria-pressed',String(CRZ.on));var sp=b.querySelector('span')||b;v2T(sp,lab)});
+    // widgets whose channel is being held by cruise show the held value
+    var bg=$('#boardGrid');if(!bg) return;
+    Array.prototype.forEach.call(bg.children,function(el){
+      var c=el.getAttribute('data-c'),d=el.getAttribute('data-d'),v=null;
+      if(c!=null&&CRZ.v[c]!=null&&rt.t[c]===0) v=CRZ.v[c];else if(d!=null&&CRZ.v[d]!=null&&rt.t[d]===0) v=CRZ.v[d];
+      var tx=v==null?'':'CRUISE '+(v>0?'+':'')+Math.round(v);
+      if((el.getAttribute('data-crz')||'')!==tx){if(tx) el.setAttribute('data-crz',tx);else el.removeAttribute('data-crz')}
+    });
   }
+  setInterval(function(){if(CRZ.on||document.querySelector('#boardGrid [data-crz]')) v2CrzPaint()},150);
   v2Click('#dCruise',v2Cruise);v2Click('#dbCruise',v2Cruise);
 
   // ---- 3 · Steering eases at speed (model settings) ----
