@@ -1552,6 +1552,8 @@ html[data-macc] .v2-mchip .v2-knob.sm,html[data-macc] #scrHome .v2-mrow .v2-knob
 .v2-cruise .ic{width:18px;height:18px}
 .v2-cruise[aria-pressed=true],#dbCruise[aria-pressed=true]{background:var(--acc);border-color:var(--acc);color:#1b1b1b}
 html.dash-l:not(.v2-dbopen) #dashBar > .btn.v2-dbkeep{display:inline-flex!important}
+:root:not(#a).dash-l #dashBar{transform:none!important;justify-content:safe center!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none;box-sizing:border-box}
+:root:not(#a).dash-l #dashBar::-webkit-scrollbar{display:none}
 #dashBar > .btn.v2-dbkeep{align-items:center!important;justify-content:center!important;line-height:1!important;padding-top:0!important;padding-bottom:0!important;min-width:44px}
 #dashBar > .btn.v2-dbkeep .ic{display:block;margin:0}
 #boardGrid > .bdw[data-crz]:not(.dw){position:relative}

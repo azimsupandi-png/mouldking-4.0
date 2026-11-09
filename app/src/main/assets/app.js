@@ -5236,6 +5236,23 @@ try{
     }
   },900);
   // =====================================================================================
+  /* landscape bar: fits between the hub pill and E-Stop, never covers either */
+  (function(){
+    var bar=$('#dashBar');if(!bar) return;
+    function fit(){
+      var de=document.documentElement;
+      if(!de.classList.contains('dash-l')){if(bar.style.left){bar.style.left='';bar.style.maxWidth='';bar.style.width=''}return}
+      var p=$('#v2Pill'),e=$('#estop'),L=12,R=window.innerWidth-12;
+      if(p){var pr=p.getBoundingClientRect();if(pr.width) L=pr.right+8}
+      if(e){var er=e.getBoundingClientRect();if(er.width) R=er.left-8}
+      var l=Math.round(L)+'px',w=Math.max(0,Math.round(R-L))+'px';
+      if(bar.style.left!==l||bar.style.width!==w){bar.style.left=l;bar.style.width=w;bar.style.maxWidth=w}
+    }
+    window.addEventListener('resize',fit);
+    try{new MutationObserver(fit).observe(document.documentElement,{attributes:true,attributeFilter:['class']})}catch(_){}
+    try{var ro=new ResizeObserver(fit);['#v2Pill','#estop'].forEach(function(q){var el=$(q);if(el) ro.observe(el)})}catch(_){}
+    setInterval(fit,1000);fit();
+  })();
   // the first syncAll() runs before the board is set up; draw the board once everything exists
   try{syncBoard()}catch(_){}
   v2Theme();

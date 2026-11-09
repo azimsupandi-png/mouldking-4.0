@@ -400,7 +400,16 @@ async def t_seven(b):
     check('12 focus mode hides the bar buttons and widget labels', r == [True, 'none', 'hidden'], r)
     r = await pg.evaluate("['dbCruise','dbFocus'].map(function(id){var b=document.getElementById(id).getBoundingClientRect(),k=document.getElementById(id).querySelector('svg')||null,c;if(k){c=k.getBoundingClientRect()}else{var g=document.createRange();g.selectNodeContents(document.getElementById(id));c=g.getBoundingClientRect()}return Math.round(Math.abs((c.top+c.bottom)/2-(b.top+b.bottom)/2)+Math.abs((c.left+c.right)/2-(b.left+b.right)/2))})")
     check('12 Cruise and focus content is centred in their buttons', all(x <= 3 for x in r), r)
+    for vw, vh in [(844, 390), (740, 360)]:
+        await pg.set_viewport_size({'width': vw, 'height': vh})
+        await pg.evaluate("document.documentElement.classList.add('v2-dbopen')")
+        await pg.wait_for_timeout(300)
+        r = await pg.evaluate("(function(){var p=document.getElementById('v2Pill').getBoundingClientRect(),e=document.getElementById('estop').getBoundingClientRect(),xs=[...document.querySelectorAll('#dashBar > *')].filter(b=>b.getBoundingClientRect().width>0).map(b=>b.getBoundingClientRect());return [Math.round(p.right),Math.round(Math.min(...xs.map(x=>x.left))),Math.round(Math.max(...xs.map(x=>x.right))),Math.round(e.left)]})()")
+        check(f'open bar at {vw}px does not cover the hub pill or E-Stop', r[1] >= r[0] and r[2] <= r[3], r)
+        await pg.evaluate("document.documentElement.classList.remove('v2-dbopen')")
+    await pg.set_viewport_size({'width': 844, 'height': 390})
     await pg.evaluate("document.getElementById('dbFocus').click();onHubState('ready')")
+    await pg.wait_for_timeout(600)
     POS = "[...document.getElementById('boardGrid').children].map(e=>{var r=e.getBoundingClientRect();return [Math.round(r.left),Math.round(r.top),getComputedStyle(e).position]})"
     p0 = await pg.evaluate(POS)
     await pg.evaluate("document.getElementById('dbCruise').click();document.querySelectorAll('#boardGrid > .bdw').forEach(function(e){e.setAttribute('data-crz','CRUISE +100')})")
