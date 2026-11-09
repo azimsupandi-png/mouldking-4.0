@@ -142,10 +142,36 @@ async def t_features(b):
     check('no JS errors (features)', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_graphics(b):
+    ctx, pg = await page(b)
+    await pg.wait_for_timeout(500)
+    check('splash is removed after start', await pg.evaluate("!document.getElementById('v2Splash')"))
+    r = await pg.evaluate("mk6Go('drive');new Promise(r=>setTimeout(()=>r([document.documentElement.classList.contains('v2-nohub'),[...document.querySelectorAll('#boardGrid > .bdw.v2-es')].length]),400))")
+    check('no hub: widgets dimmed, E-Stop widget kept bright', r[0] and r[1] >= 1, r)
+    await pg.evaluate("mk6Go('home');document.getElementById('hConn').click()")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[...document.querySelectorAll('#hPS .pssvg path')].map(l=>l.getAttribute('stroke')).filter(c=>c&&c.indexOf('255,216,74')>=0||c==='#ffd84a').length")
+    check('pairing: a yellow tail runs round the START/STOP ring', r >= 2, r)
+    r = await pg.evaluate("onHubState('ready');new Promise(r=>setTimeout(()=>r([document.getElementById('v2Pill').classList.contains('v2-pulse'),document.documentElement.classList.contains('v2-nohub')]),400))")
+    check('connected: pill pulses once, widgets undimmed', r == [True, False], r)
+    await pg.evaluate("document.querySelector('[data-wiz=empty]').click()")
+    await pg.wait_for_timeout(200)
+    await pg.evaluate("var e=document.getElementById('bdEdit');if(e.getAttribute('aria-pressed')==='true')e.click()")
+    r = await pg.evaluate("new Promise(r=>setTimeout(()=>r([!document.getElementById('v2BdEmpty').hidden,!document.getElementById('v2RecEmpty').hidden,!document.getElementById('v2SeqEmptyW').hidden]),400))")
+    check('empty board / recordings / sequences show their empty states', r == [True, True, True], r)
+    r = await pg.evaluate("document.querySelector('#v2SeqEmptyW .btn').click();new Promise(r=>setTimeout(()=>r(document.getElementById('v2SeqEmptyW').hidden),400))")
+    check('New sequence from the empty state creates one', r, r)
+    await pg.evaluate("mk6Go('settings');document.getElementById('sLight').click()")
+    await pg.reload(); await pg.wait_for_timeout(700)
+    r = await pg.evaluate("[document.documentElement.dataset.ui,getComputedStyle(document.querySelector('.v2-nav')).backgroundColor]")
+    check('light theme switch is kept after restart', r == ['light', 'rgb(255, 255, 255)'], r)
+    check('no JS errors (graphics)', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

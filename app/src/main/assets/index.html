@@ -16,24 +16,24 @@
 :root{
   --bg:#E8EAEC; --panel:#F5F6F7; --well:#DADEE2; --line:#C3C9CF;
   --fg:#1B2127; --muted:#58636D;
-  --fwd:#E0560C; --rev:#1C6EA4; --danger:#C92A2A; --ok:#2B8A3E;
+  --fwd:#B07F00; --rev:#1C6EA4; --danger:#C92A2A; --ok:#2B8A3E;
   --f-display:'Barlow Condensed','Arial Narrow',sans-serif;
   --f-body:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
   --f-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
-  --acc:#FF7A2F;
+  --acc:#FFC400;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#12161A; --panel:#1B2025; --well:#0E1215; --line:#2D353C;
     --fg:#E6E9EC; --muted:#8E99A3;
-    --fwd:#FF7A2F; --rev:#4DA3E0; --danger:#E03E3E; --ok:#51CF66;
+    --fwd:#FFC400; --rev:#4DA3E0; --danger:#E24B4A; --ok:#1D9E75;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
   --bg:#12161A; --panel:#1B2025; --well:#0E1215; --line:#2D353C;
   --fg:#E6E9EC; --muted:#8E99A3;
-  --fwd:#FF7A2F; --rev:#4DA3E0; --danger:#E03E3E; --ok:#51CF66;
+  --fwd:#FFC400; --rev:#4DA3E0; --danger:#E24B4A; --ok:#1D9E75;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -243,7 +243,9 @@ textarea.txt{padding:8px;font-family:var(--f-mono);font-size:12px;line-height:1.
 /* ---- Studs theme: dark studded base, grooved sliders, big round yellow knobs ---- */
 :root[data-skin="studs"]{
   --bg:#101216; --panel:#1b1e23; --well:#07080b; --line:#343a43;
-  --fg:#F3F1EA; --muted:#A3A8AE; --fwd:#FFC400; --rev:#4DA3E0; --danger:#E03E3E; --ok:#51CF66; --hz:#F5B800;
+  --fg:#F3F1EA; --muted:#A3A8AE; --fwd:#FFC400; --rev:#4DA3E0; --danger:#E24B4A; --ok:#1D9E75; --hz:#FFC400;
+  /* one palette: 6 accent tokens (yellow, light, dark, ok, danger, reverse) */
+  --acc:#FFC400; --acc-l:#FFD84A; --acc-d:#C68700; --acc-t:#FFC400;
   color-scheme:dark;
 }
 :root[data-skin="studs"] body{background-color:#0d0f12;background-attachment:fixed;
@@ -1460,7 +1462,7 @@ html[data-v] .v2-pill{display:inline-flex}
 .v2-pill[data-st=on] .pdot{background:#1D9E75;box-shadow:0 0 0 3px rgba(29,158,117,.22)}
 .v2-pill[data-st=busy] .pdot{background:var(--acc);animation:v2blink 1s ease-in-out infinite}
 @keyframes v2blink{50%{opacity:.3}}
-.v2-pill .ptx{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#ff8a86}
+.v2-pill .ptx{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--danger)}
 .v2-pill[data-st=on] .ptx{color:var(--fg)}.v2-pill[data-st=busy] .ptx{color:var(--acc)}
 .v2-pill .pbat{flex:none;font:600 12.5px var(--f-mono,monospace);font-style:normal;color:var(--muted);margin-left:2px}
 .v2-pill .pbat:empty{display:none}
@@ -1471,9 +1473,78 @@ html.dash-l .v2-pill{min-height:36px}
 main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s ease-out}
 @keyframes v2inR{from{opacity:.4;transform:translateX(14px)}}@keyframes v2inL{from{opacity:.4;transform:translateX(-14px)}}
 @media (prefers-reduced-motion:reduce){main.v2-in-r,main.v2-in-l{animation:none}}
+/* ---------- Graphics upgrade 1 · splash: knob with an LED ring that lights once ---------- */
+#v2Splash{position:fixed;inset:0;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#12161A;pointer-events:none;transition:opacity .25s ease-out;animation:v2spOut .3s ease-out 2.6s forwards}
+#v2Splash.done{opacity:0}
+#v2Splash svg{width:132px;height:132px}
+#v2Splash .sl{opacity:.18;animation:v2spOn .12s ease-out forwards}
+#v2Splash b{font:800 17px var(--f-body);color:#e8e8ea;letter-spacing:.02em}
+#v2Splash small{font:600 12px var(--f-body);color:#8a93a0;margin-top:-8px}
+@keyframes v2spOn{to{opacity:1}}
+@keyframes v2spOut{to{opacity:0;visibility:hidden}}
+@media (prefers-reduced-motion:reduce){#v2Splash .sl{animation:none;opacity:1}}
+
+/* ---------- Graphics upgrade 3 · connected: the status pill pulses green once ---------- */
+.v2-pill.v2-pulse .pdot{animation:v2pulse 1.1s ease-out 1}
+.v2-pill.v2-pulse{animation:v2pillIn .5s ease-out 1}
+@keyframes v2pulse{0%{box-shadow:0 0 0 0 rgba(29,158,117,.85)}100%{box-shadow:0 0 0 14px rgba(29,158,117,0)}}
+@keyframes v2pillIn{40%{border-color:var(--ok)}}
+@media (prefers-reduced-motion:reduce){.v2-pill.v2-pulse,.v2-pill.v2-pulse .pdot{animation:none}}
+
+/* ---------- Graphics upgrade 4 · no hub: board widgets dim, with a "No hub" tag (E-Stop and START/STOP stay bright) ---------- */
+html.v2-nohub:not(.dash) #boardGrid > .bdw:not(.psw):not(.v2-es),html.v2-nohub:not(.dash) .v2-previn .bdw:not(.psw):not(.v2-es){position:relative;overflow:visible}
+html.v2-nohub:not(.dash) #boardGrid > .bdw:not(.psw):not(.v2-es) > *,html.v2-nohub:not(.dash) .v2-previn .bdw:not(.psw):not(.v2-es) > *{opacity:.45;filter:saturate(.4)}
+html.v2-nohub:not(.v2-editing):not(.dash) #boardGrid > .bdw:not(.psw):not(.v2-es)::after{content:var(--v2nh,"No hub");position:absolute;left:50%;bottom:-10px;transform:translateX(-50%);z-index:2;display:flex;align-items:center;gap:5px;
+  padding:3px 10px 3px 24px;border:1px solid rgba(226,75,74,.65);border-radius:11px;background:#0b0d11 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23E24B4A' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M9.5 14.5 7 17a3.2 3.2 0 0 1-4.5-4.5L5 10M14.5 9.5 17 7a3.2 3.2 0 0 1 4.5 4.5L19 14M4 4l16 16'/%3E%3C/svg%3E") 8px center/12px no-repeat;
+  font:800 10.5px var(--f-body);letter-spacing:.02em;color:#E24B4A;white-space:nowrap;pointer-events:none}
+
+/* ---------- Graphics upgrade 5 · empty states: line illustration + one yellow main action ---------- */
+.v2-empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:14px 10px 8px}
+.v2-empty svg.ill{width:150px;height:84px;color:#4a5260}
+.v2-empty svg.ill .y{color:var(--acc)}
+.v2-empty b{display:block;font-size:16px;margin-top:10px}
+.v2-empty p{color:var(--muted);margin:5px auto 14px;max-width:290px;font-size:13px;line-height:1.45}
+.v2-empty .rec-row{justify-content:center;gap:10px;margin:0}
+.v2-empty .btn{min-width:120px}
+.v2-empty .btn.pri{background:var(--acc);border-color:var(--acc);color:#1b1b1b;font-weight:700}
+.v2-empty.sm{flex-direction:row;align-items:center;text-align:left;gap:12px;padding:4px 2px 12px}
+.v2-empty.sm svg.ill{width:44px;height:44px;flex:none}
+.v2-empty.sm b{margin:0;font-size:14.5px}.v2-empty.sm p{margin:2px 0 0;max-width:none;font-size:12.5px}
+#boardCard.v2-none #bdNote{display:none}
+#recCard.v2-none #recStat,#recCard.v2-none .rec-label,#recCard.v2-none .rec-label + .rec-row,#recCard.v2-none details.adv{display:none!important}
+#seqCard.v2-none > :not(.v2-foldh):not(.v2-empty){display:none!important}
+
+/* ---------- Graphics upgrade 6 · light theme for outdoors (board widgets keep their dark look) ---------- */
+html[data-ui=light]:not(.dash){--bg:#E8EBEF;--panel:#FFFFFF;--well:#EEF1F4;--line:#D3D9E0;--fg:#14181D;--muted:#5D6773;--acc-t:#9A6E00;--ok:#14855F;--danger:#C9302F;color-scheme:light}
+html[data-ui=light]:not(.dash) body{background:#E8EBEF!important;background-image:none!important}
+html[data-ui=light]:not(.dash) .card,html[data-ui=light][data-skin="studs"]:not(.dash) .card{background:#fff!important;border:1px solid #D3D9E0!important;box-shadow:0 1px 2px rgba(20,24,29,.06),0 6px 16px rgba(20,24,29,.06)!important;color:var(--fg)}
+html[data-ui=light]:not(.dash) .bar,html[data-ui=light]:not(.dash) .v2-nav{background:#fff!important;border-color:#D3D9E0!important;box-shadow:0 1px 6px rgba(20,24,29,.06)!important}
+html[data-ui=light]:not(.dash) .btn:not(.bdw *),html[data-ui=light]:not(.dash) .txt:not(.bdw *),html[data-ui=light]:not(.dash) select:not(.bdw *){background:#fff!important;border-color:#C9D0D8!important;color:#14181D!important;box-shadow:none!important;text-shadow:none!important}
+html[data-ui=light]:not(.dash) .btn[aria-pressed="true"]:not(.bdw *),html[data-ui=light]:not(.dash) .v2-empty .btn.pri{background:var(--acc)!important;border-color:var(--acc)!important;color:#1b1b1b!important}
+html[data-ui=light]:not(.dash) .btn:disabled{opacity:.45}
+html[data-ui=light]:not(.dash) select option{background:#fff;color:#14181D}
+html[data-ui=light]:not(.dash) .v2-grp,html[data-ui=light]:not(.dash) .v2-chip b,html[data-ui=light]:not(.dash) .v2-nav button[aria-pressed=true],html[data-ui=light]:not(.dash) .v2-hst[data-st=busy],html[data-ui=light]:not(.dash) .v2-pill[data-st=busy] .ptx,
+html[data-ui=light]:not(.dash) .v2-outrow b,html[data-ui=light]:not(.dash) .v2-hubic em,html[data-ui=light]:not(.dash) .v2-knob-b[aria-pressed=true] .kl,html[data-ui=light]:not(.dash) .v2-madd,html[data-ui=light]:not(.dash) .testnote{color:var(--acc-t)!important}
+html[data-ui=light]:not(.dash) .v2-madd{border-color:#C68700}
+html[data-ui=light]:not(.dash) .v2-li > .ic:first-child,html[data-ui=light]:not(.dash) .v2-ib,html[data-ui=light]:not(.dash) .v2-pill:not([data-bt=off]) .pbt,html[data-ui=light]:not(.dash) .v2-hubic{color:#5D6773}
+html[data-ui=light]:not(.dash) .v2-ib:active{background:rgba(0,0,0,.05)}
+html[data-ui=light]:not(.dash) .v2-sw:not([aria-checked=true]) .tg{background:#C9D0D8}html[data-ui=light]:not(.dash) .v2-sw:not([aria-checked=true]) .tg::after{background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+html[data-ui=light]:not(.dash) .v2-pill{background:#fff;box-shadow:0 1px 3px rgba(20,24,29,.08)}
+html[data-ui=light]:not(.dash) .v2-nav button{color:#7A848F}
+html[data-ui=light]:not(.dash) h2{color:#14181D}
+html[data-ui=light]:not(.dash) .v2-thw{background:#1d222b}
+html[data-ui=light]:not(.dash) .v2-ksvg .kt{fill:#e8e8ea}
+html[data-ui=light]:not(.dash) .v2-prev{background:#E8EBEF}
+html[data-ui=light]:not(.dash) .v2-empty svg.ill{color:#9AA3AD}
+html[data-ui=light]:not(.dash) .v2-empty svg.ill .y{color:#C68700}
+/* widgets stay dark: give them back the dark colour set */
+html[data-ui=light]:not(.dash) .bdw,html[data-ui=light]:not(.dash) .v2-knob{--bg:#101216;--panel:#1b1e23;--well:#07080b;--line:#343a43;--fg:#F3F1EA;--muted:#A3A8AE;--acc-t:#FFC400;--ok:#1D9E75;--danger:#E24B4A;color:var(--fg);color-scheme:dark}
+html[data-ui=light]:not(.dash) .bdw:not(.v2-ps){background-color:#15181d}
+html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,29,.25)}
 </style>
 </head>
 <body>
+<div id="v2Splash" aria-hidden="true"><svg viewBox="0 0 132 132"><defs><radialGradient id="v2spk" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#5a6376"/><stop offset=".6" stop-color="#2a303b"/><stop offset="1" stop-color="#14181f"/></radialGradient></defs><g stroke="#FFC400" stroke-width="6.5" stroke-linecap="round"><line class="sl" x1="72.4" y1="17.4" x2="73.6" y2="8.5" style="animation-delay:0ms"/><line class="sl" x1="84.8" y1="20.7" x2="88.2" y2="12.4" style="animation-delay:22ms"/><line class="sl" x1="95.8" y1="27.1" x2="101.3" y2="20.0" style="animation-delay:44ms"/><line class="sl" x1="104.9" y1="36.2" x2="112.0" y2="30.7" style="animation-delay:66ms"/><line class="sl" x1="111.3" y1="47.2" x2="119.6" y2="43.8" style="animation-delay:88ms"/><line class="sl" x1="114.6" y1="59.6" x2="123.5" y2="58.4" style="animation-delay:110ms"/><line class="sl" x1="114.6" y1="72.4" x2="123.5" y2="73.6" style="animation-delay:132ms"/><line class="sl" x1="111.3" y1="84.8" x2="119.6" y2="88.2" style="animation-delay:154ms"/><line class="sl" x1="104.9" y1="95.8" x2="112.0" y2="101.3" style="animation-delay:176ms"/><line class="sl" x1="95.8" y1="104.9" x2="101.3" y2="112.0" style="animation-delay:198ms"/><line class="sl" x1="84.8" y1="111.3" x2="88.2" y2="119.6" style="animation-delay:220ms"/><line class="sl" x1="72.4" y1="114.6" x2="73.6" y2="123.5" style="animation-delay:242ms"/><line class="sl" x1="59.6" y1="114.6" x2="58.4" y2="123.5" style="animation-delay:264ms"/><line class="sl" x1="47.2" y1="111.3" x2="43.8" y2="119.6" style="animation-delay:286ms"/><line class="sl" x1="36.2" y1="104.9" x2="30.7" y2="112.0" style="animation-delay:308ms"/><line class="sl" x1="27.1" y1="95.8" x2="20.0" y2="101.3" style="animation-delay:330ms"/><line class="sl" x1="20.7" y1="84.8" x2="12.4" y2="88.2" style="animation-delay:352ms"/><line class="sl" x1="17.4" y1="72.4" x2="8.5" y2="73.6" style="animation-delay:374ms"/><line class="sl" x1="17.4" y1="59.6" x2="8.5" y2="58.4" style="animation-delay:396ms"/><line class="sl" x1="20.7" y1="47.2" x2="12.4" y2="43.8" style="animation-delay:418ms"/><line class="sl" x1="27.1" y1="36.2" x2="20.0" y2="30.7" style="animation-delay:440ms"/><line class="sl" x1="36.2" y1="27.1" x2="30.7" y2="20.0" style="animation-delay:462ms"/><line class="sl" x1="47.2" y1="20.7" x2="43.8" y2="12.4" style="animation-delay:484ms"/><line class="sl" x1="59.6" y1="17.4" x2="58.4" y2="8.5" style="animation-delay:506ms"/></g><circle cx="66" cy="66" r="41" fill="#0d1015"/><circle cx="66" cy="66" r="38" fill="url(#v2spk)"/><ellipse cx="57" cy="50" rx="18" ry="7" fill="#fff" opacity=".1"/><text x="66" y="73" text-anchor="middle" font-family="system-ui,sans-serif" font-size="21" font-weight="900" fill="#FFC400">MK6</text></svg><b>MK6 Console</b><small>Mould King 6.0</small></div>
 
 <header class="bar">
   <div class="bar-in">
@@ -1593,6 +1664,7 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
     <button class="v2-li" type="button" data-go="backup"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 11A7.5 7.5 0 0 0 6 6.6L4.5 8M4.5 4v4h4"/><path d="M4.5 13A7.5 7.5 0 0 0 18 17.4l1.5-1.4M19.5 20v-4h-4"/></svg><span>Backup &amp; restore</span><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
     <div class="v2-grp">Experience</div>
     <button class="v2-li v2-sw " type="button" id="sFb" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="4" width="8" height="16" rx="2"/><path d="M11 17h2M4.5 9v6M19.5 9v6M2 11v2M22 11v2"/></svg><span>Vibration &amp; sound</span><i class="tg" aria-hidden="true"></i></button>
+    <button class="v2-li v2-sw" type="button" id="sLight" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.8"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg><span>Light theme (outdoors)</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li v2-sw v2-lk" type="button" id="sPrac" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.8 9.2 12 4.5l9.2 4.7L12 13.9z"/><path d="M6.8 11.4v4.3c0 1.5 2.3 3 5.2 3s5.2-1.5 5.2-3v-4.3M21.2 9.2v5"/></svg><span>Practice mode (no hub)</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li" type="button" id="sLang"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M3.4 12h17.2M12 3.4c2.4 2.4 3.4 5.3 3.4 8.6s-1 6.2-3.4 8.6c-2.4-2.4-3.4-5.3-3.4-8.6s1-6.2 3.4-8.6z"/></svg><span>Language</span><small id="sLangV"></small><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
     <button class="v2-li" type="button" data-go="m-app"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg><span>App, guide &amp; player mode</span><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
@@ -2307,7 +2379,7 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
     });
     return out;
   }
-  function cleanPrefs(p){p=(p&&typeof p==='object')?p:{};return {practice:p.practice===true,sound:p.sound!==false,haptic:p.haptic!==false,lang:p.lang==='ms'?'ms':'en',seen:p.seen===true,lock:p.lock===true,kidLimit:pickOf(p.kidLimit,[100,70,50,30],50),lim:cleanLim(p.lim),autoBackup:p.autoBackup!==false,full:p.full!==false,relink:p.relink!==false,fx:(p.fx==='full'||p.fx==='lite')?p.fx:'auto',lastBackup:Math.max(0,+p.lastBackup||0),tpls:cleanTpls(p.tpls)}}
+  function cleanPrefs(p){p=(p&&typeof p==='object')?p:{};return {practice:p.practice===true,sound:p.sound!==false,haptic:p.haptic!==false,lang:p.lang==='ms'?'ms':'en',seen:p.seen===true,lock:p.lock===true,kidLimit:pickOf(p.kidLimit,[100,70,50,30],50),lim:cleanLim(p.lim),autoBackup:p.autoBackup!==false,full:p.full!==false,relink:p.relink!==false,fx:(p.fx==='full'||p.fx==='lite')?p.fx:'auto',lastBackup:Math.max(0,+p.lastBackup||0),tpls:cleanTpls(p.tpls),ui:p.ui==='light'?'light':'dark'}}
   var store={active:null,profiles:[],prefs:cleanPrefs()};
   try{
     var raw=localStorage.getItem('mk6v2');
@@ -3277,7 +3349,7 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
     refs.forEach(function(r,i){syncChannel(i)});
     syncSticks();syncSettings();syncLayout();syncProfiles();syncRec();paintAccent();paintLamps();syncSeq();syncSafety();syncApp();buildGpMap();syncSpeed();syncRecTools();bkPaint();syncBoard();syncTiltUi();
   }
-  var ACC=['#FF7A2F','#FF4B3E','#F5B800'];
+  var ACC=['#FFC400','#FF4B3E','#FFC400'];
   var swBox=$('#swatches'),swBtns=ACC.map(function(c,n){
     var b=document.createElement('button');b.type='button';b.className='sw';b.style.setProperty('--c',c);b.setAttribute('aria-label','Colour '+(n+1));
     b.addEventListener('click',function(){C.accent=n;paintAccent();save()});
@@ -5270,6 +5342,17 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
   }
   function paintVw(v){
     var now=performance.now(), n=v.ring.length, on=v.it.md?!S.outOff:!!S.connected, T=on?'#ffd84a':'#E24B4A', flt=psFault();
+    // connecting (pairing): a short yellow tail runs round the ring; when the hub answers the ring fills yellow
+    if(!v.it.md&&on&&!flt&&!S.estop&&hubMsg==='Pairing…'){
+      var hd=Math.floor(now/45)%n;
+      for(var q=0;q<n;q++){var d=(hd-q+n)%n,cq=d===0?'#ffd84a':d<7?'rgba(255,216,74,'+(1-d/7).toFixed(2)+')':OFFC;
+        if(v.ring[q]._c!==cq){v.ring[q]._c=cq;v.ring[q].setAttribute('stroke',cq);v.glow[q].setAttribute('stroke',d<3?'#ffd84a':'transparent')}}
+      if(v.st.textContent!=='') v.st.textContent='';
+      v.t1.style.display=v.t2.style.display='';
+      v.ic.setAttribute('stroke','#ffd84a');v.t1.setAttribute('fill','#e8e8ea');v.t1.setAttribute('font-size',14);v.t1.setAttribute('y',58);
+      v.t2.setAttribute('fill','#E24B4A');v.t2.setAttribute('font-size',10);v.t2.setAttribute('y',71);v.glowg.setAttribute('opacity',.8);
+      v.tgt='busy';for(var q2=0;q2<n;q2++) v.col[q2]=OFFC;return;
+    }
     if(v.tgt!==T){v.tgt=T;v.ai=0;v.t=now}
     // one more LED changes every ~22 ms, clockwise from the top
     var steps=Math.max(1,Math.floor((now-v.t)/22));
@@ -6161,7 +6244,7 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
     'Tracked vehicle':'Kenderaan trek','Two tracks':'Dua trek','Empty board':'Papan kosong','Build your own':'Susun sendiri','Backup all models':'Sandaran semua model',
     'Save':'Simpan','Restore':'Pulihkan','Hub':'Hub','Hub & channel test':'Hub & ujian saluran','Safety':'Keselamatan','Model safety profile':'Profil keselamatan model',
     'Data':'Data','Backup & restore':'Sandaran & pulihkan','Experience':'Pengalaman','Theme':'Tema','Dark mode':'Gelap','Light mode':'Cerah','Language':'Bahasa',
-    'Vibration & sound':'Getaran & bunyi','Practice mode (no hub)':'Mod latihan (tanpa hub)','More':'Lain-lain','Tilt steering':'Stereng condong','Gamepad':'Gamepad',
+    'Vibration & sound':'Getaran & bunyi','Light theme (outdoors)':'Tema cerah (luar rumah)','The board is empty':'Papan masih kosong','Pick a template or add your own widgets.':'Pilih templat atau tambah widget sendiri.','Templates':'Templat','Add widget':'Tambah widget','Press Record, drive, then press Record again to stop. Play replays it.':'Tekan Rakam, pandu, kemudian tekan Rakam lagi untuk henti. Main untuk ulang.','No sequences yet':'Belum ada jujukan','A sequence runs steps one after another from one button.':'Jujukan menjalankan langkah satu demi satu dengan satu butang.','Practice mode (no hub)':'Mod latihan (tanpa hub)','More':'Lain-lain','Tilt steering':'Stereng condong','Gamepad':'Gamepad',
     'App, guide & player mode':'Aplikasi, panduan & mod pemain','Frames sent':'Bingkai dihantar','App':'Aplikasi','No hub connected':'Tiada hub bersambung',
     'Turn the hub on, press its button for 2 seconds and hold it near the phone.':'Hidupkan hub, tekan butangnya 2 saat dan dekatkan dengan telefon.',
     'Rename':'Namakan','Channel test':'Ujian saluran','hold to run':'tahan untuk jalan','Hubs on this model':'Hub untuk model ini','Welcome':'Selamat datang',
@@ -6390,7 +6473,7 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
         if(k==='s'||k==='y'||k==='lv'){if(h>=w){o+='<rect x="'+(cx-.5)+'" y="'+(y+h*.15)+'" width="1" height="'+(h*.7)+'" rx=".5" fill="#0b0d11"/><circle cx="'+cx+'" cy="'+cy+'" r="'+Math.min(1.6,w*.22)+'" fill="'+Y+'"/>'}else{o+='<rect x="'+(x+w*.12)+'" y="'+(cy-.5)+'" width="'+(w*.76)+'" height="1" rx=".5" fill="#0b0d11"/><circle cx="'+cx+'" cy="'+cy+'" r="'+Math.min(1.6,h*.22)+'" fill="'+Y+'"/>'}}
         else if(k==='j'||k==='dp'){o+='<circle cx="'+cx+'" cy="'+cy+'" r="'+m*.34+'" fill="#0b0d11" stroke="#4a5260" stroke-width=".3"/><circle cx="'+cx+'" cy="'+cy+'" r="'+m*.13+'" fill="'+Y+'"/>'}
         else if(k==='d'){[cx-w*.24,cx+w*.24].forEach(function(px){o+='<circle cx="'+px+'" cy="'+cy+'" r="'+Math.min(m*.34,w*.2)+'" fill="#0b0d11" stroke="#4a5260" stroke-width=".3"/><circle cx="'+px+'" cy="'+cy+'" r="'+Math.min(m*.13,w*.08)+'" fill="'+Y+'"/>'})}
-        else if(k==='e'){o+='<circle cx="'+cx+'" cy="'+cy+'" r="'+m*.34+'" fill="#c92a2a"/>'}
+        else if(k==='e'){o+='<circle cx="'+cx+'" cy="'+cy+'" r="'+m*.34+'" fill="#E24B4A"/>'}
         else if(k==='ps'){o+='<circle cx="'+cx+'" cy="'+cy+'" r="'+m*.32+'" fill="none" stroke="'+Y+'" stroke-width=".9" stroke-dasharray=".9 .6"/>'}
         else if(k==='f'||k==='n'||k==='rs'||k==='st'||k==='g'){var r=m*.3,cc=2*Math.PI*r;o+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#2e3540" stroke-width=".8"/><circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#1D9E75" stroke-width=".8" stroke-dasharray="'+(cc*.45)+' '+cc+'" transform="rotate(135 '+cx+' '+cy+')"/>'}
         else if(k==='i'||k==='k'||k==='m'){for(var q=0;q<6;q++){var bx=x+w*.14+q*(w*.72/6);o+='<rect x="'+bx+'" y="'+(y+h*.25)+'" width="'+(w*.72/6*.6)+'" height="'+(h*.5)+'" rx=".3" fill="'+(q<3?'#1D9E75':q<5?'#EF9F27':'#2e3540')+'"/>'}}
@@ -6564,6 +6647,8 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
     var pl=$('#v2Pill');
     if(pl){
       var ptx=real?(hubMsg||(S.connected?'Hub active':'Connect hub')):NB?(S.connected?'Practice on':'Practice off'):(S.connected?'Simulation on':'Simulation off');
+      if(st==='on'&&pl._st&&pl._st!=='on'){pl.classList.remove('v2-pulse');void pl.offsetWidth;pl.classList.add('v2-pulse')}
+      pl._st=st;
       pl.setAttribute('data-st',st);pl.setAttribute('data-bt',S.bt===false?'off':'on');
       v2T(pl.querySelector('.ptx'),ptx);
       var hb=$('#hbat'),bm=hb&&!hb.hidden?(hb.textContent.match(/(\d+)%/)||[]):[];
@@ -6587,6 +6672,64 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
     if(V2.v==='hub'){v2ChTest(false);v2Knobs.forEach(function(k){v2KnobPaint(k,Math.min(1,Math.abs(rt.o[k.i]||0)/100))})}
     if(store.prefs.lock&&['safety','m-tilt','m-pad','tpl','medit','models'].indexOf(V2.v)>=0) v2Go(V2PARENT[V2.v]||'home');
     v2Alerts();
+    v2Gfx(st);
+  }
+  // ---- Graphics upgrades: no-hub widgets, empty states, light theme ----
+  function v2Tog(el,c,on){if(el&&el.classList.contains(c)!==on) el.classList.toggle(c,on)}
+  function v2Ill(k){
+    var I={board:'<rect x="6" y="5" width="138" height="74" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="5 4"/>'+
+        '<rect x="18" y="15" width="34" height="24" rx="5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3"/><rect x="58" y="15" width="34" height="24" rx="5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3"/><rect x="98" y="15" width="34" height="24" rx="5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3"/>'+
+        '<g class="y" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"><circle cx="75" cy="60" r="12"/><path d="M75 54v12M69 60h12"/></g>',
+      rec:'<g fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="22" cy="22" r="17"/></g><circle class="y" cx="22" cy="22" r="6.5" fill="currentColor"/>',
+      seq:'<g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="4" y="4" width="36" height="36" rx="9"/><path d="M11 15h13M11 22h13M11 29h8"/></g><path class="y" d="M28 25l7 4.5-7 4.5z" fill="currentColor"/>'};
+    var vb=k==='board'?'0 0 150 84':'0 0 44 44';
+    return '<svg class="ill" viewBox="'+vb+'" aria-hidden="true">'+I[k]+'</svg>';
+  }
+  function v2EmptyBox(id,k,title,sub,small){
+    var d=document.createElement('div');d.className='v2-empty'+(small?' sm':'');d.id=id;d.hidden=true;
+    d.innerHTML=v2Ill(k)+'<div><b></b><p></p></div>';d.querySelector('b').textContent=title;d.querySelector('p').textContent=sub;
+    return d;
+  }
+  var v2E={};
+  (function(){
+    var bc=$('#boardCard'),bn=$('#bdNote');
+    if(bc&&bn){
+      var e=v2EmptyBox('v2BdEmpty','board','The board is empty','Pick a template or add your own widgets.');
+      var r=document.createElement('div');r.className='rec-row';
+      var a=document.createElement('button');a.type='button';a.className='btn pri';a.textContent='Templates';a.addEventListener('click',function(){v2Go('tpl')});
+      var w=document.createElement('button');w.type='button';w.className='btn';w.textContent='Add widget';w.addEventListener('click',function(){var be=$('#bdEdit');if(be&&!bdEditing) be.click()});
+      r.appendChild(a);r.appendChild(w);e.appendChild(r);bn.parentNode.insertBefore(e,bn.nextSibling);v2E.bd=e;
+    }
+    var rc=$('#recCard'),rs=$('#recStat');
+    if(rc&&rs){var e2=v2EmptyBox('v2RecEmpty','rec','No recordings yet','Press Record, drive, then press Record again to stop. Play replays it.',true);rc.insertBefore(e2,rc.querySelector('.rec-row'));v2E.rec=e2}
+    var sc=$('#seqCard');
+    if(sc){
+      var e3=v2EmptyBox('v2SeqEmpty','seq','No sequences yet','A sequence runs steps one after another from one button.',true);
+      var r3=document.createElement('div');r3.className='rec-row';r3.style.marginTop='10px';
+      var nb=document.createElement('button');nb.type='button';nb.className='btn pri';nb.textContent='New sequence';nb.addEventListener('click',function(){var x=$('#seqNew');if(x) x.click()});
+      r3.appendChild(nb);var e3w=document.createElement('div');e3w.className='v2-empty';e3w.id='v2SeqEmptyW';e3w.hidden=true;e3w.style.padding='4px 0 6px';
+      e3.hidden=false;e3w.appendChild(e3);e3w.appendChild(r3);var h=sc.querySelector('.v2-foldh');sc.insertBefore(e3w,h?h.nextSibling:sc.firstChild);v2E.seq=e3w;
+    }
+  })();
+  function v2Theme(){
+    var lt=store.prefs.ui==='light';if((R2.getAttribute('data-ui')==='light')!==lt) R2.setAttribute('data-ui',lt?'light':'dark');
+    var sl=$('#sLight');if(sl) sl.setAttribute('aria-checked',String(lt));
+  }
+  v2Click('#sLight',function(){store.prefs.ui=store.prefs.ui==='light'?'dark':'light';save();v2Theme();feedback('ok')});
+  function v2Gfx(st){
+    // 4 · no hub: dim the board widgets (not E-Stop / START-STOP) and tag them "No hub"
+    v2Tog(R2,'v2-nohub',st!=='on');v2Tog(R2,'v2-editing',!!bdEditing);
+    var nt=store.prefs.lang==='ms'?'Tiada hub':'No hub';if(R2._nt!==nt){R2._nt=nt;R2.style.setProperty('--v2nh',JSON.stringify(nt))}
+    var bg=$('#boardGrid');if(bg){for(var q=0;q<bg.children.length;q++){var c=bg.children[q];if(!c._es){c._es=1;if(c.querySelector('.dw-es')) c.classList.add('v2-es')}}}
+    // 5 · empty states
+    var noBd=C.layout==='board'&&!C.board.length&&!bdEditing;
+    if(v2E.bd){if(v2E.bd.hidden===noBd) v2E.bd.hidden=!noBd;v2Tog($('#boardCard'),'v2-none',noBd)}
+    var noRec=!C.rec.length&&!S.rec;
+    if(v2E.rec){if(v2E.rec.hidden===noRec) v2E.rec.hidden=!noRec;v2Tog($('#recCard'),'v2-none',noRec)}
+    var noSeq=!C.seq.length;
+    if(v2E.seq){if(v2E.seq.hidden===noSeq) v2E.seq.hidden=!noSeq;v2Tog($('#seqCard'),'v2-none',noSeq)}
+    // 6 · theme
+    v2Theme();
   }
   setInterval(function(){v2Paint();v2Live()},250);
 
@@ -6612,9 +6755,12 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
 
   // the first syncAll() runs before the board is set up; draw the board once everything exists
   try{syncBoard()}catch(_){}
+  v2Theme();
   v2Go('home');
   applyLang();
   if(!store.prefs.seen) guideOpen();
+  (function(){var sp=$('#v2Splash');if(!sp) return;var w=Math.max(0,650-performance.now());
+    setTimeout(function(){sp.classList.add('done');setTimeout(function(){if(sp.parentNode) sp.parentNode.removeChild(sp)},300)},w)})();
 
   // Update rate: 20 Hz while driving or touching, 4 Hz when idle, 1 Hz when the page is hidden (saves battery).
   var tkT=0,tkD=50;
