@@ -149,7 +149,11 @@ public class MainActivity extends Activity {
 
         BluetoothManager bm = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         BluetoothAdapter adapter = bm != null ? bm.getAdapter() : null;
-        mk6 = new Mk6Advertiser(adapter, this::notifyPage);
+        mk6 = new Mk6Advertiser(adapter, state -> {
+            // The safety watchdog is an app event, not a link state: the hub stays connected.
+            if ("watchdog".equals(state)) notifyApp("watchdog");
+            else notifyPage(state);
+        });
 
         try {
             registerReceiver(btReceiver, new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
@@ -198,6 +202,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (web != null) {
+            web.onResume();
+            web.resumeTimers();
+        }
         notifyApp("resume");
         if (!mk6.isActive() && pendingMods == null) notifyPage("stopped");
     }
@@ -207,6 +215,11 @@ public class MainActivity extends Activity {
         // Safety: never keep driving a model while the app is in the background.
         mk6.stop();
         setTilt(false);
+        // Battery: no page timers or rendering while the app is in the background.
+        if (web != null) {
+            web.onPause();
+            web.pauseTimers();
+        }
         super.onPause();
     }
 

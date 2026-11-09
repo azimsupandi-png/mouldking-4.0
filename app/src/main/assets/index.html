@@ -1432,6 +1432,9 @@ html:not(#a)[data-lock] #cols .stack > #calCard,html:not(#a)[data-lock] #cols .s
 html[data-lock] .v2-lk,html[data-lock] #scrSet [data-go=safety],html[data-lock] .v2-nav [data-tab=models],
 html[data-lock] #dEdit,html[data-lock] #dRec,html[data-lock] #hubRows,html[data-lock] #hubSlots,html[data-lock] .v2-chips{display:none!important}
 html[data-v=medit] section.model .model-row:first-child > label:first-child{display:none}
+html[data-v=medit] section.model .seg{display:grid!important;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px}
+html[data-v=medit] section.model .seg .btn span{font-size:12.5px!important;letter-spacing:0!important;white-space:nowrap}
+html[data-v=medit] section.model .seg .btn{min-width:0;padding-left:6px!important;padding-right:6px!important;font-size:13.5px;white-space:normal;line-height:1.15}
 html[data-v]:not(.dash) .toast{bottom:calc(var(--nav-h) + 16px + env(safe-area-inset-bottom,0px))}
 
 /* ---------- bottom navigation: 4 tabs, thin icons ---------- */
@@ -3723,7 +3726,8 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
     var frame=[];
     activeSlots().forEach(function(s){for(var j=0;j<PER;j++) frame.push(vals[s*PER+j])});
     var changed=!last||last.length!==frame.length||frame.some(function(v,k){return v!==last[k]});
-    if(changed||now-lastSend>1000){
+    var moving=frame.some(function(v){return v!==0});
+    if(changed||now-lastSend>(moving?150:1000)){
       transport.send(frame,changed);
       last=frame;lastSend=now;sent++;
       $('#count').textContent=sent+' frames';
@@ -3899,7 +3903,7 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
     toastTimer=setTimeout(function(){toastEl.hidden=true},ms||4500);
   }
   var lastInput=performance.now(), ptrDown=0, hotSince=[], hotWarned=[];
-  function noteInput(){lastInput=performance.now()}
+  function noteInput(){lastInput=performance.now();if(typeof tkWake==='function') tkWake()}
   if(document.addEventListener){
     document.addEventListener('pointerdown',function(){ptrDown++;noteInput()},{passive:true});
     document.addEventListener('pointermove',noteInput,{passive:true});
@@ -6189,7 +6193,7 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
   MS_RE.push([/^(.+) · Output (\d+)%$/,function(m){return (msLookup(m[1])||m[1])+' · Keluaran '+m[2]+'%'}]);
   MS['Language, sound & vibration']='Bahasa, bunyi & getaran';MS['Hold a channel to run it at the test power.']='Tahan saluran untuk menjalankannya pada kuasa ujian.';
   MS['‹ Back']='‹ Kembali';MS['Mould King 6.0']='Mould King 6.0';
-  [['Active','Aktif'],['Off','Mati'],['Active model','Model aktif'],['Hold for half a second to start','Tahan setengah saat untuk mula'],['Hold for half a second to stop','Tahan setengah saat untuk henti'],
+  [['Safety stop: the app paused, so every motor was set to 0.','Henti selamat: app tergendala, jadi semua motor ditetapkan ke 0.'],['Active','Aktif'],['Off','Mati'],['Active model','Model aktif'],['Hold for half a second to start','Tahan setengah saat untuk mula'],['Hold for half a second to stop','Tahan setengah saat untuk henti'],
    ['Template or empty','Templat atau kosong'],['Limits & auto-stop','Had & henti automatik'],['App, guide & player mode','Aplikasi, panduan & mod pemain'],
    ['Hub numbers & names','Nombor & nama hub'],['hold to run','tahan untuk jalan'],['Output','Keluaran'],['Remove','Buang'],['Add','Tambah'],
    ['None — add a second hub','Tiada — tambah hub kedua'],['None — add a third hub','Tiada — tambah hub ketiga'],['Record & replay','Rakam & ulang'],
@@ -6225,6 +6229,13 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
     try{window.dispatchEvent(new Event('resize'))}catch(_){}
   }
   window.mk6Go=v2Go;
+  (function(){
+    var orig=window.onAppEvent;
+    window.onAppEvent=function(ev){
+      if(ev==='watchdog'){toast('Safety stop: the app paused, so every motor was set to 0.',4000);feedback('lost');return}
+      if(orig) return orig.apply(this,arguments);
+    };
+  })();
   // Android back button: close an open dialog, then go up one screen, then Home; only then leave the app
   window.mk6Back=function(){
     var dl=['#dashTpl','#jcDlg','#lxDlg'].map(function(q){return $(q)}).filter(function(e){return e&&!e.hidden});
@@ -6605,7 +6616,25 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
   applyLang();
   if(!store.prefs.seen) guideOpen();
 
-  setInterval(tick,50);
+  // Update rate: 20 Hz while driving or touching, 4 Hz when idle, 1 Hz when the page is hidden (saves battery).
+  var tkT=0,tkD=50;
+  function tkBusy(){
+    if(S.rec||S.play||ptrDown>0||bdEditing) return true;
+    if(performance.now()-lastInput<3000) return true;
+    if(tiltActive()||(C.pad&&C.pad.on&&GP.had)) return true;
+    for(var i=0;i<NMAX;i++) if(isActive(i)&&C.ch[i].kind!=='light'&&(rt.t[i]!==0||Math.round(rt.o[i])!==0)) return true;
+    return false;
+  }
+  function tkLoop(){
+    clearTimeout(tkT);
+    try{tick()}catch(e){}
+    tkD=document.hidden?1000:(tkBusy()?50:250);
+    tkT=setTimeout(tkLoop,tkD);
+  }
+  function tkWake(){if(tkD>50){tkD=50;tkLoop()}}
+  document.addEventListener('visibilitychange',function(){if(!document.hidden) tkWake()});
+  window.mk6Rate=function(){return tkD};
+  tkLoop();
 })();
 </script>
 <script>
@@ -6705,6 +6734,7 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
   // Light the pad arrows by how hard each axis is pushed (reads the knob position, so it works for touch, gamepad and playback)
   function prep(p){if(p._parw) return;p._parw=1;['u','d','l','r'].forEach(function(k){var i=document.createElement('i');i.className='parw '+k;p.insertBefore(i,p.firstChild)})}
   function tick(){
+    if(document.hidden) return;
     var l=document.querySelectorAll('.pad');
     for(var n=0;n<l.length;n++){
       var p=l[n], kn=p.querySelector('.knob');if(!kn||!p.offsetWidth) continue;prep(p);

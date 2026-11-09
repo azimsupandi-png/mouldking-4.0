@@ -14,6 +14,23 @@ features are exposed to it via the `MK6Bridge` JavaScript interface.
 | `app/src/main/java/.../Mk6Crypt.java` | MK6 payload encoder (CRC16 + BLE whitening) |
 | `docs/design/` | Final design sketches (screens + design system) |
 
+## Tests
+
+Every push runs the tests first; the APK is built and published only if they pass.
+
+* `tests/jvm/` – runs the real `Mk6Advertiser` against stubbed Android classes and a fake
+  clock: connect handshake, frames, safety watchdog (neutral after 500 ms without frames
+  while moving), idle, stop, and two hubs in rotation mode.
+* `tests/ui/test_ui.py` – headless Chromium with a fake `MK6Bridge`: hub paths, practice
+  mode, hold-to-start/stop with real touch events, idle DOM writes and update rate,
+  no overflow at 360 px, gallery/hub/lock/back, and a click on every control of 13 screens.
+
+```
+javac -d build/jvmtest $(find tests/jvm -name '*.java') app/src/main/java/com/azimsupandi/mk6console/Mk6*.java
+java -cp build/jvmtest com.azimsupandi.mk6console.Mk6AdvertiserTest
+pip install playwright && python -m playwright install chromium && python tests/ui/test_ui.py
+```
+
 ## Building
 
 Every push to `main` builds a signed release APK with GitHub Actions:

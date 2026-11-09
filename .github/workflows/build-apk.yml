@@ -9,7 +9,38 @@ permissions:
   contents: write
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Safety watchdog + BLE advertiser tests (JVM, stubbed Android)
+        run: |
+          mkdir -p build/jvmtest
+          javac -d build/jvmtest $(find tests/jvm -name '*.java') \
+            app/src/main/java/com/azimsupandi/mk6console/Mk6Advertiser.java \
+            app/src/main/java/com/azimsupandi/mk6console/Mk6Crypt.java
+          java -cp build/jvmtest com.azimsupandi.mk6console.Mk6AdvertiserTest
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Playwright (Chromium)
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: UI tests (fake Android bridge, clicks, hold, idle, 360 px)
+        run: python tests/ui/test_ui.py
+
   build:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

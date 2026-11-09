@@ -20,7 +20,12 @@ import java.util.Arrays;
  * the primary set rotates through hubs every {@link #ROTATE_MS}.
  *
  * States reported to the listener: connecting, ready, stopped, off, denied,
- * unsupported, error.
+ * unsupported, error, watchdog.
+ *
+ * Safety watchdog: while a hub is driven, the page sends a frame at least every
+ * 150-250 ms whenever any output is non-zero. If no frame arrives for
+ * {@link #WATCHDOG_MS} while the last frame was non-zero (page frozen or busy),
+ * every channel is set to neutral and "watchdog" is reported once.
  */
 final class Mk6Advertiser {
 
@@ -39,6 +44,8 @@ final class Mk6Advertiser {
     private static final long NEUTRAL_BEFORE_STOP_MS = 250L;
     private static final long ROTATE_MS = 100L;
     private static final int MAX_FAILS = 40;
+    static final long WATCHDOG_MS = 500L;
+    private static final long WATCHDOG_CHECK_MS = 100L;
 
     private final BluetoothAdapter adapter;
     private final Listener listener;
@@ -60,6 +67,8 @@ final class Mk6Advertiser {
     private int failCount;
     private int rotateIdx;
     private long lastPushAt;
+    private long lastFrameAt;
+    private boolean liveNonZero;
 
     private int[] modules = {0};
     private int[][] latest = new int[1][CHANNELS];
@@ -125,6 +134,9 @@ final class Mk6Advertiser {
             connecting = false;
             if (modules.length > 1) startExtras();
             pushDirty(true);
+            lastFrameAt = SystemClock.uptimeMillis();
+            handler.removeCallbacks(watchdog);
+            handler.postDelayed(watchdog, WATCHDOG_CHECK_MS);
             listener.onState("ready");
         }
     };
@@ -146,6 +158,22 @@ final class Mk6Advertiser {
         public void run() {
             pushScheduled = false;
             if (parallel || modules.length == 1) pushDirty(false);
+        }
+    };
+
+    /** Sets every channel to neutral if the page stops sending while something moves. */
+    private final Runnable watchdog = new Runnable() {
+        @Override
+        public void run() {
+            if (!running || stopping) return;
+            if (!connecting && set != null && liveNonZero
+                    && SystemClock.uptimeMillis() - lastFrameAt > WATCHDOG_MS) {
+                for (int i = 0; i < modules.length; i++) Arrays.fill(latest[i], 0);
+                liveNonZero = false;
+                if (parallel || modules.length == 1) pushDirty(true);
+                listener.onState("watchdog");
+            }
+            handler.postDelayed(this, WATCHDOG_CHECK_MS);
         }
     };
 
@@ -289,6 +317,15 @@ final class Mk6Advertiser {
 
     /** Flat frame: hub i channel j at index i*6+j, values -100..100. */
     void setFrame(int[] frame) {
+        lastFrameAt = SystemClock.uptimeMillis();
+        boolean nz = false;
+        for (int v : frame) {
+            if (v != 0) {
+                nz = true;
+                break;
+            }
+        }
+        liveNonZero = nz;
         for (int i = 0; i < modules.length; i++) {
             for (int j = 0; j < CHANNELS; j++) {
                 int k = i * CHANNELS + j;
@@ -307,6 +344,8 @@ final class Mk6Advertiser {
         handler.removeCallbacks(finishConnect);
         handler.removeCallbacks(pushTask);
         pushScheduled = false;
+        handler.removeCallbacks(watchdog);
+        liveNonZero = false;
         if (running && set != null) {
             for (int i = 0; i < modules.length; i++) {
                 Arrays.fill(latest[i], 0);
@@ -435,6 +474,8 @@ final class Mk6Advertiser {
     }
 
     private void stopNow() {
+        handler.removeCallbacks(watchdog);
+        liveNonZero = false;
         handler.removeCallbacks(stopTask);
         handler.removeCallbacks(finishConnect);
         handler.removeCallbacks(pushTask);
