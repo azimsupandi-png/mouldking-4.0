@@ -28,8 +28,10 @@ Every push runs the tests first; the APK is built and published only if they pas
 * `tests/ui/test_ui.py` – headless Chromium with a fake `MK6Bridge`: hub paths, practice
   mode, hold-to-start/stop with real touch events, idle DOM writes and update rate,
   no overflow at 360 px, gallery/hub/lock/back, no-hub widgets, empty states, light
-  theme, diagnostics, text size / contrast, model sharing, recordings as quick buttons, and a
-  click on every control of 13 screens.
+  theme, diagnostics, text size / contrast, model sharing, recordings as quick buttons, trim,
+  drive modes (and the old Speed setting folded into them), live meter, model colour, widget
+  sizes, widget gallery, gamepad picture, quick settings, play-time limit, left-handed
+  dashboard, the interactive guide, and a click on every control of 13 screens.
 
 ```
 javac -d build/jvmtest $(find tests/jvm -name '*.java') app/src/main/java/com/azimsupandi/mk6console/Mk6*.java

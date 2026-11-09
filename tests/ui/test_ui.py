@@ -228,10 +228,114 @@ async def t_light_contrast(b):
     check('light theme: all text readable (contrast 3:1 or more) on 7 screens', not bad, bad)
     await ctx.close()
 
+async def t_twelve(b):
+    ctx, pg = await page(b)
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.wait_for_timeout(300)
+    # 1 trim: buttons on the slider widget, offset reaches the hub, E-Stop zeroes it
+    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.wait_for_timeout(200)
+    await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw[data-k=s] .bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Widget settings').click()")
+    await pg.wait_for_timeout(200)
+    await pg.evaluate("var f=[...document.querySelectorAll('#gEdit .wsf')].find(x=>x.querySelector('.wsl').textContent.startsWith('Trim buttons'));[...f.querySelectorAll('.wsc .btn')].find(b=>b.textContent==='On').click();[...document.querySelectorAll('#gEdit .gact .btn')][0].click();document.getElementById('bdEdit').click()")
+    await pg.wait_for_timeout(300)
+    await pg.evaluate("var p=document.querySelector('#boardGrid .bdw-trim .trb:last-child');p.click();p.click()")
+    await pg.wait_for_timeout(500)
+    r = await pg.evaluate("[document.querySelector('#boardGrid .bdw-trim b').textContent,(window.__last||'').split(',')[0]]")
+    check('1 trim: +2 on the widget is sent to the hub with no input', r == ['+2', '2'], r)
+    await pg.evaluate("document.getElementById('estop').click()")
+    await pg.wait_for_timeout(400)
+    r = await pg.evaluate("(window.__last||'').split(',')[0]")
+    check('1 trim: E-Stop sends 0 even with trim', r == '0', r)
+    await pg.evaluate("document.getElementById('estop').click()")
+    # 2 expo is in the widget settings (stored on the channel)
+    r = await pg.evaluate("document.getElementById('bdEdit').click();[...document.querySelectorAll('#boardGrid .bdw[data-k=s] .bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Widget settings').click();var ok=[...document.querySelectorAll('#gEdit .wsl')].some(l=>l.textContent.startsWith('Fine control'));document.getElementById('gEdit').remove();document.getElementById('bdEdit').click();ok")
+    check('2 expo: fine control is in the slider settings', r, r)
+    # 3 drive mode chips = Eco / Normal / Sport profiles
+    await pg.evaluate("document.querySelector('#dMode [data-lp=\"0\"]').click()")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[document.querySelector('#dMode [data-lp=\"0\"]').getAttribute('aria-pressed'),document.getElementById('limP0').getAttribute('aria-pressed')]")
+    check('3 drive mode: Eco on the Drive screen sets the Eco profile', r == ['true', 'true'], r)
+    # 7 live meter follows the output
+    await pg.evaluate("document.querySelector('#dMode [data-lp=\"2\"]').click();var r=document.querySelector('#boardGrid input[type=range]');r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=80;r.dispatchEvent(new Event('input',{bubbles:true}))")
+    await pg.wait_for_timeout(600)
+    r = await pg.evaluate("parseFloat(document.querySelector('#dMeter .mu').style.height)||0")
+    check('7 live meter shows the output of channel A', r > 10, r)
+    await pg.evaluate("var r=document.querySelector('#boardGrid input[type=range]');r.value=0;r.dispatchEvent(new Event('input',{bubbles:true}));r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}))")
+    # 9 size button cycles 1x1 -> 2x1
+    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.wait_for_timeout(200)
+    await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw[data-k=l] .bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Size').click()")
+    await pg.wait_for_timeout(200)
+    r = await pg.evaluate("document.querySelector('#boardGrid .bdw[data-k=l]').className")
+    check('9 size: a widget can be made 2x1', 'w2' in r, r)
+    # 10 gallery: picture cards and category tabs
+    r = await pg.evaluate("var t=[...document.querySelectorAll('.v2-gtabs .btn')].find(b=>b.textContent==='Meters');t.click();[document.querySelectorAll('.bd-types .gt svg').length,[...document.querySelectorAll('.bd-types > .btn')].filter(b=>!b.hidden).length]")
+    check('10 gallery: 22 picture cards, Meters tab shows 4', r == [22, 4], r)
+    await pg.evaluate("document.getElementById('bdEdit').click()")
+    # 8 model colour persists and tints the board
+    await pg.evaluate("mk6Go('medit');document.querySelectorAll('#swatches .sw')[2].click()")
+    r = await pg.evaluate("document.documentElement.getAttribute('data-macc')")
+    check('8 model colour: blue is applied', r == '2', r)
+    # 4 gamepad picture: pressing a button highlights its row
+    await pg.evaluate("mk6Go('m-pad');v2GpPress(1)")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[document.querySelectorAll('#gpPic .gp-b').length,document.querySelectorAll('#gpMap .pm')[1].classList.contains('v2sel')]")
+    check('4 gamepad picture: 12 buttons, pressing B selects its row', r == [12, True], r)
+    # 11 quick settings: hold the pill
+    await pg.evaluate("mk6Go('home');document.getElementById('v2Pill').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientY:20}))")
+    await pg.wait_for_timeout(800)
+    r = await pg.evaluate("[!!document.getElementById('v2QS'),document.querySelectorAll('#v2QS .qs-t').length]")
+    check('11 quick settings open by holding the status pill', r == [True, 6], r)
+    await pg.evaluate("document.getElementById('v2QS').click()")
+    await pg.wait_for_timeout(300)
+    # 12 interactive guide: spotlight on real controls, 5 steps
+    await pg.evaluate("mk6Go('m-app');document.getElementById('guideBtn').click();document.getElementById('gNext').click()")
+    await pg.wait_for_timeout(500)
+    r = await pg.evaluate("[document.documentElement.dataset.v,!document.querySelector('#guide .co-hole').hidden]")
+    check('12 guide step 2 highlights START on Home', r == ['home', True], r)
+    for _ in range(4):
+        await pg.evaluate("document.getElementById('gNext').click()")
+        await pg.wait_for_timeout(250)
+    check('12 guide closes after the last step', await pg.evaluate("!document.getElementById('guide')"))
+    check('no JS errors (12 features)', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
+async def t_migrate_and_limit(b):
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){var d=new Date(),k=d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+      localStorage.setItem('mk6play',JSON.stringify({d:k,used:599000,extra:false}));
+      localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'Old',cfg:{speed:'slow',limit:100,layout:'board',board:[]}}],prefs:{seen:true,playLim:10}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML)
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("mk6Go('medit');document.getElementById('limV0').textContent+'|'+document.getElementById('limP0').getAttribute('aria-pressed')")
+    check('3 old Speed "Slow" becomes the 40% limit (Eco)', r.endswith('|true'), r)
+    await pg.evaluate("__calls=[];mk6Go('home');document.getElementById('hConn').click();onHubState('ready')")
+    await pg.wait_for_timeout(4500)
+    r = await pg.evaluate("[__calls.includes('stop'),[...document.querySelectorAll('#hAlerts h2')].map(h=>h.textContent).join('|')]")
+    check('5 play time: when time is up the motors stop and Home says so', r[0] and 'Play time is up' in r[1], r)
+    check('no JS errors (migration, play limit)', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
+async def t_lefty(b):
+    ctx, pg = await page(b, w=844, h=390)
+    await pg.evaluate("mk6Go('drive')")
+    await pg.wait_for_timeout(400)
+    x0 = await pg.evaluate("document.querySelector('#boardGrid .bdw.v2-es').getBoundingClientRect().left")
+    await pg.evaluate("mk6Go('settings');document.getElementById('sLefty').click();mk6Go('drive')")
+    await pg.wait_for_timeout(500)
+    x1 = await pg.evaluate("document.querySelector('#boardGrid .bdw.v2-es').getBoundingClientRect().left")
+    check('6 left-handed: the landscape board is mirrored', x0 > 500 and x1 < 200, [x0, x1])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

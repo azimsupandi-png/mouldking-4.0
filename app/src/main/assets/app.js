@@ -41,8 +41,8 @@ try{
   function tr(s){return Object.prototype.hasOwnProperty.call(TR,s)?TR[s]:s}
   function baseCfg(names){
     var ch=[];
-    for(var i=0;i<NMAX;i++) ch.push({name:(names&&i<names.length)?names[i]:(i<PER?DEF[i]:'Channel '+L[i%PER]),inv:false,max:100,off:0,expo:0,kind:'slider',blink:'off',bright:100,stp:5});
-    return {ch:ch,limit:100,ramp:60,zone:100,testPwr:60,dash:false,dgv:2,hubNames:['','',''],spring:true,s1:{mode:'axis',a:0,b:1,hold:false},s2:{mode:'axis',a:2,b:3,hold:false},hubs:[0,-1,-1],layout:'std',speed:'fast',board:[],tilt:{on:false,sens:45,inv:false,all:false},accent:0,accentV:2,theme:'studs',pad:{on:true,dead:12,trig:-1,map:{}},safety:{idle:60,warn:30,run:0},seq:[],rec:[]};
+    for(var i=0;i<NMAX;i++) ch.push({name:(names&&i<names.length)?names[i]:(i<PER?DEF[i]:'Channel '+L[i%PER]),inv:false,max:100,off:0,expo:0,trim:0,kind:'slider',blink:'off',bright:100,stp:5});
+    return {ch:ch,limit:100,ramp:60,zone:100,testPwr:60,dash:false,dgv:2,hubNames:['','',''],spring:true,s1:{mode:'axis',a:0,b:1,hold:false},s2:{mode:'axis',a:2,b:3,hold:false},hubs:[0,-1,-1],layout:'std',board:[],tilt:{on:false,sens:45,inv:false,all:false},accent:0,accentV:3,pad:{on:true,dead:12,trig:-1,map:{}},safety:{idle:60,warn:30,run:0},seq:[],rec:[]};
   }
   function cleanHubs(h){
     var out=[-1,-1,-1],s,t;
@@ -223,6 +223,8 @@ try{
       }
       if(out.length>n0){
         var it0=out[out.length-1], g1=cleanG(x.g,it0.k,48,24,it0.k==='i'?it0.hz:it0.v);
+        if(x.h===2&&it0.k!=='d') it0.h=2;
+        if((x.tb===1||x.tb===true)&&['s','st','n'].indexOf(it0.k)>=0) it0.tb=1;
         if(g1) it0.g=g1;
         if(['e','z','a','l','j','d','w','f','i','k','rs','dp','ps'].indexOf(it0.k)<0){
           if(x.inv===1||x.inv===true) it0.inv=1;
@@ -248,6 +250,7 @@ try{
       o.max=num(x.max,10,100,100);
       o.off=num(x.off,0,50,0);
       o.expo=num(x.expo,0,100,0);
+      o.trim=Math.round(num(x.trim,-20,20,0));
       o.kind=(x.kind==='hold'||x.kind==='light')?x.kind:'slider';
       o.blink=['off','slow','fast','pulse'].indexOf(x.blink)>=0?x.blink:'off';
       o.bright=Math.round(num(x.bright,0,100,100));
@@ -267,15 +270,15 @@ try{
     d.s2={mode:s2.mode==='tank'?'tank':'axis',a:idxOf(s2.a,2,true),b:idxOf(s2.b,3,true),hold:typeof s2.hold==='boolean'?s2.hold:gh};
     d.hubs=cleanHubs(Array.isArray(c.hubs)?c.hubs:[num(c.mod,0,2,0),-1,-1]);
     d.layout=(c.layout==='joy'||c.layout==='dual'||c.layout==='board')?c.layout:'std';
-    d.speed=(c.speed==='slow'||c.speed==='normal')?c.speed:'fast';
+    // old 'Speed' setting (x0.4 / x0.7) multiplied the power limit; fold it in once and drop it
+    if(c.speed==='slow'||c.speed==='normal') d.limit=Math.max(10,Math.round(d.limit*(c.speed==='slow'?0.4:0.7)));
     d.board=cleanBoard(c.board);
     if(c.dgv!==2) d.board.forEach(function(it){if(it.g) it.g=it.g.map(function(q){return q*2})});
     var tl=(c.tilt&&typeof c.tilt==='object')?c.tilt:{};
     d.tilt={on:tl.on===true,sens:pickOf(tl.sens,[30,45,60],45),inv:tl.inv===true,all:tl.all===true};
     // Colour choices are now orange(0), red(1), yellow(2). Older saves used six: pink maps to red, yellow to yellow, the rest to orange.
-    d.accent=Math.round(num(c.accent,0,5,0));
-    if(c.accentV!==2) d.accent=({4:1,5:2})[d.accent]||0; else d.accent=Math.min(2,d.accent);
-    d.accentV=2;
+    d.accent=c.accentV===3?Math.round(num(c.accent,0,5,0)):0;
+    d.accentV=3;
     var pd=(c.pad&&typeof c.pad==='object')?c.pad:{};
     d.pad={on:pd.on!==false,dead:Math.round(num(pd.dead,5,40,12)),trig:Math.round(num(pd.trig,-1,NMAX-1,-1)),map:{}};
     var msrc=(pd.map&&typeof pd.map==='object')?pd.map:{};
@@ -295,7 +298,7 @@ try{
     var car=baseCfg(['Left wheel','Right wheel','Headlights','Channel D','Channel E','Channel F']);
     car.s1.mode='tank';car.layout='joy';car.ch[2].kind='hold';
     var exc=baseCfg(['Left track','Right track','Arm','Bucket','Swing','Lights']);
-    exc.s1.mode='tank';exc.layout='dual';exc.ch[4].kind='hold';exc.ch[4].max=60;exc.ch[5].kind='hold';exc.accent=2;
+    exc.s1.mode='tank';exc.layout='dual';exc.ch[4].kind='hold';exc.ch[4].max=60;exc.ch[5].kind='hold';exc.accent=0;
     car.seq=[{id:uid(),name:'Spin',loop:false,steps:[{ch:0,pwr:60,dur:1.5,par:false},{ch:1,pwr:-60,dur:1.5,par:true},{ch:-1,pwr:0,dur:0.5,par:false}]}];
     exc.seq=[{id:uid(),name:'Dig cycle',loop:false,steps:[{ch:2,pwr:-60,dur:2,par:false},{ch:3,pwr:60,dur:1.5,par:false},{ch:2,pwr:60,dur:2,par:false},{ch:4,pwr:40,dur:3,par:false}]}];
     var mine=baseCfg(['Drive','Steering','Lights','Winch','Rear lights','Channel F']);
@@ -316,7 +319,7 @@ try{
     });
     return out;
   }
-  function cleanPrefs(p){p=(p&&typeof p==='object')?p:{};return {practice:p.practice===true,sound:p.sound!==false,haptic:p.haptic!==false,lang:p.lang==='ms'?'ms':'en',seen:p.seen===true,lock:p.lock===true,kidLimit:pickOf(p.kidLimit,[100,70,50,30],50),lim:cleanLim(p.lim),autoBackup:p.autoBackup!==false,full:p.full!==false,relink:p.relink!==false,fx:(p.fx==='full'||p.fx==='lite')?p.fx:'auto',lastBackup:Math.max(0,+p.lastBackup||0),tpls:cleanTpls(p.tpls),ui:p.ui==='light'?'light':'dark',fs:pickOf(p.fs,[100,115,130],100),hc:p.hc===true}}
+  function cleanPrefs(p){p=(p&&typeof p==='object')?p:{};return {practice:p.practice===true,sound:p.sound!==false,haptic:p.haptic!==false,lang:p.lang==='ms'?'ms':'en',seen:p.seen===true,lock:p.lock===true,kidLimit:pickOf(p.kidLimit,[100,70,50,30],50),lim:cleanLim(p.lim),autoBackup:p.autoBackup!==false,full:p.full!==false,relink:p.relink!==false,fx:(p.fx==='full'||p.fx==='lite')?p.fx:'auto',lastBackup:Math.max(0,+p.lastBackup||0),tpls:cleanTpls(p.tpls),ui:p.ui==='light'?'light':'dark',fs:pickOf(p.fs,[100,115,130],100),hc:p.hc===true,playLim:pickOf(p.playLim,[0,10,20,30,45,60],0),lefty:p.lefty===true,meter:p.meter!==false}}
   var store={active:null,profiles:[],prefs:cleanPrefs()};
   try{
     var raw=localStorage.getItem('mk6v2');
@@ -369,6 +372,8 @@ try{
     if(changed)logFrame(frame);
   }};
 
+  /* Play-time limit: f ramps from 1 to 0 over 3 s when the time is up */
+  var PLAY={f:1,used:0,last:0,warned:false,extra:false,end:0};
   /* ---------- Power curve ---------- */
   function powerFor(a,c){
     if(a<=1) return 0;
@@ -376,7 +381,6 @@ try{
     var m=100*((1-e)*x+e*x*x*x);
     return Math.min(m+c.off,c.max);
   }
-  var SPD={slow:0.4,normal:0.7,fast:1};
   /* The hub only picks up a new broadcast about every 100-200 ms, so blinking is kept slow and
      pulsing moves in coarse steps. Brightness is mapped above the LED start threshold. */
   function blinkF(mode,now){
@@ -391,15 +395,18 @@ try{
     if(C.ch[i].kind==='light'){var lt=rt.t[i];return lt>0?Math.round(ledOut(lt*blinkF(C.ch[i].blink,performance.now()))):0}
     var t=rt.t[i], m=powerFor(Math.abs(t),C.ch[i]);
     var tb=!!S.turbo[i]||!!cal||testOn();
-    var f=(tb?1:(SPD[C.speed]||1))*((S.kid&&store.prefs.kidLimit)?store.prefs.kidLimit/100:1);
-    return (t<0?-m:m)*(tb?100:C.limit)/100*f;
+    var f=((S.kid&&store.prefs.kidLimit)?store.prefs.kidLimit/100:1)*PLAY.f;
+    var out=(t<0?-m:m)*(tb?100:C.limit)/100*f;
+    // trim: a small fixed offset so the model runs straight (never while E-Stop is on)
+    var tr0=C.ch[i].trim||0;if(tr0&&!S.estop&&!cal&&!testOn()) out=Math.max(-100,Math.min(100,out+tr0*PLAY.f));
+    return out;
   }
 
   // What the hub sends at a full 100% request (the power limit, speed and channel max); meters mark it with a tick
   function hubMax(i){
     if(C.ch[i].kind==='light') return 100;
     var tb=!!S.turbo[i]||!!cal||testOn();
-    var f=(tb?1:(SPD[C.speed]||1))*((S.kid&&store.prefs.kidLimit)?store.prefs.kidLimit/100:1);
+    var f=(S.kid&&store.prefs.kidLimit)?store.prefs.kidLimit/100:1;
     return Math.min(100,powerFor(100,C.ch[i])*(tb?100:C.limit)/100*f);
   }
 
@@ -717,6 +724,11 @@ try{
     a:{t:'Auto-stop settings',f:[{k:'s',l:'Stop after',u:'s',min:1,max:300,st:1,ch:[5,10,20,30,60]}]},
     z:{t:'Timer settings',f:[{k:'a',l:'Alert after (0 = off)',u:'min',min:0,max:240,st:1,ch:[0,5,10,15,20,30]}]}
   };
+  // channel fields shown in the widget settings of slider / steering / dial (stored on the channel, not the widget)
+  var F_TRIM={k:'trimv',l:'Trim (runs straight)',u:'%',min:-20,max:20,st:1,ch:[-5,0,5],def:0,g:function(it){return C.ch[it.c].trim||0},s:function(it,v){C.ch[it.c].trim=v}};
+  var F_TB={k:'tb',l:'Trim buttons on the widget',ch:[0,1],lab:['Off','On'],only:true,def:0,g:function(it){return it.tb?1:0},s:function(it,v){if(v) it.tb=1; else delete it.tb}};
+  var F_EXPO={k:'expov',l:'Fine control (expo)',u:'%',min:0,max:80,st:5,ch:[0,20,40,60],def:0,g:function(it){return C.ch[it.c].expo||0},s:function(it,v){C.ch[it.c].expo=v}};
+  ['s','st','n'].forEach(function(k){if(WSPEC[k]) WSPEC[k].f=WSPEC[k].f.concat([F_EXPO,F_TRIM,F_TB])});
   function wsEdit(it){
     var sp=WSPEC[it.k];if(!sp) return;
     var old=document.getElementById('gEdit');if(old) old.remove();
@@ -1217,7 +1229,7 @@ try{
     var lm=store.prefs.lim;
     [0,1,2].forEach(function(i){
       $('#limV'+i).textContent=lm[i].l+'%';
-      $('#limP'+i).setAttribute('aria-pressed',String(C.limit===lm[i].l&&C.ramp===lm[i].r));
+      $('#limP'+i).setAttribute('aria-pressed',String(C.limit===lm[i].l));
     });
   }
   [0,1,2].forEach(function(i){
@@ -1284,17 +1296,18 @@ try{
   }
   function syncAll(){
     refs.forEach(function(r,i){syncChannel(i)});
-    syncSticks();syncSettings();syncLayout();syncProfiles();syncRec();paintAccent();paintLamps();syncSeq();syncSafety();syncApp();buildGpMap();syncSpeed();syncRecTools();bkPaint();syncBoard();syncTiltUi();
+    syncSticks();syncSettings();syncLayout();syncProfiles();syncRec();paintAccent();paintLamps();syncSeq();syncSafety();syncApp();buildGpMap();syncRecTools();bkPaint();syncBoard();syncTiltUi();
   }
-  var ACC=['#FFC400','#FF4B3E','#FFC400'];
+  // Model colour: tints the model's widgets (knobs, LED rings) and its card; UI accent, E-Stop and meters keep their colours
+  var ACC=['#FFC400','#E24B4A','#4DA3E0','#1D9E75','#B57EDC','#E8E8EA'], ACCN=['Yellow','Red','Blue','Green','Purple','White'];
   var swBox=$('#swatches'),swBtns=ACC.map(function(c,n){
-    var b=document.createElement('button');b.type='button';b.className='sw';b.style.setProperty('--c',c);b.setAttribute('aria-label','Colour '+(n+1));
-    b.addEventListener('click',function(){C.accent=n;paintAccent();save()});
+    var b=document.createElement('button');b.type='button';b.className='sw';b.style.setProperty('--c',c);b.setAttribute('aria-label',ACCN[n]);
+    b.addEventListener('click',function(){C.accent=n;paintAccent();save();feedback('ok')});
     swBox.appendChild(b);return b;
   });
   function paintAccent(){
-    var n=2;
-    var de=document.documentElement;if(de&&de.style)de.style.setProperty('--acc',ACC[n]);
+    var n=C.accent||0, de=document.documentElement;
+    if(de&&de.setAttribute){if(n) de.setAttribute('data-macc',String(n));else de.removeAttribute('data-macc');if(de.style) de.style.setProperty('--macc',ACC[n])}
     swBtns.forEach(function(b,q){b.setAttribute('aria-pressed',String(q===n))});
   }
   function paintLamps(){
@@ -1397,7 +1410,7 @@ try{
     var lights=$('#wizLights').checked, winch=$('#wizWinch').checked;
     var all=names.slice();while(all.length<PER) all.push('Channel '+L[all.length]);
     var cfg=baseCfg(all);
-    cfg.s1.mode=w.mode;cfg.layout=w.layout;cfg.speed='normal';
+    cfg.s1.mode=w.mode;cfg.layout=w.layout;cfg.limit=70;cfg.ramp=60;
     if(w.mode==='axis'){cfg.ch[1].max=70}
     var n=names.length;
     if(lights&&n<PER){cfg.ch[n].name='Lights';cfg.ch[n].kind='light';n++}
@@ -2132,14 +2145,6 @@ try{
 
 
   // ---- Speed profiles, player limit, run limiter setting, recording tools, backup ----
-  var spdBtns={slow:$('#spdSlow'),normal:$('#spdNorm'),fast:$('#spdFast')};
-  function syncSpeed(){
-    if(!spdBtns) return;
-    Object.keys(spdBtns).forEach(function(k){spdBtns[k].setAttribute('aria-pressed',String(C.speed===k))});
-  }
-  Object.keys(spdBtns).forEach(function(k){
-    spdBtns[k].addEventListener('click',function(){C.speed=k;syncSpeed();save();feedback('ok')});
-  });
   var kidLim=$('#kidLim');
   kidLim.addEventListener('change',function(){store.prefs.kidLimit=pickOf(kidLim.value,[100,70,50,30],50);save()});
   var sfRun=$('#sfRun');
@@ -2498,7 +2503,9 @@ try{
     DCELL.w=DCELL.pw/DG.x;DCELL.h=DCELL.ph/DG.y;
   }
   function dashStyle(el,g){
-    var x0=Math.round(g[0]*DCELL.w), x1=Math.round((g[0]+g[2])*DCELL.w), y0=Math.round(g[1]*DCELL.h), y1=Math.round((g[1]+g[3])*DCELL.h);
+    // left-handed: the dashboard is mirrored (not while editing, so dragging still follows the finger)
+    var gx=(store.prefs.lefty&&!bdEditing)?(48-g[0]-g[2]):g[0];
+    var x0=Math.round(gx*DCELL.w), x1=Math.round((gx+g[2])*DCELL.w), y0=Math.round(g[1]*DCELL.h), y1=Math.round((g[1]+g[3])*DCELL.h);
     el.style.left=x0+'px';el.style.top=y0+'px';el.style.width=(x1-x0)+'px';el.style.height=(y1-y0)+'px';
   }
   function dashFit(){
@@ -2625,7 +2632,9 @@ try{
     var dash=dashOn();
     if(dash&&it!==bdPick){ed.classList.add('empty');return ed}
     var defs=dash?[]:[['◀','Move earlier',function(){bdMove(it,-1)}],['▶','Move later',function(){bdMove(it,1)}]];
-    if(!dash&&it.k!=='d') defs.push(['↔','Wide or normal',function(){it.w=it.w===2?1:2;save();syncBoard()}]);
+    if(!dash&&it.k!=='d') defs.push([(it.w===2?'2':'1')+'\u00d7'+(it.h===2?'2':'1'),'Size',function(){
+      var sz=(it.w===2?2:1)+'x'+(it.h===2?2:1), nx={'1x1':'2x1','2x1':'1x2','1x2':'2x2','2x2':'1x1'}[sz];
+      it.w=+nx[0];if(nx[2]==='2') it.h=2; else delete it.h;save();syncBoard();toast('Size '+nx.replace('x','\u00d7'))}]);
     if(it.k==='s'||it.k==='m') defs.push(['\u2195','Vertical or horizontal',function(){it.v=!it.v;if(dashOn()) dashRefit(it);save();syncBoard()},!!it.v]);
     if(it.k==='s'||it.k==='j'||it.k==='d'||it.k==='m') defs.push(['0','Return to 0 on release',function(){
       it.hold=!it.hold;
@@ -2643,6 +2652,18 @@ try{
       b.addEventListener('click',function(e){if(dashOn()&&Date.now()-bdPickAt<150){e.preventDefault();return}d[2](e)});ed.appendChild(b);
     });
     return ed;
+  }
+  function bdTrim(el,c){
+    var bx=document.createElement('div');bx.className='bdw-trim';
+    var m=document.createElement('button'),v=document.createElement('b'),p=document.createElement('button');
+    m.type=p.type='button';m.className=p.className='trb';m.textContent='\u25C0';p.textContent='\u25B6';
+    m.setAttribute('aria-label','Trim left');p.setAttribute('aria-label','Trim right');
+    function show(){var t=C.ch[c].trim||0;v.textContent=t?((t>0?'+':'')+t):'0';v.className=t?'on':''}
+    function bump(d){var t=Math.max(-20,Math.min(20,(C.ch[c].trim||0)+d));if(t===(C.ch[c].trim||0)) return;C.ch[c].trim=t;show();noteInput();feedback('dial');clearTimeout(bx._sv);bx._sv=setTimeout(save,600)}
+    m.addEventListener('click',function(e){e.stopPropagation();bump(-1)});p.addEventListener('click',function(e){e.stopPropagation();bump(1)});
+    v.addEventListener('click',function(e){e.stopPropagation();if(C.ch[c].trim){C.ch[c].trim=0;show();save();toast('Trim reset to 0.')}});
+    v.setAttribute('title','Trim · tap to reset');
+    bx.appendChild(m);bx.appendChild(v);bx.appendChild(p);el.appendChild(bx);show();
   }
   function bdRename(it,head){
     if(!head||head.querySelector('.bdw-lbl')) return;
@@ -2706,7 +2727,8 @@ try{
     var tiltTaken=false;
     C.board.forEach(function(it){
       var el=document.createElement('div');
-      el.className='bdw'+((it.w===2||it.k==='d')&&!dash?' w2':'')+(bdEditing?' editing':'');
+      el.className='bdw'+((it.w===2||it.k==='d')&&!dash?' w2':'')+(it.h===2&&!dash?' h2':'')+(bdEditing?' editing':'');
+      el.setAttribute('data-k',it.k);if(it.k==='e') el.classList.add('v2-es');
       var w={it:it,drag:false,out:null,rng:null};
       if(it.k==='e'){
         var eb=document.createElement('button');eb.type='button';eb.className='dw-es';eb.setAttribute('aria-label','Emergency stop');
@@ -3285,6 +3307,8 @@ try{
         }
       }
       if(dash) dashPlace(el,it);
+      // trim buttons on the widget (steering / slider / dial): a small fixed offset so the model runs straight
+      if(it.tb&&!bdEditing&&typeof it.c==='number'&&it.c>=0&&C.ch[it.c]&&C.ch[it.c].kind!=='light') bdTrim(el,it.c);
       w.el=el;
       bdGrid.appendChild(el);bdW.push(w);
     });
@@ -3898,7 +3922,8 @@ try{
   }
   function padEdge(g,n){
     var b=g.buttons[n],down=!!(b&&(b.pressed||b.value>0.5)),was=!!GP.btn[n];
-    GP.btn[n]=down;return down&&!was;
+    GP.btn[n]=down;if(down&&!was&&window.v2GpPress) try{window.v2GpPress(n)}catch(_){}
+    return down&&!was;
   }
   function padStatus(g){
     var t=!g?'No gamepad found. Pair it in Android Bluetooth settings, then press any button.'
@@ -4162,7 +4187,7 @@ try{
     if(de&&de.setAttribute) de.setAttribute('lang',store.prefs.lang==='ms'?'ms':'en');
     if(document.body) trWalk(document.body);
     $('#lang').value=store.prefs.lang;
-    if(typeof guideRender==='function'&&!$('#guide').hidden) guideRender();
+    if(typeof guideRender==='function') guideRender();
   }
   if(document.body&&typeof MutationObserver==='function'){
     new MutationObserver(function(muts){
@@ -4175,37 +4200,6 @@ try{
   }
   $('#lang').addEventListener('change',function(){store.prefs.lang=$('#lang').value==='ms'?'ms':'en';save();applyLang()});
 
-  var GUIDE=[
-    ['Welcome to MK6 Console','Control up to three Mould King 6.0 hubs from your phone over Bluetooth. This short guide covers the setup.'],
-    ['Set each hub number','Press the power button on the hub briefly. The LED flashes 1, 2 or 3 times: that is its number (M1, M2, M3). Give every hub a different number, then pick the same numbers under Limits & hubs.'],
-    ['Connect','Switch the hub into Bluetooth mode and power it on. Tap Connect hub, allow the Bluetooth permission, and wait about 3 seconds until it says Hub active.'],
-    ['Drive safely','E-Stop locks every channel at 0 until you release it. On a gamepad, Back is E-Stop and Start releases it. Motors also stop when the app leaves the screen or after the idle time you set.'],
-    ['Make it yours','Pick a colour and a theme per model, build sequences and quick action buttons, and map gamepad buttons. You can reopen this guide from the App card.']
-  ];
-  var gIdx=0, guideEl=$('#guide');
-  function guideRender(){
-    var g=GUIDE[gIdx];
-    $('#gTitle').textContent=g[0];$('#gBody').textContent=g[1];
-    $('#gBack').hidden=gIdx===0;
-    $('#gNext').textContent=gIdx===GUIDE.length-1?'Done':'Next';
-    $('#gSkip').hidden=gIdx===GUIDE.length-1;
-    var dots=$('#gDots');dots.innerHTML='';
-    GUIDE.forEach(function(_,i){var d=document.createElement('i');if(i===gIdx) d.className='on';dots.appendChild(d)});
-    var ex=$('#gExtra');ex.innerHTML='';
-    if(gIdx===0){
-      [['en','English'],['ms','Bahasa Melayu']].forEach(function(l){
-        var b=document.createElement('button');b.type='button';b.className='btn';b.textContent=l[1];
-        b.setAttribute('aria-pressed',String(store.prefs.lang===l[0]));
-        b.addEventListener('click',function(){store.prefs.lang=l[0];save();applyLang()});
-        ex.appendChild(b);
-      });
-    }
-  }
-  function guideOpen(){gIdx=0;guideEl.hidden=false;guideRender()}
-  function guideClose(){guideEl.hidden=true;if(!store.prefs.seen){store.prefs.seen=true;save();if(window.mk6Go) window.mk6Go('tpl')}}
-  $('#gNext').addEventListener('click',function(){if(gIdx>=GUIDE.length-1){guideClose();return}gIdx++;guideRender()});
-  $('#gBack').addEventListener('click',function(){if(gIdx>0){gIdx--;guideRender()}});
-  $('#gSkip').addEventListener('click',guideClose);
   $('#guideBtn').addEventListener('click',guideOpen);
   var V2MS={'Back':'Kembali','Done':'Selesai','Home':'Utama','Drive':'Pandu','Models':'Model','Settings':'Tetapan','Main':'Utama',
     'Not connected':'Belum bersambung','Connect':'Sambung','Disconnect':'Putuskan','Reconnect':'Sambung semula','Active model':'Model aktif','Open':'Buka',
@@ -4232,6 +4226,8 @@ try{
   for(var v2k in V2MS) MS[v2k]=V2MS[v2k];
   var V2MS2={"A copy of the board is kept every time you finish editing it. Restore one if the layout gets messed up.": "Salinan papan disimpan setiap kali anda selesai menyunting. Pulihkan salah satu jika susunan menjadi kucar-kacir.", "Board history (this model, last 3)": "Sejarah papan (model ini, 3 terakhir)", "No saved boards yet.": "Belum ada papan disimpan.", "Export fills the box with your layout. Copy it to keep or share. To import, paste a layout here and press Import.": "Eksport mengisi kotak dengan susunan anda. Salin untuk simpan atau kongsi. Untuk import, tampal susunan di sini dan tekan Import.", "Start / stop": "Mula / henti", "Swipe to other pairs": "Leret ke pasangan lain", "Close": "Tutup", "Control board": "Papan kawalan", "Emergency stop": "Henti kecemasan", "Release emergency stop": "Lepas henti kecemasan", "Export or import layout": "Eksport atau import susun atur", "Layout text": "Teks susun atur", "Open the board": "Buka papan", "Return to 0 on release": "Kembali ke 0 bila dilepas", "Search models": "Cari model", "Set to zero": "Set ke sifar", "Wide or normal": "Lebar atau biasa", "Move earlier": "Alih ke atas", "Move later": "Alih ke bawah", "Link diagnostics": "Diagnostik sambungan", "Copy report": "Salin laporan", "Report copied.": "Laporan disalin.", "Could not copy.": "Tidak dapat menyalin.", "The hub only listens and never answers, so the phone cannot measure signal strength. If a model stutters, hold the phone closer and watch Bluetooth errors.": "Hub hanya mendengar dan tidak pernah membalas, jadi telefon tidak dapat mengukur kekuatan isyarat. Jika model tersekat-sekat, dekatkan telefon dan perhatikan Ralat Bluetooth.", "Link": "Sambungan", "Send mode": "Mod hantar", "Connected for": "Bersambung selama", "Frames from the app": "Bingkai daripada app", "Sent by Bluetooth": "Dihantar melalui Bluetooth", "Bluetooth errors": "Ralat Bluetooth", "Error time": "Masa ralat", "data too large": "data terlalu besar", "too many advertisers": "terlalu banyak pemancar", "already started": "sudah bermula", "internal Bluetooth error": "ralat dalaman Bluetooth", "not supported by this phone": "tidak disokong telefon ini", "Last error": "Ralat terakhir", "Safety stops (app paused)": "Henti keselamatan (app dijeda)", "Last frame": "Bingkai terakhir", "Transmit power": "Kuasa pancaran", "Native data": "Data Android", "Only in the Android app": "Hanya dalam app Android", "Update rate": "Kadar kemas kini", "Hubs on this model": "Hub untuk model ini", "Practice": "Latihan", "Not connected": "Belum bersambung", "On": "Hidup", "Off": "Mati", "Connecting": "Menyambung", "1 hub": "1 hub", "Several hubs at once": "Beberapa hub serentak", "Several hubs, taking turns": "Beberapa hub, bergilir", "Text size": "Saiz teks", "Normal": "Biasa", "Large": "Besar", "Largest": "Paling besar", "High contrast": "Kontras tinggi", "Text size works in the Android app.": "Saiz teks berfungsi dalam app Android.", "Share this model": "Kongsi model ini", "Share model": "Kongsi model", "Sends the model as a file (board, channels, recordings and sequences). Your friend opens it with MK6 Console.": "Menghantar model sebagai fail (papan, saluran, rakaman dan jujukan). Kawan anda membukanya dengan MK6 Console.", "Could not share the model.": "Tidak dapat berkongsi model.", "That file could not be shared or opened.": "Fail itu tidak dapat dikongsi atau dibuka.", "That file is not an MK6 model.": "Fail itu bukan model MK6.", "Shared from another phone": "Dikongsi dari telefon lain", "Add to my models": "Tambah ke model saya", "Ignore": "Abaikan", "Model added.": "Model ditambah.", "Nothing could be imported.": "Tiada apa yang dapat diimport.", "Show as a quick button": "Tunjuk sebagai butang pantas", "Added to Quick actions on the Drive screen.": "Ditambah ke Tindakan pantas di skrin Pandu.", "Removed from Quick actions.": "Dibuang dari Tindakan pantas."};
   for(var v2k2 in V2MS2) MS[v2k2]=V2MS2[v2k2];
+  var V2MS3={"Eco": "Eco", "Sport": "Sport", "Drive mode": "Mod pandu", "Live output (tap for the big view)": "Keluaran langsung (ketik untuk paparan besar)", "Play time limit (a day)": "Had masa main (sehari)", "2 minutes of play time left.": "Tinggal 2 minit masa main.", "Play time is up. Motors are slowing down.": "Masa main tamat. Motor sedang perlahan.", "Hold for 2 seconds to change (parents).": "Tahan 2 saat untuk tukar (ibu bapa).", "Play time limit off.": "Had masa main dimatikan.", "5 more minutes.": "Tambah 5 minit.", "Play time is up": "Masa main tamat", "Come back tomorrow, or a parent can add 5 minutes": "Main lagi esok, atau ibu bapa boleh tambah 5 minit", "+5 min (hold 2 s)": "+5 minit (tahan 2 s)", "Live output meter": "Meter keluaran langsung", "Left-handed (landscape)": "Mod kidal (landskap)", "Model colour": "Warna model", "Yellow": "Kuning", "Red": "Merah", "Blue": "Biru", "Green": "Hijau", "Purple": "Ungu", "White": "Putih", "Trim (runs straight)": "Trim (jalan lurus)", "Trim buttons on the widget": "Butang trim pada widget", "Trim left": "Trim kiri", "Trim right": "Trim kanan", "Trim reset to 0.": "Trim diset semula ke 0.", "Trim · tap to reset": "Trim · ketik untuk set semula", "Size": "Saiz", "Widget type": "Jenis widget", "All": "Semua", "Lights & buttons": "Lampu & butang", "Meters": "Meter", "Tap a button on the picture, or press it on the gamepad.": "Ketik butang pada gambar, atau tekan pada gamepad.", "Quick settings": "Tetapan pantas", "Unlock": "Buka kunci", "Dark theme": "Tema gelap", "Light theme": "Tema cerah", "hold 2 s": "tahan 2 s", "Release E-Stop (hold 1 s)": "Lepas E-Stop (tahan 1 s)", "Drive up to three Mould King 6.0 hubs from your phone. This guide shows the real buttons, step by step.": "Pandu sehingga tiga hub Mould King 6.0 dari telefon anda. Panduan ini menunjukkan butang sebenar, langkah demi langkah.", "Start": "Mula", "Turn the hub on, then hold START for half a second. The ring turns yellow when the hub answers.": "Hidupkan hub, kemudian tahan START selama setengah saat. Cincin bertukar kuning bila hub menjawab.", "Move the controls to drive. Lift your finger and they go back to 0.": "Gerakkan kawalan untuk memandu. Angkat jari dan ia kembali ke 0.", "E-Stop stops every motor at once. Tap it again to release.": "E-Stop menghentikan semua motor serta-merta. Ketik sekali lagi untuk lepas.", "Your models": "Model anda", "Make your own board, start from a template, or share a model with a friend.": "Buat papan sendiri, mula daripada templat, atau kongsi model dengan kawan.", "Welcome to MK6 Console": "Selamat datang ke MK6 Console", "Lock settings": "Kunci tetapan", "Disconnect": "Putuskan"};
+  for(var v2k3 in V2MS3) if(!MS[v2k3]) MS[v2k3]=V2MS3[v2k3];
   MS_RE.push([/^(\d+) hubs? · (\d+) widgets?$/,function(m){return m[1]+' hub · '+m[2]+' widget'}],
     [/^Output (\d+)%$/,function(m){return 'Keluaran '+m[1]+'%'}],
     [/^Phone battery low · (\d+)%$/,function(m){return 'Bateri telefon rendah · '+m[1]+'%'}],
@@ -4257,6 +4253,8 @@ try{
   MS['Connect hub']=MS['Connect hub']||'Sambung hub';MS_RE.push([/^(\d+) recordings?$/,function(m){return m[1]+' rakaman'}],[/^(\d+) sequences?$/,function(m){return m[1]+' jujukan'}],
     [/^Hub (\d) · M(\d)$/,function(m){return 'Hub '+m[1]+' · M'+m[2]}],[/^Channels (.+)–(.+)$/,function(m){return 'Saluran '+m[1]+'–'+m[2]}],
     [/^Light · ([A-R][0-9]?)$/,function(m){return 'Lampu · '+m[1]}],
+    [/^Play time limit: (\d+) min a day\.$/,function(m){return 'Had masa main: '+m[1]+' min sehari.'}],[/^Size (\d×\d)$/,function(m){return 'Saiz '+m[1]}],
+    [/^Button (.+) found: pick what it does\.$/,function(m){return 'Butang '+m[1]+' dikesan: pilih fungsinya.'}],
     [/^Model received: (.+)$/,function(m){return 'Model diterima: '+m[1]}],[/^(\d+) models in this file$/,function(m){return m[1]+' model dalam fail ini'}],
     [/^(\d+) models added\.$/,function(m){return m[1]+' model ditambah.'}],[/^(\d+) per second$/,function(m){return m[1]+' sesaat'}],
     [/^(.+) ago$/,function(m){return m[1]+' lalu'}],[/^(\d+) s$/,function(m){return m[1]+' saat'}],[/^(\d+) min (\d+) s$/,function(m){return m[1]+' min '+m[2]+' saat'}],
@@ -4288,6 +4286,7 @@ try{
     if(v==='home') v2Preview();
     if(v==='drive') v2Pick();
     if(v==='hub'){v2ChTest(true);v2Slots()}
+    if(v==='m-pad') v2GpDraw();
     v2Paint();
     try{window.dispatchEvent(new Event('resize'))}catch(_){}
   }
@@ -4304,7 +4303,8 @@ try{
   window.mk6Back=function(){
     var dl=['#dashTpl','#jcDlg','#lxDlg'].map(function(q){return $(q)}).filter(function(e){return e&&!e.hidden});
     if(dl.length){dl[0].hidden=true;return true}
-    if(!$('#guide').hidden){guideClose();return true}
+    if(v2QS){v2QuickClose();return true}
+    if(v2Co.el){guideClose();return true}
     if(bdEditing){var be=$('#bdEdit');if(be) be.click();return true}
     if(!player.hidden) return true;
     if(V2PARENT[V2.v]){v2Go(V2PARENT[V2.v]);return true}
@@ -4374,7 +4374,6 @@ try{
     m.classList.remove('v2-in-r','v2-in-l');void m.offsetWidth;m.classList.add('v2-in-'+dir);
   }
   function v2Tick(){if(store.prefs.haptic&&NB&&NB.haptic){try{NB.haptic('dial')}catch(_){}}}
-  function v2Tick(){if(store.prefs.haptic&&NB&&NB.haptic){try{NB.haptic('dial')}catch(_){}}}
   Array.prototype.forEach.call(document.querySelectorAll('#tabbar [data-tab]'),function(b){b.addEventListener('click',function(){
     if(V2.v!==b.dataset.tab) v2Tick();v2Go(b.dataset.tab)})});
   Array.prototype.forEach.call(document.querySelectorAll('[data-go]'),function(b){b.addEventListener('click',function(){v2Go(b.dataset.go)})});
@@ -4443,7 +4442,7 @@ try{
   }
   function v2Thumb(c){
     var o='<svg class="v2-th" viewBox="0 0 48 24" preserveAspectRatio="xMidYMid meet" aria-hidden="true">';
-    var Y='#ffd84a',K='#3a414d',F='#1d222b';
+    var Y=(c&&c.accent&&ACC[c.accent])||'#ffd84a',K='#3a414d',F='#1d222b';
     if(c.layout==='board'&&c.board&&c.board.length){
       var x0=0,y0=0;
       c.board.forEach(function(it,ix){
@@ -4472,7 +4471,7 @@ try{
     var q=($('#mSearch').value||'').trim().toLowerCase();box.innerHTML='';var n=0;
     store.profiles.forEach(function(p){
       var name=profLbl(p);if(q&&name.toLowerCase().indexOf(q)<0) return;n++;
-      var card=document.createElement('div');card.className='v2-mcard'+(p.id===store.active?' v2on':'');
+      var card=document.createElement('div');card.className='v2-mcard'+(p.id===store.active?' v2on':'');card.style.setProperty('--mc',ACC[(p.cfg&&p.cfg.accent)||0]);
       var main=document.createElement('button');main.type='button';main.className='v2-mmain';
       main.innerHTML='<span class="v2-thw">'+v2Thumb(p.cfg||{})+'</span><b></b><small></small>';
       main.querySelector('b').textContent=name;main.querySelector('small').textContent=v2Sub(p);
@@ -4601,8 +4600,10 @@ try{
     var lost=!$('#lostBanner').hidden, bat=$('#bat'), low=!!(bat&&!bat.hidden&&bat.classList.contains('low'));
     var pct=low?(bat.textContent.match(/\d+/)||[''])[0]:'';
     var bad=!S.connected&&RH()&&hubMsg&&hubMsg!=='Pairing…'?hubMsg:'';
-    var key=[S.estop,lost,S.bt,low,pct,bad,store.prefs.lang,!!store.prefs.lock,v2Inbox?v2Inbox.name:''].join('|');if(key===v2AlKey) return;v2AlKey=key;
+    var key=[S.estop,lost,S.bt,low,pct,bad,store.prefs.lang,!!store.prefs.lock,v2Inbox?v2Inbox.name:'',store.prefs.playLim&&v2PlayLeft()<=0,PLAY.extra].join('|');if(key===v2AlKey) return;v2AlKey=key;
     box.innerHTML='';
+    if(store.prefs.playLim&&v2PlayLeft()<=0){v2Alert(box,'Play time is up','Come back tomorrow, or a parent can add 5 minutes',PLAY.extra?null:'+5 min (hold 2 s)',function(){});
+      var pb5=box.lastChild&&box.lastChild.querySelector('button');if(pb5){var nb5=pb5.cloneNode(true);pb5.parentNode.replaceChild(nb5,pb5);v2PlayHold(nb5,v2PlayExtra)}}
     if(v2Inbox){var ib=v2Inbox;v2Alert(box,'Model received: '+ib.name,ib.n>1?ib.n+' models in this file':'Shared from another phone','Add to my models',function(){
         var before=store.profiles.length;importText(ib.text);v2Inbox=null;v2AlKey='';
         var added=store.profiles.length-before;
@@ -4662,6 +4663,12 @@ try{
     v2Alerts();
     v2Gfx(st);
     v2Diag(false);
+    // drive mode, play time, meter, left-handed
+    v2Mode();
+    var pl0=store.prefs.playLim||0;v2T($('#sPlayV'),pl0?pl0+' min':'Off');
+    var dp=$('#dPlay');if(dp){var lf=v2PlayLeft();if(dp.hidden===!!pl0) dp.hidden=!pl0;if(pl0){v2T(dp.querySelector('b'),v2Clock(lf));v2Tog(dp,'low',lf<=120000)}}
+    $('#sLefty').setAttribute('aria-checked',String(!!store.prefs.lefty));$('#sMeter').setAttribute('aria-checked',String(!!store.prefs.meter));
+    var mt=$('#dMeter');if(mt&&mt.hidden===!!store.prefs.meter) mt.hidden=!store.prefs.meter;
   }
 
   // ---- Hub link diagnostics (numbers from the native Bluetooth side) ----
@@ -4799,18 +4806,247 @@ try{
     bar.appendChild(m);
   })();
 
-  // Guide (first run) keeps its look; page 1 also offers "Try without a hub"
+  // =====================================================================================
+  // ---- 3 · Drive mode on the Drive screen: Eco / Normal / Sport (= the three power profiles) ----
   (function(){
-    var orig=guideRender;
-    guideRender=function(){
-      orig();
-      if(gIdx!==0) return;
-      var b=document.createElement('button');b.type='button';b.className='btn';b.textContent='Try without a hub';
-      b.addEventListener('click',function(){guideClose();v2Practice(true);if(!S.connected) v2Conn();v2Go('drive')});
-      $('#gExtra').appendChild(b);
-    };
+    var row=$('#dMode');if(!row) return;
+    Array.prototype.forEach.call(row.querySelectorAll('[data-lp]'),function(b){b.addEventListener('click',function(){
+      var p=$('#limP'+b.getAttribute('data-lp'));if(p){p.click();v2Mode(true)}
+    })});
+  })();
+  function v2Mode(force){
+    var lm=store.prefs.lim,row=$('#dMode');if(!row) return;
+    Array.prototype.forEach.call(row.querySelectorAll('[data-lp]'),function(b){var i=+b.getAttribute('data-lp');var on=C.limit===lm[i].l;if(b.getAttribute('aria-pressed')!==String(on)) b.setAttribute('aria-pressed',String(on))});
+  }
+
+  // ---- 5 · Play-time limit per day (parents: change it by holding the row for 2 s) ----
+  var V2PLAYK='mk6play';
+  function v2Today(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()}
+  (function(){try{var o=JSON.parse(localStorage.getItem(V2PLAYK)||'null');if(o&&o.d===v2Today()){PLAY.used=+o.used||0;PLAY.extra=!!o.extra}}catch(_){}})();
+  function v2PlaySave(){try{localStorage.setItem(V2PLAYK,JSON.stringify({d:v2Today(),used:Math.round(PLAY.used),extra:PLAY.extra}))}catch(_){}}
+  function v2PlayLeft(){var lim=store.prefs.playLim||0;return lim?((lim+(PLAY.extra?5:0))*60000-PLAY.used):Infinity}
+  function v2Clock(ms){var s=Math.max(0,Math.ceil(ms/1000));return Math.floor(s/60)+':'+('0'+s%60).slice(-2)}
+  var v2PlaySaveAt=0;
+  function v2PlayTick(){
+    var now=Date.now(), lim=store.prefs.playLim||0;
+    if(!lim){PLAY.f=1;PLAY.end=0;PLAY.last=now;return}
+    if(PLAY.d!==v2Today()){PLAY.d=v2Today();if(PLAY.dset){PLAY.used=0;PLAY.extra=false;PLAY.warned=false;PLAY.end=0}PLAY.dset=1}
+    var live=!!S.connected&&!document.hidden;
+    if(live&&PLAY.last) PLAY.used+=Math.min(1000,now-PLAY.last);
+    PLAY.last=now;
+    var left=v2PlayLeft();
+    if(left<=120000&&left>0&&!PLAY.warned&&live){PLAY.warned=true;toast('2 minutes of play time left.',4000);feedback('warn')}
+    if(left<=0){
+      if(!PLAY.end){PLAY.end=now;toast('Play time is up. Motors are slowing down.',4000)}
+      PLAY.f=Math.max(0,1-(now-PLAY.end)/3000);
+      if(PLAY.f===0&&S.connected){v2Conn();v2AlKey=''}
+    }else{PLAY.f=1;PLAY.end=0}
+    if(now-v2PlaySaveAt>5000){v2PlaySaveAt=now;v2PlaySave()}
+  }
+  setInterval(v2PlayTick,100);
+  function v2PlayHold(el,fn){
+    var t=0;function up(){clearTimeout(t);t=0;el.classList.remove('holding')}
+    el.addEventListener('pointerdown',function(){up();el.classList.add('holding');t=setTimeout(function(){t=0;el.classList.remove('holding');feedback('hold');fn()},2000)});
+    ['pointerup','pointercancel','pointerleave'].forEach(function(ev){el.addEventListener(ev,function(){if(t) toast('Hold for 2 seconds to change (parents).',2500);up()})});
+    el.addEventListener('click',function(e){e.preventDefault()});
+  }
+  (function(){var r=$('#sPlay');if(r) v2PlayHold(r,function(){
+    var L=[0,10,20,30,45,60],i=L.indexOf(store.prefs.playLim||0);store.prefs.playLim=L[(i+1)%L.length];
+    PLAY.used=0;PLAY.extra=false;PLAY.warned=false;PLAY.end=0;PLAY.f=1;v2PlaySave();save();v2Paint();
+    toast(store.prefs.playLim?('Play time limit: '+store.prefs.playLim+' min a day.'):'Play time limit off.')})})();
+  function v2PlayExtra(){if(PLAY.extra) return;PLAY.extra=true;PLAY.warned=false;PLAY.end=0;PLAY.f=1;v2PlaySave();v2AlKey='';toast('5 more minutes.')}
+
+  // ---- 6 · Left-handed: the landscape dashboard is mirrored (widgets swap sides) ----
+  v2Click('#sLefty',function(){store.prefs.lefty=!store.prefs.lefty;save();try{syncBoard()}catch(_){}v2Paint();feedback('ok')});
+
+  // ---- 7 · Live output meter on the Drive screen (thin; tap for the big view) ----
+  var v2MCols=[],v2MKey='';
+  function v2MeterBuild(){
+    var m=$('#dMeter');if(!m) return;var idx=activeIdx(),key=idx.join(',');if(key===v2MKey) return;v2MKey=key;
+    m.innerHTML='';v2MCols=idx.map(function(i){
+      var c=document.createElement('span');c.className='mc';
+      c.innerHTML='<i class="mt"><i class="mu"></i><i class="md"></i></i><em></em><small></small>';
+      c.querySelector('em').textContent=tagOf(i);m.appendChild(c);
+      return {i:i,u:c.querySelector('.mu'),d:c.querySelector('.md'),v:c.querySelector('small'),k:''};
+    });
+  }
+  (function(){var m=$('#dMeter');if(m) m.addEventListener('click',function(){V2UI.meterBig=!V2UI.meterBig;v2UiSave();m.classList.toggle('big',!!V2UI.meterBig);feedback('ok')});if(m&&V2UI.meterBig) m.classList.add('big')})();
+  function v2MeterPaint(){
+    if(V2.v!=='drive'||document.hidden||!store.prefs.meter) return;
+    v2MeterBuild();
+    v2MCols.forEach(function(c){
+      var o=Math.round(rt.o[c.i]||0),a=Math.min(100,Math.abs(o)),q=Math.round(a/5)*5,lv=S.estop?'x':a<=55?'g':a<=80?'o':'r',k=(o<0?'-':'+')+q+lv;
+      if(k===c.k) return;c.k=k;
+      c.u.style.height=(o>0?q/2:0)+'%';c.d.style.height=(o<0?q/2:0)+'%';c.u.className='mu '+lv;c.d.className='md '+lv;
+      c.v.textContent=o?((o>0?'+':'')+o):'0';
+    });
+  }
+  setInterval(v2MeterPaint,100);
+  v2Click('#sMeter',function(){store.prefs.meter=!store.prefs.meter;save();v2Paint();feedback('ok')});
+
+  // ---- 10 · Widget gallery: picture cards with categories instead of a list of names ----
+  (function(){
+    var box=document.querySelector('#bdEditor .bd-types');if(!box) return;
+    var K={bdTS:'s',bdTJ:'j',bdTD:'d',bdTM:'m',bdTL:'l',bdTT:'t',bdTB:'b',bdTW:'w',bdTA:'a',bdTY:'y',bdTF:'f',bdTI:'i',bdTK:'k',bdTN:'n',bdTRS:'rs',bdTG:'g',bdTST:'st',bdTLV:'lv',bdTDP:'dp',bdTZ:'z',bdTE:'e',bdTPS:'ps'};
+    var CAT={drive:['s','j','d','m','st','dp','n','g','lv','rs','y'],light:['l','t','b','w'],meter:['f','i','k','z'],safe:['e','ps','a']};
+    box.classList.add('v2-gal2');
+    Array.prototype.forEach.call(box.querySelectorAll('button'),function(b){
+      var k=K[b.id];if(!k) return;b.setAttribute('data-cat',Object.keys(CAT).filter(function(c){return CAT[c].indexOf(k)>=0})[0]||'drive');
+      var lb=document.createElement('span');lb.className='gl';while(b.firstChild) lb.appendChild(b.firstChild);
+      var th=document.createElement('span');th.className='gt';th.innerHTML=v2KindIcon(k);
+      b.appendChild(th);b.appendChild(lb);
+    });
+    var tabs=document.createElement('div');tabs.className='v2-gtabs';tabs.setAttribute('role','group');tabs.setAttribute('aria-label','Widget type');
+    [['all','All'],['drive','Drive'],['light','Lights & buttons'],['meter','Meters'],['safe','Safety']].forEach(function(c,n){
+      var t=document.createElement('button');t.type='button';t.className='btn';t.textContent=c[1];t.setAttribute('aria-pressed',String(n===0));
+      t.addEventListener('click',function(){Array.prototype.forEach.call(tabs.children,function(x){x.setAttribute('aria-pressed',String(x===t))});
+        Array.prototype.forEach.call(box.querySelectorAll('button[data-cat]'),function(b){b.hidden=c[0]!=='all'&&b.getAttribute('data-cat')!==c[0]})});
+      tabs.appendChild(t);
+    });
+    box.parentNode.insertBefore(tabs,box);
   })();
 
+  // gallery pictures: one clear drawing per widget type (48 × 24)
+  function v2KindIcon(k){
+    var Y='#ffd84a',D='#0b0d11',S='#4a5260',G='#1D9E75',O='#EF9F27',R='#E24B4A',o='';
+    function kn(x,y,r){return '<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="#3a414d" stroke="#0d1015" stroke-width=".6"/><circle cx="'+x+'" cy="'+y+'" r="'+(r*.45)+'" fill="'+Y+'"/>'}
+    function ring(x,y,r,f,col){var n=12,s='';for(var q=0;q<n;q++){var a=(135+270*(q+.5)/n)*Math.PI/180,on=(q+.5)/n<=f;s+='<line x1="'+(x+(r-1.6)*Math.cos(a)).toFixed(1)+'" y1="'+(y+(r-1.6)*Math.sin(a)).toFixed(1)+'" x2="'+(x+r*Math.cos(a)).toFixed(1)+'" y2="'+(y+r*Math.sin(a)).toFixed(1)+'" stroke="'+(on?(col||G):'#3a414d')+'" stroke-width="1.6"/>'}return s}
+    function pill(x,y,w,h,txt,f,c){return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="'+(h/2)+'" fill="'+(f||'#2a303b')+'" stroke="'+S+'" stroke-width=".4"/>'+(txt?'<text x="'+(x+w/2)+'" y="'+(y+h/2+1.6)+'" font-size="4.4" font-weight="900" text-anchor="middle" fill="'+(c||'#c5ccd6')+'">'+txt+'</text>':'')}
+    switch(k){
+      case 's': o='<rect x="22.5" y="2" width="3" height="20" rx="1.5" fill="#3a414d"/>'+kn(24,10,3.6);break;
+      case 'j': o='<circle cx="24" cy="12" r="10" fill="'+D+'" stroke="'+S+'" stroke-width=".5"/>'+kn(27,9,3.8);break;
+      case 'd': o='<circle cx="13" cy="12" r="9" fill="'+D+'" stroke="'+S+'" stroke-width=".5"/>'+kn(13,12,3.2)+'<circle cx="35" cy="12" r="9" fill="'+D+'" stroke="'+S+'" stroke-width=".5"/>'+kn(35,12,3.2);break;
+      case 'm': o='<rect x="15" y="2" width="3" height="20" rx="1.5" fill="#3a414d"/>'+kn(16.5,9,3)+'<rect x="30" y="2" width="3" height="20" rx="1.5" fill="#3a414d"/>'+kn(31.5,15,3);break;
+      case 'l': o=pill(8,7,32,10,'',null)+'<circle cx="14" cy="12" r="3.4" fill="'+R+'"/>'+'<text x="27" y="13.6" font-size="4.4" font-weight="900" text-anchor="middle" fill="#c5ccd6">OFF</text>';break;
+      case 't': o=pill(12,7,24,10,'','#ffc400')+'<circle cx="31" cy="12" r="3.6" fill="#1b1b1b"/>';break;
+      case 'b': o=pill(8,6,32,12,'TURBO');break;
+      case 'w': o=pill(4,7,12,10,'◀')+pill(18,7,12,10,'■','#ffc400','#c00')+pill(32,7,12,10,'▶');break;
+      case 'a': o='<circle cx="24" cy="12" r="8.5" fill="none" stroke="'+S+'" stroke-width="1.2"/><path d="M24 7v5l3.4 2" stroke="'+Y+'" stroke-width="1.4" fill="none" stroke-linecap="round"/>';break;
+      case 'y': o='<path d="M8 20 L20 20 L34 5 L40 5" stroke="'+Y+'" stroke-width="1.6" fill="none"/>';break;
+      case 'f': o=ring(24,14,10,.62);break;
+      case 'i': for(var q=0;q<8;q++) o+='<rect x="'+(10+q*3.8)+'" y="5" width="2.6" height="14" rx=".6" fill="'+(q<4?G:q<6?O:q<7?R:'#3a414d')+'"/>';break;
+      case 'k': o='<rect x="6" y="3" width="36" height="18" rx="2" fill="'+D+'" stroke="'+S+'" stroke-width=".4"/><polyline points="7,15 13,15 17,8 22,17 27,6 32,12 41,12" fill="none" stroke="'+G+'" stroke-width="1.1"/>';break;
+      case 'n': o=ring(24,12,9,.55,Y)+kn(24,12,5.5);break;
+      case 'rs': o=ring(24,12,9,1,'#3a414d')+'<circle cx="24" cy="12" r="5.5" fill="#3a414d"/><line x1="24" y1="12" x2="27.5" y2="8" stroke="'+Y+'" stroke-width="1.4"/>';for(var q2=0;q2<6;q2++){var a2=(210+q2*24)*Math.PI/180;o+='<circle cx="'+(24+11.5*Math.cos(a2)).toFixed(1)+'" cy="'+(12+11.5*Math.sin(a2)).toFixed(1)+'" r=".9" fill="'+(q2===2?Y:'#6b7280')+'"/>'}break;
+      case 'g': o='<text x="24" y="16" font-size="12" font-weight="900" text-anchor="middle" fill="'+Y+'">D</text>'+pill(6,8,8,8,'R')+pill(34,8,8,8,'3');break;
+      case 'st': o='<circle cx="24" cy="12" r="9" fill="none" stroke="#6b7280" stroke-width="2.4"/><circle cx="24" cy="12" r="2.6" fill="'+Y+'"/><path d="M15.2 12h6.2M26.6 12h6.2M24 14.6v6" stroke="#6b7280" stroke-width="2"/>';break;
+      case 'lv': o='<rect x="22.5" y="3" width="3" height="18" rx="1.5" fill="#3a414d"/><text x="31" y="7" font-size="4" fill="#8a93a0">1</text><text x="31" y="13" font-size="4" fill="#8a93a0">N</text><text x="31" y="19" font-size="4" fill="#8a93a0">R</text>'+kn(24,9,3.2);break;
+      case 'dp': o='<path d="M20 3h8v6h6v8h-6v6h-8v-6h-6V9h6z" fill="#2a303b" stroke="'+S+'" stroke-width=".5"/><path d="M24 5l2 3h-4z" fill="'+Y+'"/>';break;
+      case 'z': o='<text x="24" y="15.5" font-size="8.5" font-weight="900" text-anchor="middle" fill="#e8e8ea">12:30</text>';break;
+      case 'e': o='<circle cx="24" cy="12" r="9" fill="'+R+'"/><text x="24" y="13.6" font-size="4.4" font-weight="900" text-anchor="middle" fill="#fff">STOP</text>';break;
+      case 'ps': o=ring(24,12,10,1,Y)+'<circle cx="24" cy="12" r="6.5" fill="#2a303b" stroke="'+Y+'" stroke-width=".6"/><text x="24" y="13.4" font-size="3.6" font-weight="900" text-anchor="middle" fill="#fff">START</text>';break;
+    }
+    return '<svg viewBox="0 0 48 24" aria-hidden="true">'+o+'</svg>';
+  }
+  // ---- 4 · Gamepad picture: tap a button on the picture or press it on the gamepad ----
+  var V2GPOS={0:[150,62],1:[163,49],2:[137,49],3:[150,36],4:[52,14],5:[148,14],10:[78,74],11:[122,74],12:[50,40],13:[50,58],14:[41,49],15:[59,49]};
+  function v2GpDraw(){
+    var host=$('#gpPic');if(!host) return;
+    var o='<svg viewBox="0 0 200 104" class="gp-svg" aria-hidden="true"><path d="M44 22 Q56 12 80 14 L120 14 Q144 12 156 22 L176 72 Q182 98 160 100 Q146 100 136 84 L64 84 Q54 100 40 100 Q18 98 24 72 Z" class="gp-body"/>';
+    o+='<rect x="38" y="8" width="28" height="9" rx="4" class="gp-sh"/><rect x="134" y="8" width="28" height="9" rx="4" class="gp-sh"/>';
+    PAD_BTNS.forEach(function(b){var p=V2GPOS[b];if(!p) return;var on=!!C.pad.map[b],r=(b===10||b===11)?9:(b>=12?6:6.5);
+      o+='<g class="gp-b'+(on?' on':'')+'" data-b="'+b+'"><circle cx="'+p[0]+'" cy="'+p[1]+'" r="'+r+'"/><text x="'+p[0]+'" y="'+(p[1]+2.6)+'" text-anchor="middle">'+({12:'▲',13:'▼',14:'◀',15:'▶'}[b]||BTN_NAMES[b])+'</text></g>'});
+    host.innerHTML=o+'</svg>';
+    Array.prototype.forEach.call(host.querySelectorAll('.gp-b'),function(g){g.addEventListener('click',function(){v2GpFocus(+g.getAttribute('data-b'),false)})});
+  }
+  function v2GpFocus(b,press){
+    var host=$('#gpPic'),d=document.querySelector('#padCard details.adv');if(d) d.open=true;
+    if(host) Array.prototype.forEach.call(host.querySelectorAll('.gp-b'),function(g){g.classList.toggle('sel',+g.getAttribute('data-b')===b)});
+    var rows=document.querySelectorAll('#gpMap .pm'),i=PAD_BTNS.indexOf(b),row=rows[i];
+    Array.prototype.forEach.call(rows,function(r){r.classList.toggle('v2sel',r===row)});
+    if(row){try{row.scrollIntoView({block:'center',behavior:'smooth'})}catch(_){}var sel=row.querySelector('select');if(sel&&!press) try{sel.focus()}catch(_){}}
+    if(press) v2T($('#gpHint'),'Button '+BTN_NAMES[b]+' found: pick what it does.');
+  }
+  window.v2GpPress=function(b){if(V2.v==='m-pad'&&BTN_NAMES[b]) v2GpFocus(b,true)};
+  (function(){var m=$('#gpMap');if(m) m.addEventListener('change',function(){v2GpDraw()})})();
+
+  // ---- 11 · Quick settings: pull the status pill down (or hold it) ----
+  var v2QS=null;
+  function v2QuickOpen(){
+    if(v2QS) return;
+    var ov=document.createElement('div');ov.className='v2-qs';ov.id='v2QS';
+    ov.innerHTML='<div class="qs-in" role="dialog" aria-label="Quick settings"><i class="qs-h" aria-hidden="true"></i><div class="qs-g"></div><button type="button" class="qs-es"></button></div>';
+    var g=ov.querySelector('.qs-g');
+    function tile(ic,label,on,fn,hold){
+      var b=document.createElement('button');b.type='button';b.className='qs-t'+(on?' on':'');b.innerHTML=v2Ic(ic)+'<span></span>'+(hold?'<small></small>':'');
+      b.querySelector('span').textContent=label;if(hold) b.querySelector('small').textContent='hold 2 s';
+      if(hold) v2PlayHold(b,function(){fn();v2QuickClose()});else b.addEventListener('click',function(){fn();v2QuickClose()});
+      g.appendChild(b);
+    }
+    tile('bt','Bluetooth',S.bt!==false,function(){$('#btBtn').click()});
+    tile('cap','Practice',!!store.prefs.practice,function(){v2Practice(!store.prefs.practice)});
+    tile('globe',store.prefs.lang==='ms'?'English':'Bahasa Melayu',false,function(){$('#sLang').click()});
+    tile('sync',S.connected?'Disconnect':'Connect hub',!!S.connected,function(){v2Conn()});
+    tile('shield',store.prefs.lock?'Unlock':'Lock settings',!!store.prefs.lock,function(){if(store.prefs.lock){store.prefs.lock=false;save();applyLock()}else lockBtn.click()},!!store.prefs.lock);
+    tile('vibe',store.prefs.ui==='light'?'Dark theme':'Light theme',false,function(){$('#sLight').click()});
+    var es=ov.querySelector('.qs-es');
+    if(S.estop){es.textContent='Release E-Stop (hold 1 s)';var t=0;es.addEventListener('pointerdown',function(){t=setTimeout(function(){setEstop(false);feedback('ok');v2QuickClose()},1000)});['pointerup','pointercancel','pointerleave'].forEach(function(ev){es.addEventListener(ev,function(){clearTimeout(t)})})}
+    else{es.textContent='E-Stop';es.addEventListener('click',function(){setEstop(true);v2QuickClose()})}
+    ov.addEventListener('click',function(e){if(e.target===ov) v2QuickClose()});
+    var sy=0;ov.querySelector('.qs-h').addEventListener('pointerdown',function(e){sy=e.clientY});
+    ov.addEventListener('pointerup',function(e){if(sy&&e.clientY-sy<-30) v2QuickClose();sy=0});
+    document.body.appendChild(ov);v2QS=ov;requestAnimationFrame(function(){ov.classList.add('open')});feedback('ok');
+  }
+  function v2QuickClose(){if(!v2QS) return;var o=v2QS;v2QS=null;o.classList.remove('open');setTimeout(function(){o.remove()},180)}
+  (function(){
+    var pl=$('#v2Pill');if(!pl) return;var y0=0,t=0,fired=false;
+    pl.addEventListener('pointerdown',function(e){y0=e.clientY;fired=false;clearTimeout(t);t=setTimeout(function(){fired=true;v2QuickOpen()},550)});
+    pl.addEventListener('pointermove',function(e){if(y0&&!fired&&e.clientY-y0>26){fired=true;clearTimeout(t);v2QuickOpen()}});
+    ['pointerup','pointercancel','pointerleave'].forEach(function(ev){pl.addEventListener(ev,function(){clearTimeout(t);y0=0})});
+    // a hold or pull opened the panel: do not also connect
+    pl.addEventListener('click',function(e){if(fired){e.stopImmediatePropagation();e.preventDefault();fired=false}},true);
+  })();
+
+  // ---- 12 · Interactive guide: spotlight on the real controls, step by step ----
+  var V2CO=[
+    {t:'Welcome to MK6 Console',b:'Drive up to three Mould King 6.0 hubs from your phone. This guide shows the real buttons, step by step.',welcome:true},
+    {v:'home',q:'#hPS',t:'Start',b:'Turn the hub on, then hold START for half a second. The ring turns yellow when the hub answers.'},
+    {v:'drive',q:'#boardGrid > .bdw:not(.v2-es):not([data-k=ps])',t:'Drive',b:'Move the controls to drive. Lift your finger and they go back to 0.'},
+    {v:'drive',q:'#estop',t:'E-Stop',b:'E-Stop stops every motor at once. Tap it again to release.'},
+    {v:'drive',q:'#tabbar [data-tab=models]',t:'Your models',b:'Make your own board, start from a template, or share a model with a friend.'}
+  ];
+  var v2Co={i:0,el:null};
+  function guideOpen(){v2Co.i=0;v2CoShow()}
+  function guideClose(){
+    if(v2Co.el){v2Co.el.remove();v2Co.el=null}
+    if(!store.prefs.seen){store.prefs.seen=true;save()}
+  }
+  function guideRender(){if(v2Co.el) v2CoShow()}
+  function v2CoShow(){
+    var st=V2CO[v2Co.i];if(!st){guideClose();return}
+    if(st.v&&V2.v!==st.v) v2Go(st.v);
+    if(!v2Co.el){var ov=document.createElement('div');ov.id='guide';ov.className='v2-co';document.body.appendChild(ov);v2Co.el=ov}
+    var ov=v2Co.el;ov.innerHTML='<div class="co-hole" hidden></div><i class="co-hand" hidden aria-hidden="true"></i><div class="co-card" role="dialog" aria-modal="true"><div class="co-dots"></div><b class="co-t"></b><p class="co-b"></p><div class="co-x"></div><div class="co-nav"><button type="button" class="btn" id="gSkip">Skip</button><span class="spacer"></span><button type="button" class="btn" id="gNext" aria-pressed="true"></button></div></div>';
+    ov.querySelector('.co-t').textContent=st.t;ov.querySelector('.co-b').textContent=st.b;
+    var dots=ov.querySelector('.co-dots');V2CO.forEach(function(_,n){var d=document.createElement('i');if(n===v2Co.i) d.className='on';dots.appendChild(d)});
+    var nx=ov.querySelector('#gNext');nx.textContent=v2Co.i===V2CO.length-1?'Done':'Next';
+    nx.addEventListener('click',function(){v2Co.i++;if(v2Co.i>=V2CO.length){guideClose();return}v2CoShow()});
+    ov.querySelector('#gSkip').addEventListener('click',guideClose);
+    if(st.welcome){
+      var x=ov.querySelector('.co-x');
+      [['en','English'],['ms','Bahasa Melayu']].forEach(function(l){var b=document.createElement('button');b.type='button';b.className='btn';b.textContent=l[1];b.setAttribute('aria-pressed',String(store.prefs.lang===l[0]));
+        b.addEventListener('click',function(){if(store.prefs.lang!==l[0]){store.prefs.lang=l[0];save();applyLang();v2CoShow()}});x.appendChild(b)});
+      var tw=document.createElement('button');tw.type='button';tw.className='btn';tw.textContent='Try without a hub';
+      tw.addEventListener('click',function(){guideClose();v2Practice(true);if(!S.connected) v2Conn();v2Go('drive')});x.appendChild(tw);
+      ov.classList.add('center');
+    }else ov.classList.remove('center');
+    setTimeout(v2CoPlace,140);
+  }
+  function v2CoPlace(){
+    var ov=v2Co.el;if(!ov) return;var st=V2CO[v2Co.i],hole=ov.querySelector('.co-hole'),hand=ov.querySelector('.co-hand'),card=ov.querySelector('.co-card');
+    var tg=st.q?document.querySelector(st.q):null;
+    if(tg&&tg.getClientRects().length){
+      try{tg.scrollIntoView({block:'center'})}catch(_){}
+      var r=tg.getBoundingClientRect(),pad=8;
+      hole.hidden=false;hole.style.left=(r.left-pad)+'px';hole.style.top=(r.top-pad)+'px';hole.style.width=(r.width+pad*2)+'px';hole.style.height=(r.height+pad*2)+'px';
+      hole.style.borderRadius=Math.min(28,Math.max(r.width,r.height)/2+pad)+'px';
+      hand.hidden=false;hand.style.left=(r.left+r.width*0.6)+'px';hand.style.top=(r.top+r.height*0.55)+'px';
+      var below=r.top+r.height/2<innerHeight/2;
+      card.style.top=below?Math.min(innerHeight-card.offsetHeight-12,r.bottom+18)+'px':'auto';card.style.bottom=below?'auto':Math.max(12,innerHeight-r.top+18)+'px';
+    }else{hole.hidden=true;hand.hidden=true;card.style.top='';card.style.bottom=''}
+  }
+  window.addEventListener('resize',function(){if(v2Co.el) v2CoPlace()});
+  // =====================================================================================
   // the first syncAll() runs before the board is set up; draw the board once everything exists
   try{syncBoard()}catch(_){}
   v2Theme();

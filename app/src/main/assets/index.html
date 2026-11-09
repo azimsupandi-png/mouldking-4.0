@@ -191,15 +191,6 @@ textarea.txt{padding:8px;font-family:var(--f-mono);font-size:12px;line-height:1.
 .log{margin:0;height:11.5em;padding:10px;border-radius:6px;background:var(--well);font-family:var(--f-mono);font-size:12px;line-height:1.5;overflow:auto;white-space:pre;font-variant-numeric:tabular-nums}
 .stats{display:flex;justify-content:space-between;margin-top:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted)}
 .note{margin:10px 0 0;font-size:12px;color:var(--muted);max-width:65ch}
-.guide{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.72)}
-.guide-box{width:min(100%,440px);max-height:92vh;overflow:auto;padding:20px;border-radius:14px;background:var(--panel);border:1px solid var(--line);box-shadow:0 12px 40px rgba(0,0,0,.6)}
-.guide-box h2{color:var(--fg);font-size:22px;margin:6px 0 10px}
-.guide-box p{margin:0 0 16px;font-size:15px;line-height:1.5}
-.guide-dots{display:flex;gap:6px}
-.guide-dots i{width:22px;height:5px;border-radius:3px;background:var(--line)}
-.guide-dots i.on{background:var(--acc)}
-.guide-nav{margin:16px 0 0}
-.guide-nav .btn[id=gNext]{background:var(--acc);color:#111;border-color:var(--acc);font-weight:600}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:50;max-width:min(92vw,420px);padding:12px 16px;border-radius:10px;
   background:var(--fg);color:var(--bg);font-size:14px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.45);animation:slide .2s ease-out}
 .pm{display:grid;grid-template-columns:minmax(0,5.5em) minmax(0,1fr);align-items:center;gap:8px;font-size:13px}
@@ -322,7 +313,7 @@ textarea.txt{padding:8px;font-family:var(--f-mono);font-size:12px;line-height:1.
 :root[data-skin="studs"] .pad::before{inset:-7px;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));display:block}
 :root[data-skin="studs"] .bd-pads,:root[data-skin="studs"] .cols.dual .pads{gap:26px}
 :root[data-skin="studs"] .bd-pads .pad,:root[data-skin="studs"] .cols.dual .pad{margin-bottom:10px}
-:root[data-skin="studs"] #swatches,#swatches{display:none}
+
 :root[data-skin="studs"] .pad{background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='13'%3E%3Cpath d='M10 0l10 13H0z' fill='%23ffc400' fill-opacity='.95'/%3E%3C/svg%3E") center 3.5%/20px 13px no-repeat,
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='13'%3E%3Cpath d='M10 13L0 0h20z' fill='%23ffc400' fill-opacity='.95'/%3E%3C/svg%3E") center 96.5%/20px 13px no-repeat,
@@ -440,7 +431,7 @@ textarea.txt{padding:8px;font-family:var(--f-mono);font-size:12px;line-height:1.
 .pl-note{color:var(--muted);font-size:14px}
 .pl-stop{min-height:88px;border:0;border-radius:10px;background:var(--danger);color:#fff;font-family:var(--f-display);font-size:30px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
 .pl-exit.hold{background:var(--acc);color:#fff}
-:root[data-lock] #spdSeg,:root[data-lock] #spdLbl,:root[data-lock] #limLbl,:root[data-lock] #limSeg,:root[data-lock] #recCard,:root[data-lock] #kidRow,:root[data-lock] #setCard,:root[data-lock] #seqCard,:root[data-lock] #calCard,:root[data-lock] #padCard,:root[data-lock] .model-row,:root[data-lock] details.adv,:root[data-lock] .ch .inv,:root[data-lock] .padbox .seg,:root[data-lock] .padbox .maprow,:root[data-lock] .padbox .spr-row{display:none}
+:root[data-lock] #limLbl,:root[data-lock] #limSeg,:root[data-lock] #recCard,:root[data-lock] #kidRow,:root[data-lock] #setCard,:root[data-lock] #seqCard,:root[data-lock] #calCard,:root[data-lock] #padCard,:root[data-lock] .model-row,:root[data-lock] details.adv,:root[data-lock] .ch .inv,:root[data-lock] .padbox .seg,:root[data-lock] .padbox .maprow,:root[data-lock] .padbox .spr-row{display:none}
 :root[data-lock] #profWiz,:root[data-lock] #profTest,:root[data-lock] #testNote,:root[data-lock] #wizPanel{display:none}
 :root[data-lock] #profName,:root[data-lock] .ch .name{pointer-events:none}
 
@@ -618,13 +609,13 @@ textarea.txt{padding:8px;font-family:var(--f-mono);font-size:12px;line-height:1.
 .bdw .tgd.on[data-d="1"] i,.bdw .tgd.on[data-d="-1"] i{color:#12a02e}
 
 /* ---- Model card buttons: 3D material, consistent sizes ---- */
-:root #spdSeg,:root #limSeg,:root .model-row{row-gap:14px}
-:root #spdSeg,:root #limSeg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding-bottom:6px}
+:root #limSeg,:root .model-row{row-gap:14px}
+:root #limSeg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding-bottom:6px}
 :root .model-row .seg[aria-label="Layout"]{gap:12px 10px;padding-bottom:6px}
-#spdSeg .btn,#limSeg .btn,:root .model-row .seg[aria-label="Layout"] .btn,:root #profWiz,:root #profTest,:root #profNew,:root #profDel,:root .prof-wrap #profRen{--mOff:linear-gradient(#444c5c,#2a303b 50%,#1b2028);--mOn:radial-gradient(ellipse 70% 55% at 50% 8%,rgba(255,255,255,.7),rgba(255,255,255,0) 70%),linear-gradient(#ffdc55,#f4b800 48%,#c68700);height:46px;min-height:0;padding:0 8px;box-sizing:border-box;border-radius:23px;border:2px solid #0d1015;background:var(--mOff);color:#e6e9ee;font-weight:800;font-size:14px;letter-spacing:.03em;text-shadow:0 1px 0 rgba(0,0,0,.65);box-shadow:0 6px 9px rgba(0,0,0,.7),inset 0 2px 2px rgba(255,255,255,.2),inset 0 -4px 6px rgba(0,0,0,.55);transition:transform .08s,box-shadow .08s;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;min-width:0;white-space:nowrap}
-#spdSeg .btn[aria-pressed="true"],#limSeg .btn[aria-pressed="true"],:root .model-row .seg[aria-label="Layout"] .btn[aria-pressed="true"],:root #profWiz[aria-pressed="true"],:root #profTest[aria-pressed="true"],:root #profNew[aria-pressed="true"],:root #profDel[aria-pressed="true"],:root .prof-wrap #profRen[aria-pressed="true"]{border-color:#6b4600;background:var(--mOn);color:#2a1c00;text-shadow:0 1px 0 rgba(255,255,255,.4);box-shadow:0 6px 9px rgba(0,0,0,.7),inset 0 -5px 7px rgba(90,50,0,.55),inset 0 2px 3px rgba(255,255,255,.6)}
-#spdSeg .btn:active,#limSeg .btn:active,:root .model-row .seg[aria-label="Layout"] .btn:active,:root #profWiz:active,:root #profTest:active,:root #profNew:active,:root #profDel:active,:root .prof-wrap #profRen:active{transform:translateY(2px);box-shadow:0 3px 5px rgba(0,0,0,.7),inset 0 2px 2px rgba(255,255,255,.2),inset 0 -4px 6px rgba(0,0,0,.55)}
-#spdSeg .btn[aria-pressed="true"]:active,#limSeg .btn[aria-pressed="true"]:active,:root .model-row .seg[aria-label="Layout"] .btn[aria-pressed="true"]:active,:root #profWiz[aria-pressed="true"]:active,:root #profTest[aria-pressed="true"]:active,:root #profNew[aria-pressed="true"]:active,:root #profDel[aria-pressed="true"]:active,:root .prof-wrap #profRen[aria-pressed="true"]:active{box-shadow:0 3px 5px rgba(0,0,0,.7),inset 0 -5px 7px rgba(90,50,0,.55),inset 0 2px 3px rgba(255,255,255,.6)}
+#limSeg .btn,:root .model-row .seg[aria-label="Layout"] .btn,:root #profWiz,:root #profTest,:root #profNew,:root #profDel,:root .prof-wrap #profRen{--mOff:linear-gradient(#444c5c,#2a303b 50%,#1b2028);--mOn:radial-gradient(ellipse 70% 55% at 50% 8%,rgba(255,255,255,.7),rgba(255,255,255,0) 70%),linear-gradient(#ffdc55,#f4b800 48%,#c68700);height:46px;min-height:0;padding:0 8px;box-sizing:border-box;border-radius:23px;border:2px solid #0d1015;background:var(--mOff);color:#e6e9ee;font-weight:800;font-size:14px;letter-spacing:.03em;text-shadow:0 1px 0 rgba(0,0,0,.65);box-shadow:0 6px 9px rgba(0,0,0,.7),inset 0 2px 2px rgba(255,255,255,.2),inset 0 -4px 6px rgba(0,0,0,.55);transition:transform .08s,box-shadow .08s;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;min-width:0;white-space:nowrap}
+#limSeg .btn[aria-pressed="true"],:root .model-row .seg[aria-label="Layout"] .btn[aria-pressed="true"],:root #profWiz[aria-pressed="true"],:root #profTest[aria-pressed="true"],:root #profNew[aria-pressed="true"],:root #profDel[aria-pressed="true"],:root .prof-wrap #profRen[aria-pressed="true"]{border-color:#6b4600;background:var(--mOn);color:#2a1c00;text-shadow:0 1px 0 rgba(255,255,255,.4);box-shadow:0 6px 9px rgba(0,0,0,.7),inset 0 -5px 7px rgba(90,50,0,.55),inset 0 2px 3px rgba(255,255,255,.6)}
+#limSeg .btn:active,:root .model-row .seg[aria-label="Layout"] .btn:active,:root #profWiz:active,:root #profTest:active,:root #profNew:active,:root #profDel:active,:root .prof-wrap #profRen:active{transform:translateY(2px);box-shadow:0 3px 5px rgba(0,0,0,.7),inset 0 2px 2px rgba(255,255,255,.2),inset 0 -4px 6px rgba(0,0,0,.55)}
+#limSeg .btn[aria-pressed="true"]:active,:root .model-row .seg[aria-label="Layout"] .btn[aria-pressed="true"]:active,:root #profWiz[aria-pressed="true"]:active,:root #profTest[aria-pressed="true"]:active,:root #profNew[aria-pressed="true"]:active,:root #profDel[aria-pressed="true"]:active,:root .prof-wrap #profRen[aria-pressed="true"]:active{box-shadow:0 3px 5px rgba(0,0,0,.7),inset 0 -5px 7px rgba(90,50,0,.55),inset 0 2px 3px rgba(255,255,255,.6)}
 :root .model-row .seg[aria-label="Layout"] .btn{flex:none}
 :root .prof-wrap #profRen{flex:none;width:46px;min-width:46px;padding:0;font-size:18px}
 :root #profDel{color:#ff9a9a}
@@ -650,7 +641,7 @@ textarea.txt{padding:8px;font-family:var(--f-mono);font-size:12px;line-height:1.
 /* ---- Model row: labels and fields line up ---- */
 :root .model-row:first-of-type{align-items:flex-start}
 :root .model-row label select,:root .model-row label input.txt,:root .model-row label input[type=text]{height:46px;box-sizing:border-box}
-:root #spdSeg,:root #limSeg{padding-bottom:2px}
+:root #limSeg{padding-bottom:2px}
 
 /* ---- Landscape: scale controls to the short screen height ---- */
 @media (orientation:landscape) and (max-height:520px){
@@ -663,7 +654,7 @@ textarea.txt{padding:8px;font-family:var(--f-mono);font-size:12px;line-height:1.
   :root .bdw .tgd{height:40px}
   :root .bdw .tgl .led{width:18px;height:18px}
   :root[data-skin="studs"] .bdw .qbtn.lbtn{height:38px;min-height:38px}
-  :root .seg[aria-label="Stick mode"] .btn,:root #spdSeg .btn,:root #limSeg .btn,:root .model-row .seg[aria-label="Layout"] .btn,:root #profWiz,:root #profTest,:root #profNew,:root #profDel{height:38px;font-size:13px}
+  :root .seg[aria-label="Stick mode"] .btn,:root #limSeg .btn,:root .model-row .seg[aria-label="Layout"] .btn,:root #profWiz,:root #profTest,:root #profNew,:root #profDel{height:38px;font-size:13px}
   :root .prof-wrap #profRen{width:38px;min-width:38px;height:38px}
   :root .model-row label select,:root .model-row label input.txt,:root .model-row label input[type=text]{height:38px}
   :root .bdw .hold{min-height:48px}
@@ -1475,6 +1466,86 @@ main.v2-in-r{animation:v2inR .15s ease-out}main.v2-in-l{animation:v2inL .15s eas
 @media (prefers-reduced-motion:reduce){main.v2-in-r,main.v2-in-l{animation:none}}
 
 
+/* ---------- 3 · drive mode row + play time chip ---------- */
+#dMode,#dMeter{display:none}
+html[data-v=drive]:not(.dash) main > #dMode{display:flex!important}
+html[data-v=drive]:not(.dash) main > #dMeter:not([hidden]){display:flex!important}
+.v2-dmode{align-items:center;gap:10px;margin-top:10px!important}
+.v2-seg3{flex:1 1 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:3px;border:1px solid var(--line);border-radius:20px;background:var(--well)}
+.v2-seg3 button{min-height:34px;border:0;border-radius:17px;background:none;color:var(--fg);font:700 13.5px var(--f-body);cursor:pointer}
+.v2-seg3 button[aria-pressed=true]{background:var(--acc);color:#1b1b1b}
+html[data-lock] #dMode [data-lp="2"]{display:none}html[data-lock] .v2-seg3{grid-template-columns:repeat(2,1fr)}
+.v2-ptime{flex:none;display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:0 12px;border:1px solid var(--line);border-radius:17px;background:var(--well);font:700 13px var(--f-mono,monospace);color:var(--ok)}
+.v2-ptime .ic{width:16px;height:16px}.v2-ptime.low{color:var(--danger);border-color:var(--danger)}
+/* ---------- 7 · live output meter ---------- */
+.v2-meter{width:100%;gap:6px;align-items:flex-end;margin-top:8px!important;padding:6px 10px;border:1px solid var(--line);border-radius:12px;background:var(--well);cursor:pointer}
+.v2-meter .mc{flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.v2-meter .mt{position:relative;display:block;width:100%;max-width:26px;height:14px;border-radius:4px;background:rgba(150,160,175,.18)}
+.v2-meter .mt::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(150,160,175,.45)}
+.v2-meter .mu,.v2-meter .md{position:absolute;left:2px;right:2px;height:0;border-radius:2px;transition:height .1s}
+.v2-meter .mu{bottom:50%}.v2-meter .md{top:50%}
+.v2-meter .g{background:#1D9E75}.v2-meter .o{background:#EF9F27}.v2-meter .r{background:#E24B4A}.v2-meter .x{background:#6b7280}
+.v2-meter em,.v2-meter small{display:none;font-style:normal}
+.v2-meter.big .mt{height:56px;background:repeating-linear-gradient(0deg,rgba(150,160,175,.18) 0 4px,transparent 4px 6px)}
+.v2-meter.big em{display:block;font:900 12px var(--f-body);color:var(--fg)}.v2-meter.big small{display:block;font:600 10.5px var(--f-mono,monospace);color:var(--muted)}
+/* ---------- 9 · widget sizes (1×1, 2×1, 1×2, 2×2) + 1 · trim buttons ---------- */
+.bdgrid{grid-auto-flow:row dense}
+.bdw.h2{grid-row:span 2}
+.bdw-trim{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:2px}
+.bdw-trim .trb{width:34px;height:26px;border-radius:13px;border:1px solid #3a414d;background:#12151b;color:#c5ccd6;font-size:11px;cursor:pointer}
+.bdw-trim .trb:active{background:#2a303b}
+.bdw-trim b{min-width:30px;text-align:center;font:800 12px var(--f-mono,monospace);color:#8a93a0;cursor:pointer}.bdw-trim b.on{color:#ffd84a}
+/* ---------- 8 · model colour (widgets of this model; E-Stop, START/STOP, lights and meters keep their colours) ---------- */
+html[data-macc="1"]{--mhue:-45deg}html[data-macc="2"]{--mhue:160deg}html[data-macc="3"]{--mhue:112deg}html[data-macc="4"]{--mhue:232deg}html[data-macc="5"]{--mhue:0deg;--msat:0}
+html[data-macc] #boardGrid > .bdw:not(.v2-es):not([data-k=i]):not([data-k=f]):not([data-k=k]):not([data-k=l]):not([data-k=ps]):not([data-k=e]) > :not(.bdw-ed),
+html[data-macc] .v2-previn .bdw:not(.v2-es):not([data-k=i]):not([data-k=f]):not([data-k=k]):not([data-k=l]):not([data-k=ps]):not([data-k=e]) > *{filter:hue-rotate(var(--mhue)) saturate(var(--msat,1))}
+html[data-macc] .v2-mchip .v2-knob.sm,html[data-macc] #scrHome .v2-mrow .v2-knob{box-shadow:0 0 0 2px var(--macc),0 3px 6px rgba(0,0,0,.5)}
+.v2-mcard.v2on{border-color:var(--mc,var(--acc));box-shadow:0 0 0 1px var(--mc,var(--acc))}
+.swatches{margin-top:4px;gap:8px!important;flex-wrap:nowrap!important}.swatches .sw{width:28px;height:28px;flex:none}
+/* ---------- 10 · widget gallery ---------- */
+.v2-gtabs{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
+.v2-gtabs .btn{flex:none;min-height:32px;padding:0 12px;font-size:13px;border-radius:16px}
+.bd-types.v2-gal2{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.bd-types.v2-gal2 > .btn{display:flex!important;flex-direction:column;align-items:stretch;gap:5px;height:auto!important;min-height:0!important;padding:6px!important;border-radius:14px!important;white-space:normal!important;line-height:1.15}
+.bd-types.v2-gal2 > .btn[hidden]{display:none!important}
+.bd-types.v2-gal2 .gt{display:block;aspect-ratio:2/1;border-radius:9px;background:#0b0d11;overflow:hidden}
+.bd-types.v2-gal2 .gt svg{display:block;width:100%;height:100%}
+.bd-types.v2-gal2 .gl{font-size:11.5px;font-weight:700;text-align:center}
+/* ---------- 4 · gamepad picture ---------- */
+.v2-gp{max-width:360px;margin:6px auto 0}
+.gp-svg{display:block;width:100%}
+.gp-body{fill:#1d222b;stroke:#6b7280;stroke-width:1.2}.gp-sh{fill:#2a303b}
+.gp-b{cursor:pointer}.gp-b circle{fill:#0b0d11;stroke:#4a5260;stroke-width:1}.gp-b text{font:800 5.6px sans-serif;fill:#c5ccd6;pointer-events:none}
+.gp-b.on circle{stroke:#ffd84a;stroke-width:1.4}.gp-b.sel circle{fill:#ffd84a}.gp-b.sel text{fill:#1b1b1b}
+.v2-gph{text-align:center;font-size:12.5px;margin:4px 0 8px}
+#gpMap .pm.v2sel{outline:2px solid var(--acc);outline-offset:3px;border-radius:8px}
+/* ---------- 11 · quick settings panel ---------- */
+.v2-qs{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,0);transition:background .18s}
+.v2-qs.open{background:rgba(0,0,0,.45)}
+.qs-in{position:absolute;left:10px;right:10px;top:calc(env(safe-area-inset-top,0px) + 8px);padding:12px 12px 14px;border:1px solid var(--line);border-radius:20px;background:var(--panel);box-shadow:0 18px 40px rgba(0,0,0,.5);transform:translateY(-120%);transition:transform .2s ease-out}
+.v2-qs.open .qs-in{transform:none}
+.qs-h{display:block;width:40px;height:4px;margin:0 auto 12px;border-radius:2px;background:var(--line)}
+.qs-g{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.qs-t{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border:1px solid var(--line);border-radius:14px;background:var(--well);color:var(--fg);font:700 13.5px var(--f-body);text-align:left;cursor:pointer;flex-wrap:wrap}
+.qs-t span{flex:1 1 auto;min-width:0}.qs-t small{flex-basis:100%;margin:-8px 0 6px 32px;font-size:10.5px;color:var(--muted)}
+.qs-t.on{background:var(--acc);border-color:var(--acc);color:#1b1b1b}.qs-t.on small{color:#3a2a00}
+.qs-t.holding{outline:2px solid var(--acc)}
+.qs-es{width:100%;min-height:48px;margin-top:10px;border:0;border-radius:24px;background:radial-gradient(circle at 40% 25%,#ff6b66,#e01f1f 60%,#9a0f0f);color:#fff;font:800 14.5px var(--f-body);cursor:pointer}
+/* ---------- 12 · interactive guide ---------- */
+.v2-co{position:fixed;inset:0;z-index:1000}
+.v2-co.center{background:rgba(0,0,0,.66)}
+.co-hole{position:fixed;border:2px dashed #ffd84a;box-shadow:0 0 0 9999px rgba(0,0,0,.66);pointer-events:none;transition:all .25s ease-out;animation:coPulse 1.6s ease-in-out infinite}
+@keyframes coPulse{50%{border-color:rgba(255,216,74,.35)}}
+.co-hand{position:fixed;width:44px;height:52px;pointer-events:none;animation:coTap 1.4s ease-in-out infinite;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 52'%3E%3Cpath d='M14 26V8a4 4 0 0 1 8 0v14l1-1a4 4 0 0 1 6 1l1 1a4 4 0 0 1 6 2l1 1a4 4 0 0 1 4 4v8c0 8-6 14-14 14h-4c-5 0-8-2-11-6l-8-11a4 4 0 0 1 6-5z' fill='%23f3f1ea' stroke='%230d1015' stroke-width='2'/%3E%3C/svg%3E") center/contain no-repeat;filter:drop-shadow(0 4px 6px rgba(0,0,0,.5))}
+@keyframes coTap{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-4px,-6px) scale(.92)}}
+.co-card{position:fixed;left:14px;right:14px;bottom:24px;max-width:440px;margin:0 auto;padding:16px 16px 14px;border-radius:20px;border:1px solid #6b7280;background:linear-gradient(180deg,#1d222b,#12151b);color:#e8e8ea;box-shadow:0 18px 40px rgba(0,0,0,.6)}
+.v2-co.center .co-card{top:50%;bottom:auto;transform:translateY(-50%)}
+.co-dots{display:flex;gap:6px;margin-bottom:10px}.co-dots i{width:22px;height:4px;border-radius:2px;background:#3a414d}.co-dots i.on{background:#ffd84a}
+.co-t{display:block;font-size:18px;margin-bottom:6px}.co-b{margin:0 0 12px;font-size:14px;line-height:1.45;color:#c5ccd6}
+.co-x{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}.co-x:empty{display:none}
+.co-nav{display:flex;align-items:center;gap:8px}.co-nav #gNext{min-width:110px}
+@media (prefers-reduced-motion:reduce){.co-hand,.co-hole{animation:none}}
 /* ---------- Text size, high contrast, sharing ---------- */
 html[data-hc]{--muted:#C9D1DA;--line:#5A6472}
 html[data-hc][data-skin]:not([data-ui=light]){--muted:#D3D9E0;--line:#5A6472}
@@ -1582,20 +1653,6 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
   <div class="pl-grid" id="plGrid"></div>
   <button class="pl-stop" id="plStop" type="button">E-Stop</button>
 </div>
-<div class="guide" id="guide" role="dialog" aria-modal="true" aria-labelledby="gTitle" hidden>
-  <div class="guide-box">
-    <div class="guide-dots" id="gDots" aria-hidden="true"></div>
-    <h2 id="gTitle"></h2>
-    <p id="gBody"></p>
-    <div class="rec-row" id="gExtra"></div>
-    <div class="rec-row guide-nav">
-      <button class="btn" id="gSkip" type="button">Skip</button>
-      <span class="spacer"></span>
-      <button class="btn" id="gBack" type="button">Back</button>
-      <button class="btn" id="gNext" type="button">Next</button>
-    </div>
-  </div>
-</div>
 
 <main>
   <!-- ===== Layout shell ("Lakaran UI v2"): screens built on the app's own cards; minimalist icons (style 1) ===== -->
@@ -1636,6 +1693,11 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
     <button class="v2-ib" id="dEdit" type="button" aria-label="Model settings"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4.2L19.2 9a2.1 2.1 0 0 0-3-3L5.2 17z"/><path d="M14.5 7.5l3 3"/></svg></button>
     <button class="v2-ib v2-recb" id="dRec" type="button" aria-label="Record" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><circle cx="12" cy="12" r="3.6"/></svg></button>
   </div>
+  <div class="v2-dmode" id="dMode">
+    <div class="v2-seg3" role="group" aria-label="Drive mode"><button type="button" data-lp="0" aria-pressed="false">Eco</button><button type="button" data-lp="1" aria-pressed="false">Normal</button><button type="button" data-lp="2" aria-pressed="false">Sport</button></div>
+    <span class="v2-ptime" id="dPlay" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="7.6"/><path d="M12 9v4.2l2.6 1.6M9.5 3.5h5"/></svg><b></b></span>
+  </div>
+  <button class="v2-meter" id="dMeter" type="button" aria-label="Live output (tap for the big view)"></button>
 
   <!-- 3 · Models (gallery) -->
   <section class="v2-scr" id="scrModels" aria-label="My models">
@@ -1671,6 +1733,7 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
     <button class="v2-li" type="button" data-go="hub"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="6.5" width="11" height="11" rx="2.2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9.5 3.5v3M14.5 3.5v3M9.5 17.5v3M14.5 17.5v3M3.5 9.5h3M3.5 14.5h3M17.5 9.5h3M17.5 14.5h3"/></svg><span>Hub &amp; channel test</span><small id="sHubSt"></small><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
     <div class="v2-grp v2-lk">Safety</div>
     <button class="v2-li" type="button" data-go="safety"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2l7.6 2.9v5.8c0 4.4-3.2 7.9-7.6 8.9-4.4-1-7.6-4.5-7.6-8.9V6.1z"/><path d="M12 8.2v4.6M12 15.8v.1"/></svg><span>Limits &amp; auto-stop</span><small id="sLimV"></small><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
+    <button class="v2-li v2-lk" type="button" id="sPlay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="7.6"/><path d="M12 9v4.2l2.6 1.6M9.5 3.5h5"/></svg><span>Play time limit (a day)</span><small id="sPlayV">Off</small></button>
     <div class="v2-grp">Data</div>
     <button class="v2-li" type="button" data-go="backup"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 11A7.5 7.5 0 0 0 6 6.6L4.5 8M4.5 4v4h4"/><path d="M4.5 13A7.5 7.5 0 0 0 18 17.4l1.5-1.4M19.5 20v-4h-4"/></svg><span>Backup &amp; restore</span><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
     <div class="v2-grp">Experience</div>
@@ -1678,6 +1741,8 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
     <button class="v2-li v2-sw" type="button" id="sLight" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.8"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg><span>Light theme (outdoors)</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li" type="button" id="sText"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 18.5 8 6.5l4.5 12M5.2 14h5.6M14 18.5l3.2-8.5 3.3 8.5M15.1 15.8h4.2"/></svg><span>Text size</span><small id="sTextV">Normal</small><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
     <button class="v2-li v2-sw" type="button" id="sHC" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M12 3.4v17.2A8.6 8.6 0 0 0 12 3.4z" fill="currentColor"/></svg><span>High contrast</span><i class="tg" aria-hidden="true"></i></button>
+    <button class="v2-li v2-sw" type="button" id="sMeter" role="switch" aria-checked="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V13M9.5 19V7M14 19v-9M18.5 19V4"/></svg><span>Live output meter</span><i class="tg" aria-hidden="true"></i></button>
+    <button class="v2-li v2-sw" type="button" id="sLefty" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l-3.5 3.5L7 14M3.5 10.5H14a6 6 0 0 1 6 6v1"/></svg><span>Left-handed (landscape)</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li v2-sw v2-lk" type="button" id="sPrac" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.8 9.2 12 4.5l9.2 4.7L12 13.9z"/><path d="M6.8 11.4v4.3c0 1.5 2.3 3 5.2 3s5.2-1.5 5.2-3v-4.3M21.2 9.2v5"/></svg><span>Practice mode (no hub)</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li" type="button" id="sLang"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M3.4 12h17.2M12 3.4c2.4 2.4 3.4 5.3 3.4 8.6s-1 6.2-3.4 8.6c-2.4-2.4-3.4-5.3-3.4-8.6s1-6.2 3.4-8.6z"/></svg><span>Language</span><small id="sLangV"></small><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
     <button class="v2-li" type="button" data-go="m-app"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg><span>App, guide &amp; player mode</span><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
@@ -1724,18 +1789,12 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
       <label>Model<span class="prof-wrap"><select id="prof"></select><input class="txt" id="profLabel" type="text" maxlength="24" autocomplete="off" hidden><button class="btn" id="profRen" type="button" aria-label="Rename model in the list">✎</button></span></label>
       <label>Model name<input class="txt" id="profName" type="text" maxlength="24" autocomplete="off"></label>
     </div>
-    <div class="swatches" id="swatches" role="group" aria-label="Model colour"><span>Colour</span></div>
-    <div class="seglbl" id="spdLbl">Speed</div>
-    <div class="seg" id="spdSeg" role="group" aria-label="Speed">
-      <button class="btn" id="spdSlow" type="button" aria-pressed="false">Slow</button>
-      <button class="btn" id="spdNorm" type="button" aria-pressed="false">Normal</button>
-      <button class="btn" id="spdFast" type="button" aria-pressed="true">Fast</button>
-    </div>
-    <div class="seglbl" id="limLbl">Power profile</div>
-    <div class="seg" id="limSeg" role="group" aria-label="Power profile">
-      <button class="btn" id="limP0" type="button" aria-pressed="false"><span>Kid</span><small id="limV0"></small></button>
+    <div class="swatches" id="swatches" role="group" aria-label="Model colour"><span>Model colour</span></div>
+    <div class="seglbl" id="limLbl">Drive mode</div>
+    <div class="seg" id="limSeg" role="group" aria-label="Drive mode">
+      <button class="btn" id="limP0" type="button" aria-pressed="false"><span>Eco</span><small id="limV0"></small></button>
       <button class="btn" id="limP1" type="button" aria-pressed="false"><span>Normal</span><small id="limV1"></small></button>
-      <button class="btn" id="limP2" type="button" aria-pressed="false"><span>Full</span><small id="limV2"></small></button>
+      <button class="btn" id="limP2" type="button" aria-pressed="false"><span>Sport</span><small id="limV2"></small></button>
     </div>
     <div class="model-row">
       <div class="seg" role="group" aria-label="Layout">
@@ -1962,6 +2021,7 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
             <input id="gpDead" type="range" min="5" max="40" step="1" value="12"></div>
           <label>Trigger channel (RT forward, LT reverse)<select id="gpTrig"></select></label>
         </div>
+        <div class="v2-gp" id="gpPic"></div><p class="note v2-gph" id="gpHint">Tap a button on the picture, or press it on the gamepad.</p>
         <details class="adv"><summary>Button mapping</summary><div class="set" id="gpMap" style="margin-top:8px"></div></details>
         <p class="note">Left stick = stick 1, right stick = stick 2 (Dual stick layout). Back = E-Stop, Start = release. The sticks use the channels chosen in the stick cards.</p>
       </section>
