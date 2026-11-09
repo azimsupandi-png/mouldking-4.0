@@ -1546,6 +1546,45 @@ html[data-macc] .v2-mchip .v2-knob.sm,html[data-macc] #scrHome .v2-mrow .v2-knob
 .co-x{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}.co-x:empty{display:none}
 .co-nav{display:flex;align-items:center;gap:8px}.co-nav #gNext{min-width:110px}
 @media (prefers-reduced-motion:reduce){.co-hand,.co-hole{animation:none}}
+
+/* ---------- 2 · cruise ---------- */
+.v2-cruise{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border:1px solid var(--line);border-radius:20px;background:var(--well);color:var(--fg);font:700 13.5px var(--f-body);cursor:pointer}
+.v2-cruise .ic{width:18px;height:18px}
+.v2-cruise[aria-pressed=true],#dbCruise[aria-pressed=true]{background:var(--acc);border-color:var(--acc);color:#1b1b1b}
+html.dash-l:not(.v2-dbopen) #dashBar > .btn.v2-dbkeep{display:inline-flex!important}
+#dbFocus .ic{width:18px;height:18px}
+/* ---------- 3 · steering eases at speed ---------- */
+.v2-ssbox{margin:12px 0 4px}.v2-ssrow{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;margin:8px 2px 0}
+.v2-ssrow label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}.v2-ssrow .seg,.v2-ssrow .note{grid-column:1/-1}.v2-ssrow .note{margin:0;font-size:12px}
+/* ---------- 8 · model icon & photo ---------- */
+.v2-mico{margin:10px 0 2px}.v2-icons{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 8px}
+.v2-icb{width:42px;height:42px;display:grid;place-items:center;border:1px solid var(--line);border-radius:12px;background:var(--well);color:var(--muted);cursor:pointer}
+.v2-icb .ic{width:24px;height:24px}.v2-icb[aria-pressed=true]{border-color:var(--acc);color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.v2-noic{font-weight:800}
+.v2-knob.has-av{display:grid;place-items:center;overflow:hidden;background:#1d222b}
+.v2-av{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;overflow:hidden}
+.v2-av img{width:100%;height:100%;object-fit:cover}.v2-av.ic{color:#ffd84a}.v2-av.ic .ic{width:68%;height:68%}
+.v2-thw{position:relative}.v2-mph{display:block;width:100%;aspect-ratio:2/1;object-fit:cover;border-radius:10px}
+.v2-mbadge{position:absolute;left:6px;top:6px;width:26px;height:26px;display:grid;place-items:center;border-radius:8px;background:rgba(11,13,17,.85);color:#ffd84a}.v2-mbadge .ic{width:18px;height:18px}
+/* ---------- 7 · practice simulator ---------- */
+#dSim{display:none}
+html[data-v=drive]:not(.dash) main > #dSim:not([hidden]){display:block!important}
+.v2-sim{position:relative;padding:0!important;overflow:hidden;margin-top:10px!important}
+.v2-sim canvas{display:block;width:100%;height:170px;background:#0b0d11;cursor:pointer}
+.v2-simtag{position:absolute;left:10px;top:10px;padding:3px 9px;border-radius:10px;background:var(--acc);color:#1b1b1b;font:800 11px var(--f-body);letter-spacing:.04em;text-transform:uppercase}
+.v2-simhint{position:absolute;right:10px;bottom:8px;font-size:11px;color:#8a93a0}
+/* ---------- 9 · undo / redo ---------- */
+.v2-undo{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:55;display:flex;gap:8px;padding:6px;border:1px solid var(--line);border-radius:24px;background:var(--panel);box-shadow:0 10px 24px rgba(0,0,0,.45)}
+.v2-undo[hidden]{display:none}
+.v2-undo .btn{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 14px;border-radius:19px}.v2-undo .ic{width:18px;height:18px}
+.v2-undo .btn:disabled{opacity:.4}
+html.dash .v2-undo{bottom:12px}
+/* ---------- 12 · focus mode (landscape) ---------- */
+html.dash.v2-focus #dashBar > :not(#dbFocus):not(#dbCruise){display:none!important}
+html.dash.v2-focus #dbFocus,html.dash.v2-focus #dbCruise{display:inline-flex!important;opacity:.8}
+html.dash.v2-focus #boardGrid .bdw-h{visibility:hidden}
+html.dash.v2-focus #boardGrid .bdw::after{display:none}
+html.dash.v2-focus .v2-pill .ptx{display:none}
 /* ---------- Text size, high contrast, sharing ---------- */
 html[data-hc]{--muted:#C9D1DA;--line:#5A6472}
 html[data-hc][data-skin]:not([data-ui=light]){--muted:#D3D9E0;--line:#5A6472}
@@ -1695,9 +1734,11 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
   </div>
   <div class="v2-dmode" id="dMode">
     <div class="v2-seg3" role="group" aria-label="Drive mode"><button type="button" data-lp="0" aria-pressed="false">Eco</button><button type="button" data-lp="1" aria-pressed="false">Normal</button><button type="button" data-lp="2" aria-pressed="false">Sport</button></div>
+    <button class="v2-cruise" id="dCruise" type="button" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 16.5a8 8 0 1 1 15 0"/><path d="M12 13.5l4-4"/><circle cx="12" cy="14" r="1.4"/></svg><span>Cruise</span></button>
     <span class="v2-ptime" id="dPlay" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="7.6"/><path d="M12 9v4.2l2.6 1.6M9.5 3.5h5"/></svg><b></b></span>
   </div>
   <button class="v2-meter" id="dMeter" type="button" aria-label="Live output (tap for the big view)"></button>
+  <div class="card v2-sim" id="dSim" hidden><canvas id="simCv" aria-label="Practice: virtual model"></canvas><span class="v2-simtag">Practice</span><small class="v2-simhint">tap to put the model back in the middle</small></div>
 
   <!-- 3 · Models (gallery) -->
   <section class="v2-scr" id="scrModels" aria-label="My models">
@@ -1790,11 +1831,21 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
       <label>Model name<input class="txt" id="profName" type="text" maxlength="24" autocomplete="off"></label>
     </div>
     <div class="swatches" id="swatches" role="group" aria-label="Model colour"><span>Model colour</span></div>
+    <div class="v2-mico"><span class="seglbl">Icon &amp; photo</span><div class="v2-icons" id="mIcons" role="group" aria-label="Model icon"></div>
+      <div class="rec-row"><button class="btn v2-icbtn" id="mPhoto" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.4"/></svg><span>Choose photo</span></button><button class="btn" id="mPhotoX" type="button" hidden>Remove photo</button></div></div>
     <div class="seglbl" id="limLbl">Drive mode</div>
     <div class="seg" id="limSeg" role="group" aria-label="Drive mode">
       <button class="btn" id="limP0" type="button" aria-pressed="false"><span>Eco</span><small id="limV0"></small></button>
       <button class="btn" id="limP1" type="button" aria-pressed="false"><span>Normal</span><small id="limV1"></small></button>
       <button class="btn" id="limP2" type="button" aria-pressed="false"><span>Sport</span><small id="limV2"></small></button>
+    </div>
+    <div class="v2-ssbox" id="ssBox">
+      <button class="v2-li v2-sw" type="button" id="ssOn" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="2.2"/><path d="M3.6 12h6.2M14.2 12h6.2M12 14.2v6.2"/></svg><span>Steering eases at speed</span><i class="tg" aria-hidden="true"></i></button>
+      <div class="v2-ssrow" id="ssRow" hidden>
+        <label>Steering<select id="ssSt"></select></label><label>Throttle<select id="ssTh"></select></label>
+        <div class="seg" role="group" aria-label="Steering at full speed" id="ssMin"><button class="btn" type="button" data-v="40">40%</button><button class="btn" type="button" data-v="55">55%</button><button class="btn" type="button" data-v="70">70%</button></div>
+        <p class="note">At full throttle the steering turns only this much, so the model does not tip over in fast turns.</p>
+      </div>
     </div>
     <div class="model-row">
       <div class="seg" role="group" aria-label="Layout">
@@ -1899,6 +1950,8 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
         </div>
       </div>
       <div class="dashbar" id="dashBar">
+        <button class="btn v2-dbkeep" id="dbCruise" type="button" aria-pressed="false">Cruise</button>
+        <button class="btn v2-dbkeep" id="dbFocus" type="button" aria-pressed="false" aria-label="Focus mode"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button>
         <button class="btn" id="dbEdit" type="button" aria-pressed="false">Edit</button>
         <button class="btn" id="dbAdd" type="button" aria-pressed="false" aria-label="Add widget" hidden>+ Add</button>
         <button class="btn" id="dbTpl" type="button" aria-label="Layout templates" hidden>Template</button>
@@ -2126,7 +2179,7 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
         <label class="check" for="optSound"><input id="optSound" type="checkbox" checked>Sound</label>
         <label class="check" for="optHaptic"><input id="optHaptic" type="checkbox" checked>Vibration</label>
         <label class="rec-label">Effects<select id="optFx"><option value="auto">Auto (recommended)</option><option value="full">Full</option><option value="lite">Lightweight</option></select></label>
-        <label class="check" for="optRelink"><input id="optRelink" type="checkbox" checked>Reconnect when I return to the app</label>
+        <label class="check" for="optRelink"><input id="optRelink" type="checkbox" checked>Reconnect automatically (back in the app, Bluetooth on again, or app opened)</label>
         <label class="check" for="optFull"><input id="optFull" type="checkbox" checked>Full screen (hide system bars)</label>
         <div class="rec-row" style="margin-top:12px">
           <button class="btn" id="guideBtn" type="button">Show guide</button>

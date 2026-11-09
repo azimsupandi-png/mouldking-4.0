@@ -332,10 +332,95 @@ async def t_lefty(b):
     check('6 left-handed: the landscape board is mirrored', x0 > 500 and x1 < 200, [x0, x1])
     await ctx.close()
 
+async def t_seven(b):
+    ctx, pg = await page(b)
+    SL = "document.querySelector('#boardGrid .bdw[data-k=s] input[type=range]')"
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.wait_for_timeout(300)
+    # 2 cruise: hold A at 70, tap Cruise, let go -> A keeps going; touch it again -> hands back
+    await pg.evaluate(SL+".dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));var r="+SL+";r.value=70;r.dispatchEvent(new Event('input',{bubbles:true}))")
+    await pg.wait_for_timeout(200)
+    await pg.evaluate("document.getElementById('dCruise').click()")
+    await pg.evaluate("var r="+SL+";r.value=0;r.dispatchEvent(new Event('input',{bubbles:true}));r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}))")
+    await pg.wait_for_timeout(1500)
+    a = await pg.evaluate("+(window.__last||'0').split(',')[0]")
+    check('2 cruise: channel A keeps running after the finger lets go', a >= 60, a)
+    await pg.evaluate("var r="+SL+";r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=20;r.dispatchEvent(new Event('input',{bubbles:true}))")
+    await pg.wait_for_timeout(200)
+    await pg.evaluate("var r="+SL+";r.value=0;r.dispatchEvent(new Event('input',{bubbles:true}));r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}))")
+    await pg.wait_for_timeout(1500)
+    r = await pg.evaluate("[+(window.__last||'0').split(',')[0],document.getElementById('dCruise').getAttribute('aria-pressed')]")
+    check('2 cruise: touching the control takes over and cruise ends', r == [0, 'false'], r)
+    # 3 steering eases at speed: B at full while A runs at 100 -> B reduced to 55%
+    await pg.evaluate("mk6Go('medit');document.getElementById('ssOn').click();document.getElementById('ssSt').value='1';document.getElementById('ssSt').dispatchEvent(new Event('change'));document.getElementById('ssTh').value='0';document.getElementById('ssTh').dispatchEvent(new Event('change'));mk6Go('drive')")
+    await pg.wait_for_timeout(200)
+    await pg.evaluate("var r="+SL+";r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=100;r.dispatchEvent(new Event('input',{bubbles:true}));var st=[...document.querySelectorAll('#boardGrid .bdw')].find(e=>/Steering/.test(e.textContent)).querySelector('input[type=range]');st.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));st.value=100;st.dispatchEvent(new Event('input',{bubbles:true}))")
+    await pg.wait_for_timeout(2500)
+    r = await pg.evaluate("(window.__last||'').split(',').slice(0,2).map(Number)")
+    check('3 steering at full throttle is cut to about 55%', r[0] >= 95 and 45 <= abs(r[1]) <= 62 if False else (r[0] >= 95 and 45 <= abs(r[1]) <= 62), r)
+    await pg.evaluate("document.querySelectorAll('#boardGrid input[type=range]').forEach(r=>{r.value=0;r.dispatchEvent(new Event('input',{bubbles:true}));r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}))})")
+    # 4 Bluetooth off then on -> the hub link comes back by itself
+    await pg.evaluate("__calls=[];onAppEvent('btoff');onAppEvent('bt0')")
+    await pg.wait_for_timeout(200)
+    await pg.evaluate("onAppEvent('bt1')")
+    await pg.wait_for_timeout(1300)
+    r = await pg.evaluate("__calls.filter(c=>c.startsWith('start')).length")
+    check('4 Bluetooth back on: the hub reconnects by itself', r >= 1, r)
+    # 9 undo / redo in edit mode
+    await pg.evaluate("mk6Go('drive');document.getElementById('bdEdit').click()")
+    await pg.wait_for_timeout(400)
+    n0 = await pg.evaluate("document.querySelectorAll('#boardGrid .bdw').length")
+    await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw[data-k=l] .bdw-ed button')].find(b=>/Remove|Delete/.test(b.getAttribute('aria-label')||'')).click()")
+    await pg.wait_for_timeout(600)
+    await pg.evaluate("document.getElementById('unU').click()")
+    await pg.wait_for_timeout(300)
+    n2 = await pg.evaluate("[document.querySelectorAll('#boardGrid .bdw').length,!document.getElementById('v2Undo').hidden,document.getElementById('unR').disabled]")
+    check('9 undo brings a removed widget back (redo then available)', n2 == [n0, True, False], [n0, n2])
+    await pg.evaluate("document.getElementById('bdEdit').click()")
+    # 8 icon shows on the gallery card and the model chip
+    await pg.evaluate("mk6Go('medit');document.querySelector('#mIcons [data-ic=crane]').click();mk6Go('models')")
+    await pg.wait_for_timeout(400)
+    r = await pg.evaluate("[!!document.querySelector('#mList .v2-mbadge'),document.querySelector('.v2-mchip .v2-knob').classList.contains('has-av')]")
+    check('8 model icon on the gallery card and the model chip', r == [True, True], r)
+    check('no JS errors (seven)', not pg.errors, pg.errors[:3])
+    await ctx.close()
+    # 7 simulator in practice mode
+    ctx, pg = await page(b)
+    await pg.evaluate("mk6Go('settings');document.getElementById('sPrac').click();mk6Go('home');document.getElementById('hConn').click();mk6Go('drive')")
+    await pg.wait_for_timeout(500)
+    r = await pg.evaluate("[!document.getElementById('dSim').hidden,document.getElementById('simCv').width>0]")
+    check('7 practice simulator shows on the Drive screen', r == [True, True], r)
+    await ctx.close()
+    # 12 focus mode in landscape
+    ctx, pg = await page(b, w=844, h=390)
+    await pg.evaluate("mk6Go('drive');document.getElementById('dbFocus').click()")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[document.documentElement.classList.contains('v2-focus'),getComputedStyle(document.getElementById('dbEdit')).display,getComputedStyle(document.querySelector('#boardGrid .bdw-h')).visibility]")
+    check('12 focus mode hides the bar buttons and widget labels', r == [True, 'none', 'hidden'], r)
+    await ctx.close()
+
+async def t_open_relink(b):
+    ctx, pg = await page(b)
+    await pg.evaluate("document.getElementById('hConn').click();onHubState('ready')")
+    await pg.wait_for_timeout(400)
+    await pg.reload()
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.wait_for_timeout(1500)
+    r = await pg.evaluate("__calls.filter(c=>c.startsWith('start')).length")
+    check('4 app opened after a session with the hub on: it reconnects', r >= 1, r)
+    await pg.evaluate("document.getElementById('hConn').click()")
+    await pg.wait_for_timeout(300)
+    await pg.reload()
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.wait_for_timeout(1500)
+    r = await pg.evaluate("__calls.filter(c=>c.startsWith('start')).length")
+    check('4 hub turned off by the user: no reconnect on the next open', r == 0, r)
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

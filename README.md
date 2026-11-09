@@ -31,7 +31,9 @@ Every push runs the tests first; the APK is built and published only if they pas
   theme, diagnostics, text size / contrast, model sharing, recordings as quick buttons, trim,
   drive modes (and the old Speed setting folded into them), live meter, model colour, widget
   sizes, widget gallery, gamepad picture, quick settings, play-time limit, left-handed
-  dashboard, the interactive guide, and a click on every control of 13 screens.
+  dashboard, the interactive guide, cruise, steering that eases at speed, reconnect when
+  Bluetooth or the app comes back, practice simulator, model icon / photo, undo / redo,
+  focus mode, and a click on every control of 13 screens.
 
 ```
 javac -d build/jvmtest $(find tests/jvm -name '*.java') app/src/main/java/com/azimsupandi/mk6console/Mk6*.java

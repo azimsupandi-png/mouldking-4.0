@@ -278,6 +278,12 @@ try{
     d.tilt={on:tl.on===true,sens:pickOf(tl.sens,[30,45,60],45),inv:tl.inv===true,all:tl.all===true};
     // Colour choices are now orange(0), red(1), yellow(2). Older saves used six: pink maps to red, yellow to yellow, the rest to orange.
     d.accent=c.accentV===3?Math.round(num(c.accent,0,5,0)):0;
+    // model icon / photo (photo: small JPEG data URL)
+    d.icon=['car','dig','crane','truck','tractor','boat'].indexOf(c.icon)>=0?c.icon:'';
+    d.photo=(typeof c.photo==='string'&&c.photo.length<160000&&/^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(c.photo))?c.photo:'';
+    // steering eases at speed: steering channel output shrinks as the throttle channel output grows
+    var ss0=(c.ss&&typeof c.ss==='object')?c.ss:{};
+    d.ss={on:ss0.on===true,st:Math.round(num(ss0.st,0,17,1)),th:Math.round(num(ss0.th,0,17,0)),min:pickOf(ss0.min,[40,55,70],55)};
     d.accentV=3;
     var pd=(c.pad&&typeof c.pad==='object')?c.pad:{};
     d.pad={on:pd.on!==false,dead:Math.round(num(pd.dead,5,40,12)),trig:Math.round(num(pd.trig,-1,NMAX-1,-1)),map:{}};
@@ -319,7 +325,7 @@ try{
     });
     return out;
   }
-  function cleanPrefs(p){p=(p&&typeof p==='object')?p:{};return {practice:p.practice===true,sound:p.sound!==false,haptic:p.haptic!==false,lang:p.lang==='ms'?'ms':'en',seen:p.seen===true,lock:p.lock===true,kidLimit:pickOf(p.kidLimit,[100,70,50,30],50),lim:cleanLim(p.lim),autoBackup:p.autoBackup!==false,full:p.full!==false,relink:p.relink!==false,fx:(p.fx==='full'||p.fx==='lite')?p.fx:'auto',lastBackup:Math.max(0,+p.lastBackup||0),tpls:cleanTpls(p.tpls),ui:p.ui==='light'?'light':'dark',fs:pickOf(p.fs,[100,115,130],100),hc:p.hc===true,playLim:pickOf(p.playLim,[0,10,20,30,45,60],0),lefty:p.lefty===true,meter:p.meter!==false}}
+  function cleanPrefs(p){p=(p&&typeof p==='object')?p:{};return {practice:p.practice===true,sound:p.sound!==false,haptic:p.haptic!==false,lang:p.lang==='ms'?'ms':'en',seen:p.seen===true,lock:p.lock===true,kidLimit:pickOf(p.kidLimit,[100,70,50,30],50),lim:cleanLim(p.lim),autoBackup:p.autoBackup!==false,full:p.full!==false,relink:p.relink!==false,fx:(p.fx==='full'||p.fx==='lite')?p.fx:'auto',lastBackup:Math.max(0,+p.lastBackup||0),tpls:cleanTpls(p.tpls),ui:p.ui==='light'?'light':'dark',fs:pickOf(p.fs,[100,115,130],100),hc:p.hc===true,linkOn:p.linkOn===true,focus:p.focus===true,playLim:pickOf(p.playLim,[0,10,20,30,45,60],0),lefty:p.lefty===true,meter:p.meter!==false}}
   var store={active:null,profiles:[],prefs:cleanPrefs()};
   try{
     var raw=localStorage.getItem('mk6v2');
@@ -374,6 +380,15 @@ try{
 
   /* Play-time limit: f ramps from 1 to 0 over 3 s when the time is up */
   var PLAY={f:1,used:0,last:0,warned:false,extra:false,end:0};
+  /* Cruise: keeps the value a control had when Cruise was tapped, after the finger lets go; touching that control again hands it back */
+  var CRZ={on:false,v:{},arm:{}};
+  function crzT(i){
+    var t=rt.t[i];if(!CRZ.on||CRZ.v[i]==null) return t;
+    if(!CRZ.arm[i]){if(t===0){CRZ.arm[i]=true;return CRZ.v[i]}return t}
+    if(t!==0){delete CRZ.v[i];delete CRZ.arm[i];if(!Object.keys(CRZ.v).length) crzOff(true);return t}
+    return CRZ.v[i];
+  }
+  function crzOff(quiet){if(!CRZ.on) return;CRZ.on=false;CRZ.v={};CRZ.arm={};if(!quiet) feedback('ok')}
   /* ---------- Power curve ---------- */
   function powerFor(a,c){
     if(a<=1) return 0;
@@ -393,10 +408,12 @@ try{
   function ledOut(b){return b<=0?0:40+60*Math.pow(Math.min(b,100)/100,1.5)}
   function goalOf(i){
     if(C.ch[i].kind==='light'){var lt=rt.t[i];return lt>0?Math.round(ledOut(lt*blinkF(C.ch[i].blink,performance.now()))):0}
-    var t=rt.t[i], m=powerFor(Math.abs(t),C.ch[i]);
+    var t=crzT(i), m=powerFor(Math.abs(t),C.ch[i]);
     var tb=!!S.turbo[i]||!!cal||testOn();
     var f=((S.kid&&store.prefs.kidLimit)?store.prefs.kidLimit/100:1)*PLAY.f;
     var out=(t<0?-m:m)*(tb?100:C.limit)/100*f;
+    // steering eases at speed (set per model)
+    if(C.ss&&C.ss.on&&i===C.ss.st&&C.ss.th!==i&&!cal&&!testOn()) out*=1-(1-C.ss.min/100)*Math.min(1,Math.abs(rt.o[C.ss.th]||0)/100);
     // trim: a small fixed offset so the model runs straight (never while E-Stop is on)
     var tr0=C.ch[i].trim||0;if(tr0&&!S.estop&&!cal&&!testOn()) out=Math.max(-100,Math.min(100,out+tr0*PLAY.f));
     return out;
@@ -1640,6 +1657,7 @@ try{
     link.setAttribute('aria-label',S.connected?'Disconnect hub':'Connect hub');paintBt();
     // dashboard: widgets dim while the hub is not active; the lost banner goes away once the hub is back
     document.documentElement.classList.toggle('nolink',!S.connected);
+    if(!S.connected) crzOff(true);
     var lb=$('#lostBanner');if(lb&&S.connected) lb.hidden=true;
     // While the hub is active, the dashboard's Edit / Reset / model picker are locked so they cannot be hit by accident
     ['#dbEdit','#dbReset','#dbModel'].forEach(function(q){var b=$(q);if(b) b.disabled=!!S.connected&&RH()&&!bdEditing});
@@ -1649,7 +1667,7 @@ try{
     if(bdEditing){toast('Finish editing first, then connect the hub.');return}
     last=null;
     if(RH()){
-      if(S.connected){wantLink=false;NB.stop();S.connected=false;hubMsg='';stopPlay(true)}
+      if(S.connected){wantLink=false;NB.stop();S.connected=false;hubMsg='';stopPlay(true);if(store.prefs.linkOn){store.prefs.linkOn=false;save()}}
       else{
         wantLink=true;hubMsg='Pairing…';S.connected=true;
         NB.start(activeSlots().map(function(s){return C.hubs[s]}).join(','));
@@ -1664,7 +1682,7 @@ try{
     if(!RH()&&s!=='stopped') return;
     last=null;
     if(s==='connecting'){S.connected=true;hubMsg='Pairing…'}
-    else if(s==='ready'){S.connected=true;hubMsg='';relinkTries=0;feedback('ok')}
+    else if(s==='ready'){S.connected=true;hubMsg='';relinkTries=0;feedback('ok');if(RH()&&!store.prefs.linkOn){store.prefs.linkOn=true;save()}}
     else if(s==='stopped'){
       S.connected=false;hubMsg='';stopPlay(true);
       if(wantLink&&RH()&&store.prefs.relink&&S.bt!==false&&!S.estop&&Date.now()-resumeAt<3000&&relinkTries<3){
@@ -1673,7 +1691,7 @@ try{
       }
     }
     else{
-      wantLink=false;
+      wantLink=false;if(store.prefs.linkOn){store.prefs.linkOn=false;save()}
       var was=S.connected&&(s==='error');
       S.connected=false;hubMsg=HUB_TEXT[s]||'Error';live.textContent=hubMsg;stopPlay(true);feedback('lost');
       if(was){toast('Hub link lost. Motors stopped.',6000);var lb2=$('#lostBanner');if(lb2) lb2.hidden=false}
@@ -1683,6 +1701,7 @@ try{
   (function(){var lb=$('#lostBanner');if(lb) lb.addEventListener('click',function(){lb.hidden=true})})();
   var es=$('#estop'), banner=$('#esBanner');
   function paintEstop(){
+    if(S.estop) crzOff(true);
     es.setAttribute('aria-pressed',String(S.estop));
     es.textContent=S.estop?'Release':'E-Stop';es.setAttribute('aria-label',S.estop?'Release emergency stop':'Emergency stop');
     banner.hidden=!S.estop;
@@ -1994,11 +2013,14 @@ try{
     if(ev==='notilt') toast('This phone has no tilt sensor.',5000);
     if(ev==='backupok'){store.prefs.lastBackup=Date.now();save();bkPaint();if(bkManual) toast('Backup saved to the Downloads folder.',4000);bkManual=false}
     if(ev==='backupfail'){if(bkManual) toast('Backup failed. Use Export models instead.',5000);bkManual=false}
-    if(ev==='bt1'){S.bt=true;if(!S.connected&&(hubMsg===HUB_TEXT.off||hubMsg===HUB_TEXT.btoff)){hubMsg='';paintLink()}paintBt();return}
+    if(ev==='bt1'){S.bt=true;if(!S.connected&&(hubMsg===HUB_TEXT.off||hubMsg===HUB_TEXT.btoff)){hubMsg='';paintLink()}paintBt();
+      // Bluetooth is back: bring the hub link back (channels at zero) if it was on when Bluetooth went off
+      if(S.relinkBt&&store.prefs.relink&&RH()&&!S.connected&&!S.estop){S.relinkBt=false;zeroAll();setTimeout(function(){if(!S.connected&&S.bt!==false&&!bdEditing){link.click();toast('Bluetooth is back. Reconnecting the hub. Motors are at zero.',4000)}},800)}
+      return}
     if(ev==='bt0'){S.bt=false;paintBt();return}
     if(ev==='resume') readBt();
     if(ev==='btoff'){
-      var wasOn=S.connected;wantLink=false;
+      var wasOn=S.connected;S.relinkBt=wantLink&&RH();wantLink=false;
       S.connected=false;hubMsg=HUB_TEXT.btoff;last=null;stopPlay(true);zeroAll();paintLink();
       live.textContent=hubMsg;feedback('lost');
       if(wasOn) toast('Bluetooth was switched off. Motors stopped.',8000);
@@ -4228,6 +4250,8 @@ try{
   for(var v2k2 in V2MS2) MS[v2k2]=V2MS2[v2k2];
   var V2MS3={"Eco": "Eco", "Sport": "Sport", "Drive mode": "Mod pandu", "Live output (tap for the big view)": "Keluaran langsung (ketik untuk paparan besar)", "Play time limit (a day)": "Had masa main (sehari)", "2 minutes of play time left.": "Tinggal 2 minit masa main.", "Play time is up. Motors are slowing down.": "Masa main tamat. Motor sedang perlahan.", "Hold for 2 seconds to change (parents).": "Tahan 2 saat untuk tukar (ibu bapa).", "Play time limit off.": "Had masa main dimatikan.", "5 more minutes.": "Tambah 5 minit.", "Play time is up": "Masa main tamat", "Come back tomorrow, or a parent can add 5 minutes": "Main lagi esok, atau ibu bapa boleh tambah 5 minit", "+5 min (hold 2 s)": "+5 minit (tahan 2 s)", "Live output meter": "Meter keluaran langsung", "Left-handed (landscape)": "Mod kidal (landskap)", "Model colour": "Warna model", "Yellow": "Kuning", "Red": "Merah", "Blue": "Biru", "Green": "Hijau", "Purple": "Ungu", "White": "Putih", "Trim (runs straight)": "Trim (jalan lurus)", "Trim buttons on the widget": "Butang trim pada widget", "Trim left": "Trim kiri", "Trim right": "Trim kanan", "Trim reset to 0.": "Trim diset semula ke 0.", "Trim · tap to reset": "Trim · ketik untuk set semula", "Size": "Saiz", "Widget type": "Jenis widget", "All": "Semua", "Lights & buttons": "Lampu & butang", "Meters": "Meter", "Tap a button on the picture, or press it on the gamepad.": "Ketik butang pada gambar, atau tekan pada gamepad.", "Quick settings": "Tetapan pantas", "Unlock": "Buka kunci", "Dark theme": "Tema gelap", "Light theme": "Tema cerah", "hold 2 s": "tahan 2 s", "Release E-Stop (hold 1 s)": "Lepas E-Stop (tahan 1 s)", "Drive up to three Mould King 6.0 hubs from your phone. This guide shows the real buttons, step by step.": "Pandu sehingga tiga hub Mould King 6.0 dari telefon anda. Panduan ini menunjukkan butang sebenar, langkah demi langkah.", "Start": "Mula", "Turn the hub on, then hold START for half a second. The ring turns yellow when the hub answers.": "Hidupkan hub, kemudian tahan START selama setengah saat. Cincin bertukar kuning bila hub menjawab.", "Move the controls to drive. Lift your finger and they go back to 0.": "Gerakkan kawalan untuk memandu. Angkat jari dan ia kembali ke 0.", "E-Stop stops every motor at once. Tap it again to release.": "E-Stop menghentikan semua motor serta-merta. Ketik sekali lagi untuk lepas.", "Your models": "Model anda", "Make your own board, start from a template, or share a model with a friend.": "Buat papan sendiri, mula daripada templat, atau kongsi model dengan kawan.", "Welcome to MK6 Console": "Selamat datang ke MK6 Console", "Lock settings": "Kunci tetapan", "Disconnect": "Putuskan"};
   for(var v2k3 in V2MS3) if(!MS[v2k3]) MS[v2k3]=V2MS3[v2k3];
+  var V2MS4={"Cruise": "Cruise", "Cruise off.": "Cruise dimatikan.", "Connect the hub first.": "Sambungkan hub dahulu.", "Hold a control first, then tap Cruise.": "Tahan kawalan dahulu, kemudian ketik Cruise.", "Cruise on. Let go: the model keeps going. Touch the control to take over.": "Cruise hidup. Lepaskan: model terus bergerak. Sentuh kawalan untuk ambil alih.", "Steering eases at speed": "Stereng ikut kelajuan", "Steering": "Stereng", "Throttle": "Pendikit", "Steering at full speed": "Stereng pada kelajuan penuh", "At full throttle the steering turns only this much, so the model does not tip over in fast turns.": "Pada pendikit penuh, stereng hanya berpusing setakat ini supaya model tidak terbalik semasa membelok laju.", "Bluetooth is back. Reconnecting the hub. Motors are at zero.": "Bluetooth hidup semula. Menyambung semula hub. Motor pada sifar.", "Reconnect automatically (back in the app, Bluetooth on again, or app opened)": "Sambung semula automatik (kembali ke app, Bluetooth hidup semula, atau app dibuka)", "Reconnecting the hub from last time. Motors are at zero.": "Menyambung semula hub seperti kali lepas. Motor pada sifar.", "Icon & photo": "Ikon & foto", "Model icon": "Ikon model", "Choose photo": "Pilih foto", "Remove photo": "Buang foto", "No icon": "Tiada ikon", "Car": "Kereta", "Excavator": "Jengkaut", "Crane": "Kren", "Truck": "Lori", "Tractor": "Traktor", "Boat": "Bot", "Photo set for this model.": "Foto ditetapkan untuk model ini.", "Photo removed.": "Foto dibuang.", "That image could not be read.": "Imej itu tidak dapat dibaca.", "No image was chosen.": "Tiada imej dipilih.", "Practice: virtual model": "Latihan: model maya", "tap to put the model back in the middle": "ketik untuk letak model di tengah semula", "Undo": "Batal", "Redo": "Ulang", "Focus mode": "Mod fokus", "Focus mode. Tap the focus button at the top to leave.": "Mod fokus. Ketik butang fokus di atas untuk keluar."};
+  for(var v2k4 in V2MS4) if(!MS[v2k4]) MS[v2k4]=V2MS4[v2k4];
   MS_RE.push([/^(\d+) hubs? · (\d+) widgets?$/,function(m){return m[1]+' hub · '+m[2]+' widget'}],
     [/^Output (\d+)%$/,function(m){return 'Keluaran '+m[1]+'%'}],
     [/^Phone battery low · (\d+)%$/,function(m){return 'Bateri telefon rendah · '+m[1]+'%'}],
@@ -4473,7 +4497,7 @@ try{
       var name=profLbl(p);if(q&&name.toLowerCase().indexOf(q)<0) return;n++;
       var card=document.createElement('div');card.className='v2-mcard'+(p.id===store.active?' v2on':'');card.style.setProperty('--mc',ACC[(p.cfg&&p.cfg.accent)||0]);
       var main=document.createElement('button');main.type='button';main.className='v2-mmain';
-      main.innerHTML='<span class="v2-thw">'+v2Thumb(p.cfg||{})+'</span><b></b><small></small>';
+      main.innerHTML='<span class="v2-thw">'+(p.cfg&&p.cfg.photo?'<img class="v2-mph" alt="" src="'+p.cfg.photo+'">':v2Thumb(p.cfg||{}))+(p.cfg&&p.cfg.icon&&!p.cfg.photo?'<span class="v2-mbadge">'+v2MiSvg(p.cfg.icon)+'</span>':'')+'</span><b></b><small></small>';
       main.querySelector('b').textContent=name;main.querySelector('small').textContent=v2Sub(p);
       var lp=0,lpFired=false;
       main.addEventListener('pointerdown',function(){lpFired=false;clearTimeout(lp);lp=setTimeout(function(){lpFired=true;feedback('hold');if(p.id!==store.active) switchProfile(p.id);v2Go('medit')},600)});
@@ -4664,7 +4688,9 @@ try{
     v2Gfx(st);
     v2Diag(false);
     // drive mode, play time, meter, left-handed
-    v2Mode();
+    v2Mode();v2CrzPaint();v2Focus();v2SimKick();
+    if(V2.v==='medit'){v2SsPaint();}
+    v2MiPaint();
     var pl0=store.prefs.playLim||0;v2T($('#sPlayV'),pl0?pl0+' min':'Off');
     var dp=$('#dPlay');if(dp){var lf=v2PlayLeft();if(dp.hidden===!!pl0) dp.hidden=!pl0;if(pl0){v2T(dp.querySelector('b'),v2Clock(lf));v2Tog(dp,'low',lf<=120000)}}
     $('#sLefty').setAttribute('aria-checked',String(!!store.prefs.lefty));$('#sMeter').setAttribute('aria-checked',String(!!store.prefs.meter));
@@ -5046,6 +5072,152 @@ try{
     }else{hole.hidden=true;hand.hidden=true;card.style.top='';card.style.bottom=''}
   }
   window.addEventListener('resize',function(){if(v2Co.el) v2CoPlace()});
+  // =====================================================================================
+  // =====================================================================================
+  // ---- 2 · Cruise: hold a control, tap Cruise, let go: the value stays until you touch that control again ----
+  function v2Cruise(){
+    if(CRZ.on){crzOff();toast('Cruise off.');v2CrzPaint();return}
+    if(!S.connected){toast('Connect the hub first.');return}
+    var v={},n=0;for(var i=0;i<rt.t.length;i++){var t=rt.t[i];if(C.ch[i]&&C.ch[i].kind!=='light'&&Math.abs(t)>=5){v[i]=t;n++}}
+    if(!n){toast('Hold a control first, then tap Cruise.',3500);return}
+    CRZ.v=v;CRZ.arm={};CRZ.on=true;feedback('ok');toast('Cruise on. Let go: the model keeps going. Touch the control to take over.',4000);v2CrzPaint();
+  }
+  function v2CrzPaint(){
+    var lab='Cruise';if(CRZ.on){var k=Object.keys(CRZ.v);if(k.length) lab=(CRZ.v[k[0]]>0?'+':'')+Math.round(CRZ.v[k[0]])+'%'}
+    ['#dCruise','#dbCruise'].forEach(function(q){var b=$(q);if(!b) return;if(b.getAttribute('aria-pressed')!==String(CRZ.on)) b.setAttribute('aria-pressed',String(CRZ.on));var sp=b.querySelector('span')||b;v2T(sp,lab)});
+  }
+  v2Click('#dCruise',v2Cruise);v2Click('#dbCruise',v2Cruise);
+
+  // ---- 3 · Steering eases at speed (model settings) ----
+  function v2SsGuess(){
+    var st=-1,th=-1;C.board.forEach(function(it){if(typeof it.c!=='number') return;if(it.k==='st'&&st<0) st=it.c});
+    C.board.forEach(function(it){if(typeof it.c!=='number'||it.c===st) return;if((it.k==='s'||it.k==='lv'||it.k==='g')&&th<0) th=it.c});
+    var ix=activeIdx();if(st<0) st=ix[1]!=null?ix[1]:1;if(th<0) th=ix[0]!==st?ix[0]:(ix[1]||0);
+    return {st:st,th:th};
+  }
+  function v2SsPaint(){
+    if(!C.ss) C.ss={on:false,st:1,th:0,min:55};
+    var on=!!(C.ss&&C.ss.on),b=$('#ssOn');if(!b) return;b.setAttribute('aria-checked',String(on));$('#ssRow').hidden=!on;
+    ['#ssSt','#ssTh'].forEach(function(q,n){var sel=$(q),key=n?'th':'st',ix=activeIdx(),sig=ix.join(',');
+      if(sel._sig!==sig){sel._sig=sig;sel.innerHTML='';ix.forEach(function(i){var o=document.createElement('option');o.value=i;o.textContent=tagOf(i)+' · '+(C.ch[i].name||'');sel.appendChild(o)})}
+      if(String(sel.value)!==String(C.ss[key])) sel.value=String(C.ss[key])});
+    Array.prototype.forEach.call(document.querySelectorAll('#ssMin .btn'),function(x){x.setAttribute('aria-pressed',String(+x.getAttribute('data-v')===C.ss.min))});
+  }
+  v2Click('#ssOn',function(){if(!C.ss.on){var g0=v2SsGuess();C.ss.st=g0.st;C.ss.th=g0.th}C.ss.on=!C.ss.on;save();v2SsPaint();feedback('ok')});
+  ['#ssSt','#ssTh'].forEach(function(q,n){var e=$(q);if(e) e.addEventListener('change',function(){C.ss[n?'th':'st']=+e.value;save()})});
+  Array.prototype.forEach.call(document.querySelectorAll('#ssMin .btn'),function(x){x.addEventListener('click',function(){C.ss.min=+x.getAttribute('data-v');save();v2SsPaint()})});
+
+  // ---- 8 · Model icon & photo ----
+  var V2MI={car:'M3.5 15.5l2-5.5h13l2 5.5v3h-17z M7 18.5v1.5M17 18.5v1.5 M7.5 10l1.6-3.2h5.8L16.5 10 M6.5 14h2M15.5 14h2',
+    dig:'M2.5 17.5h11v2h-11z M4.5 17.5v-4h6.5v4 M11 14l4.5-6.5 3.5 3 M19 10.5v4.5l-2.2 1.2',
+    crane:'M6 20.5V4h2.2v16.5 M4 20.5h6 M7 5h13 M18 5v6.5 M16.6 11.5h2.8v2h-2.8z M8.2 5l-3 3',
+    truck:'M2.5 7.5h11v9.5h-11z M13.5 10.5h4.2l3.3 3.3v3.2h-7.5z M6 17.5a1.6 1.6 0 1 0 0 .1 M17 17.5a1.6 1.6 0 1 0 0 .1',
+    tractor:'M4 15.5V9.5h7l1.5 3h6v3 M5.5 9.5V6h4v3.5 M7.5 18a3 3 0 1 0 0 .1 M18 18a2 2 0 1 0 0 .1',
+    boat:'M3 15h18l-2.5 4.5h-13z M12 4.5V15 M12 5l5.5 8H12'};
+  var V2MIN={car:'Car',dig:'Excavator',crane:'Crane',truck:'Truck',tractor:'Tractor',boat:'Boat'};
+  function v2MiSvg(k,cls){return '<svg class="'+(cls||'ic')+'" viewBox="0 0 24 24" aria-hidden="true"><path d="'+V2MI[k]+'"/></svg>'}
+  function v2Avatar(cfg,big){
+    if(cfg&&cfg.photo) return '<span class="v2-av'+(big?' big':'')+'"><img alt="" src="'+cfg.photo+'"></span>';
+    if(cfg&&cfg.icon&&V2MI[cfg.icon]) return '<span class="v2-av ic'+(big?' big':'')+'">'+v2MiSvg(cfg.icon)+'</span>';
+    return '';
+  }
+  (function(){
+    var box=$('#mIcons');if(!box) return;
+    [''].concat(Object.keys(V2MI)).forEach(function(k){
+      var b=document.createElement('button');b.type='button';b.className='v2-icb';b.setAttribute('data-ic',k);b.setAttribute('aria-label',k?V2MIN[k]:'No icon');
+      b.innerHTML=k?v2MiSvg(k):'<span class="v2-noic">—</span>';
+      b.addEventListener('click',function(){C.icon=k;save();v2MiPaint();feedback('ok')});box.appendChild(b);
+    });
+  })();
+  function v2MiPaint(){
+    Array.prototype.forEach.call(document.querySelectorAll('#mIcons .v2-icb'),function(b){b.setAttribute('aria-pressed',String(b.getAttribute('data-ic')===(C.icon||'')))});
+    var px=$('#mPhotoX');if(px) px.hidden=!C.photo;
+    // the knob next to the model name shows the photo or icon
+    var sig=(C.photo?C.photo.length:0)+'|'+(C.icon||'')+'|'+store.active;
+    Array.prototype.forEach.call(document.querySelectorAll('.v2-mchip .v2-knob, #scrHome .v2-knob'),function(kn){
+      if(kn._sig===sig) return;kn._sig=sig;var av=v2Avatar(C,!kn.classList.contains('sm'));kn.innerHTML=av?av:'';kn.classList.toggle('has-av',!!av)});
+  }
+  var v2PhotoWant=false;
+  function v2PhotoSet(url){
+    if(!url){toast('No image was chosen.');return}
+    var img=new Image();img.onload=function(){
+      var S0=240,c=document.createElement('canvas'),k=Math.max(S0/img.width,S0/img.height),w=img.width*k,h=img.height*k;
+      c.width=c.height=S0;c.getContext('2d').drawImage(img,(S0-w)/2,(S0-h)/2,w,h);
+      C.photo=c.toDataURL('image/jpeg',.72);save();v2MiPaint();v2Models();toast('Photo set for this model.');
+    };img.onerror=function(){toast('That image could not be read.')};img.src=url;
+  }
+  (function(){var ow=window.onWallpaper;window.onWallpaper=function(slot,url){if(slot==='m'||v2PhotoWant){v2PhotoWant=false;v2PhotoSet(url);return}return ow.apply(this,arguments)}})();
+  v2Click('#mPhoto',function(){
+    if(NB&&NB.pickWallpaper){v2PhotoWant=true;try{NB.pickWallpaper('m')}catch(e){v2PhotoWant=false;toast('Could not open the image picker.')}return}
+    var f=document.createElement('input');f.type='file';f.accept='image/*';
+    f.addEventListener('change',function(){var file=f.files&&f.files[0];if(!file) return;var u=URL.createObjectURL(file);v2PhotoSet(u);setTimeout(function(){URL.revokeObjectURL(u)},5000)});f.click();
+  });
+  v2Click('#mPhotoX',function(){C.photo='';save();v2MiPaint();v2Models();toast('Photo removed.')});
+
+  // ---- 7 · Practice simulator: a virtual model drives on screen with your controls ----
+  var V2SIM={x:.5,y:.6,a:-Math.PI/2,v:0,tr:[],raf:0,last:0};
+  function v2SimOn(){return !!S.connected&&!RH()&&V2.v==='drive'&&!document.hidden&&!R2.classList.contains('dash')}
+  function v2SimLoop(t){
+    V2SIM.raf=0;var box=$('#dSim'),cv=$('#simCv');if(!box||!cv) return;
+    var on=v2SimOn();if(box.hidden===on) box.hidden=!on;if(!on){V2SIM.last=0;return}
+    var dt=V2SIM.last?Math.min(.05,(t-V2SIM.last)/1000):0;V2SIM.last=t;
+    var W=cv.clientWidth,H=cv.clientHeight,dpr=Math.min(2,window.devicePixelRatio||1);
+    if(cv.width!==Math.round(W*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr)}
+    var g0=(C.ss&&C.ss.on)?{st:C.ss.st,th:C.ss.th}:v2SsGuess(),thr=(rt.o[g0.th]||0)/100,str=(rt.o[g0.st]||0)/100;
+    V2SIM.v+=(thr*120-V2SIM.v)*Math.min(1,dt*3);
+    V2SIM.a+=str*2.4*dt*(V2SIM.v/120)*(Math.abs(V2SIM.v)>2?1:0);
+    V2SIM.x+=Math.cos(V2SIM.a)*V2SIM.v*dt/W;V2SIM.y+=Math.sin(V2SIM.a)*V2SIM.v*dt/H;
+    V2SIM.x=(V2SIM.x+1)%1;V2SIM.y=(V2SIM.y+1)%1;
+    if(Math.abs(V2SIM.v)>3){V2SIM.tr.push([V2SIM.x,V2SIM.y]);if(V2SIM.tr.length>90) V2SIM.tr.shift()}
+    var c=cv.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,W,H);
+    c.strokeStyle='rgba(150,160,175,.10)';c.lineWidth=1;for(var gx=0;gx<W;gx+=28){c.beginPath();c.moveTo(gx+.5,0);c.lineTo(gx+.5,H);c.stroke()}for(var gy=0;gy<H;gy+=28){c.beginPath();c.moveTo(0,gy+.5);c.lineTo(W,gy+.5);c.stroke()}
+    c.fillStyle='rgba(255,216,74,.35)';V2SIM.tr.forEach(function(p,n){if(n%3) return;c.beginPath();c.arc(p[0]*W,p[1]*H,1.4,0,7);c.fill()});
+    var lit=false;for(var li=0;li<C.ch.length;li++) if(C.ch[li]&&C.ch[li].kind==='light'&&Math.abs(rt.o[li]||0)>1) lit=true;
+    c.save();c.translate(V2SIM.x*W,V2SIM.y*H);c.rotate(V2SIM.a);
+    var big=C.icon==='truck'||C.icon==='crane',L=big?40:30,Wd=big?18:16,col=ACC[C.accent||0];
+    if(lit){var lg=c.createRadialGradient(L/2+16,0,2,L/2+16,0,30);lg.addColorStop(0,'rgba(255,240,180,.55)');lg.addColorStop(1,'rgba(255,240,180,0)');c.fillStyle=lg;c.beginPath();c.moveTo(L/2,-6);c.lineTo(L/2+44,-20);c.lineTo(L/2+44,20);c.lineTo(L/2,6);c.fill()}
+    c.fillStyle='#111';[[-L/2+4,-Wd/2-3],[L/2-11,-Wd/2-3],[-L/2+4,Wd/2-1],[L/2-11,Wd/2-1]].forEach(function(p){c.fillRect(p[0],p[1],8,4)});
+    c.fillStyle=col;c.beginPath();if(c.roundRect) c.roundRect(-L/2,-Wd/2,L,Wd,4);else c.rect(-L/2,-Wd/2,L,Wd);c.fill();
+    c.fillStyle='rgba(0,0,0,.55)';c.fillRect(L/2-12,-Wd/2+3,7,Wd-6);
+    if(C.icon==='dig'||C.icon==='crane'){c.strokeStyle='#e8e8ea';c.lineWidth=2.4;c.beginPath();c.moveTo(0,0);c.lineTo(L/2+10,-6);c.stroke()}
+    c.restore();
+    V2SIM.raf=requestAnimationFrame(v2SimLoop);
+  }
+  function v2SimKick(){if(!V2SIM.raf&&v2SimOn()) V2SIM.raf=requestAnimationFrame(v2SimLoop);else if(!v2SimOn()){var b=$('#dSim');if(b&&!b.hidden) b.hidden=true}}
+  (function(){var cv=$('#simCv');if(cv) cv.addEventListener('click',function(){V2SIM.x=.5;V2SIM.y=.6;V2SIM.a=-Math.PI/2;V2SIM.v=0;V2SIM.tr=[]})})();
+
+  // ---- 9 · Undo / Redo while editing the board (up to 20 steps) ----
+  var V2UN={u:[],r:[],cur:null,on:false};
+  (function(){
+    var bar=document.createElement('div');bar.className='v2-undo';bar.id='v2Undo';bar.hidden=true;
+    bar.innerHTML='<button type="button" class="btn" id="unU" aria-label="Undo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6L4.5 10.5 9 15"/><path d="M5 10.5h9a5.5 5.5 0 0 1 0 11h-3"/></svg><span>Undo</span></button><button type="button" class="btn" id="unR" aria-label="Redo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l4.5 4.5L15 15"/><path d="M19 10.5h-9a5.5 5.5 0 0 0 0 11h3"/></svg><span>Redo</span></button>';
+    document.body.appendChild(bar);
+    function apply(js){V2UN.cur=js;try{C.board=JSON.parse(js)}catch(_){return}save();syncBoard();feedback('ok');v2UnPaint()}
+    $('#unU').addEventListener('click',function(){v2UnCheck();if(!V2UN.u.length) return;V2UN.r.push(V2UN.cur);apply(V2UN.u.pop())});
+    $('#unR').addEventListener('click',function(){v2UnCheck();if(!V2UN.r.length) return;V2UN.u.push(V2UN.cur);apply(V2UN.r.pop())});
+  })();
+  function v2UnCheck(){
+    if(!bdEditing){if(V2UN.on){V2UN.on=false;V2UN.u=[];V2UN.r=[];V2UN.cur=null}return}
+    var js=JSON.stringify(C.board);
+    if(!V2UN.on){V2UN.on=true;V2UN.cur=js;V2UN.u=[];V2UN.r=[];return}
+    if(js!==V2UN.cur){V2UN.u.push(V2UN.cur);if(V2UN.u.length>20) V2UN.u.shift();V2UN.r=[];V2UN.cur=js}
+  }
+  function v2UnPaint(){
+    var bar=$('#v2Undo');if(!bar) return;var show=!!bdEditing;if(bar.hidden===show) bar.hidden=!show;
+    var u=$('#unU'),r=$('#unR');if(u.disabled!==!V2UN.u.length) u.disabled=!V2UN.u.length;if(r.disabled!==!V2UN.r.length) r.disabled=!V2UN.r.length;
+  }
+  setInterval(function(){v2UnCheck();v2UnPaint()},250);
+
+  // ---- 12 · Focus mode (landscape): only the controls, E-Stop and a small status ----
+  function v2Focus(){var on=!!store.prefs.focus;v2Tog(R2,'v2-focus',on);var b=$('#dbFocus');if(b&&b.getAttribute('aria-pressed')!==String(on)) b.setAttribute('aria-pressed',String(on))}
+  v2Click('#dbFocus',function(){store.prefs.focus=!store.prefs.focus;save();v2Focus();feedback('ok');if(store.prefs.focus) toast('Focus mode. Tap the focus button at the top to leave.',3000)});
+
+  // ---- 4 · Reconnect when the app is opened, if the hub link was on last time ----
+  setTimeout(function(){
+    if(store.prefs.relink&&store.prefs.linkOn&&RH()&&!S.connected&&S.bt!==false&&!S.estop&&!bdEditing&&store.prefs.seen){
+      link.click();toast('Reconnecting the hub from last time. Motors are at zero.',4000);
+    }
+  },900);
   // =====================================================================================
   // the first syncAll() runs before the board is set up; draw the board once everything exists
   try{syncBoard()}catch(_){}
