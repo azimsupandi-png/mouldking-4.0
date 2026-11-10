@@ -374,7 +374,7 @@ async def t_led(b):
     pg = await ctx.new_page(); pg.errors = []
     pg.on('pageerror', lambda e: pg.errors.append(str(e)))
     seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'LED',cfg:{layout:'board',limit:100,ramp:100,
-      ch:[{},{},{},{},{kind:'light'},{kind:'light',la:4,ls:1}],
+      ch:[{off:4},{},{},{},{kind:'light'},{kind:'light',la:4,ls:1}],dash:true,
       board:[{k:'s',c:0,w:1},{k:'s',c:1,w:1},{k:'g',c:2,w:2},{k:'lx',t:'mx',c:0,d:1,w:1},{k:'lx',t:'eq',c:0,cs:[1],w:1},{k:'lx',t:'ts',c:1,w:1},{k:'lx',t:'gi',c:2,w:1},{k:'lx',t:'lp',c:4,cs:[5],w:2},{k:'lx',t:'tk',w:2}]}}],prefs:{seen:true}}))})();"""
     await pg.add_init_script(STUB + seed)
     await pg.goto(HTML)
@@ -419,13 +419,27 @@ async def t_led(b):
     await pg.wait_for_timeout(300)
     r2 = await pg.evaluate("document.querySelectorAll('#boardGrid .bdw[data-k=f] .ndl').length")
     check('tachometer: look A-F can be picked in its settings', r and r2 >= 1, [r, r2])
+    # portrait: the undo bar stays put (no grip); landscape dashboard: it can be dragged
+    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("getComputedStyle(document.querySelector('#v2Undo .v2-ugrip')).display")
+    check('undo bar has no grip in portrait (fixed place)', r == 'none', r)
+    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.set_viewport_size({'width': 844, 'height': 390})
+    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.wait_for_timeout(400)
+    r = await pg.evaluate("[document.documentElement.classList.contains('dash'),getComputedStyle(document.querySelector('#v2Undo .v2-ugrip')).display]")
+    check('landscape dashboard shows the undo grip', r == [True, 'flex'] or r == [True, 'inline-flex'], r)
+    await pg.evaluate("document.getElementById('bdEdit').click()")
     # undo bar: drag it by its grip; the spot is kept; double-tap puts it back
     await pg.evaluate("document.getElementById('bdEdit').click()")
     await pg.wait_for_timeout(400)
     r = await pg.evaluate("""(function(){var g=document.querySelector('#v2Undo .v2-ugrip'),r=g.getBoundingClientRect(),x=r.left+5,y=r.top+5,o={bubbles:true,pointerId:3};
       g.dispatchEvent(new PointerEvent('pointerdown',Object.assign({clientX:x,clientY:y},o)));g.dispatchEvent(new PointerEvent('pointermove',Object.assign({clientX:40,clientY:200},o)));g.dispatchEvent(new PointerEvent('pointerup',Object.assign({clientX:40,clientY:200},o)));
       var b=document.getElementById('v2Undo').getBoundingClientRect();return [Math.round(b.left),Math.round(b.top),!!localStorage.getItem('mk6UndoPos')]})()""")
-    check('undo bar can be dragged and its spot is saved', r[0] < 60 and 150 < r[1] < 230 and r[2], r)
+    check('undo bar can be dragged on the landscape dashboard and its spot is saved', r[0] < 60 and 150 < r[1] < 230 and r[2], r)
+    r2 = await pg.evaluate("Math.round(document.getElementById('v2Undo').getBoundingClientRect().height)")
+    check('undo bar keeps its size when moved', 40 <= r2 <= 60, r2)
     await pg.evaluate("document.getElementById('bdEdit').click()")
     await pg.wait_for_timeout(300)
     await pg.evaluate("document.getElementById('bdEdit').click()")
@@ -437,6 +451,11 @@ async def t_led(b):
       return document.getElementById('v2Undo').classList.contains('moved')})()""")
     check('double-tap on the grip puts the undo bar back', r is False, r)
     await pg.evaluate("document.getElementById('bdEdit').click()")
+    # widget settings explain the hub value: start power 4 -> 75 becomes 79
+    await pg.set_viewport_size({'width': 390, 'height': 844})
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("document.getElementById('bdEdit').click();[...document.querySelector('#boardGrid .bdw[data-k=s]').querySelectorAll('.bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Widget settings').click();var t=(document.querySelector('#gEdit .wsinfo-t')||{}).textContent||'';var hasOff=[...document.querySelectorAll('#gEdit .wsl')].some(l=>/^Start power/.test(l.textContent));document.getElementById('gEdit').remove();document.getElementById('bdEdit').click();[t,hasOff]")
+    check('widget settings show start power and explain 75 -> hub 79', 'start power +4%' in r[0] and 'hub 79' in r[0] and r[1], r)
     check('no JS errors (LED widgets)', not pg.errors, pg.errors[:3])
     await ctx.close()
 

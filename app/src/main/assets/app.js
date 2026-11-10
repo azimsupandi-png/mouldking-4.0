@@ -501,6 +501,12 @@ try{
     return out;
   }
 
+  function goalOfAt(i,t){
+    var c=C.ch[i];if(c.kind==='light') return t;
+    var m=powerFor(Math.abs(t),c),out=(t<0?-m:m)*C.limit/100;
+    if(c.trim) out=Math.max(-100,Math.min(100,out+c.trim));
+    return out;
+  }
   // What the hub sends at a full 100% request (the power limit, speed and channel max); meters mark it with a tick
   function hubMax(i){
     if(C.ch[i].kind==='light') return 100;
@@ -961,7 +967,19 @@ try{
   var F_TRIM={k:'trimv',l:'Trim (runs straight)',u:'%',min:-20,max:20,st:1,ch:[-5,0,5],def:0,g:function(it){return C.ch[it.c].trim||0},s:function(it,v){C.ch[it.c].trim=v}};
   var F_TB={k:'tb',l:'Trim buttons on the widget',ch:[0,1],lab:['Off','On'],only:true,def:0,g:function(it){return it.tb?1:0},s:function(it,v){if(v) it.tb=1; else delete it.tb}};
   var F_CURVE={k:'cvv',l:'Response curve',ed:true,ch:[],g:function(it){return (C.ch[it.c].cv||[25,50,75]).slice()},s:function(it,v){C.ch[it.c].cv=v}};
-  ['s','st','n'].forEach(function(k){if(WSPEC[k]) WSPEC[k].f=WSPEC[k].f.concat([F_CURVE,F_TRIM,F_TB])});
+  var F_OFF={k:'offv',l:'Start power (channel)',u:'%',min:0,max:50,st:1,ch:[0,5,10,20],def:0,g:function(it){return C.ch[it.c].off||0},s:function(it,v){C.ch[it.c].off=v}};
+  // read-only: how the hub value is made from the widget value, with this channel's settings
+  var F_WHY={k:'why',l:'How the hub value is made',info:function(it){
+    var c=C.ch[it.c],p=[];
+    p.push('curve '+cvName(c.cv||[25,50,75]));
+    if(c.off) p.push('start power +'+c.off+'%');
+    if(c.max<100) p.push('max '+c.max+'%');
+    if(C.limit<100) p.push('drive mode '+C.limit+'%');
+    if(c.trim) p.push('trim '+(c.trim>0?'+':'')+c.trim+'%');
+    var ex=Math.max(-100,Math.min(100,Math.round(goalOfAt(it.c,75))));
+    return tagOf(it.c)+': '+p.join(' \u00b7 ')+'. Example: 75 \u2192 hub '+ex+'.';
+  }};
+  ['s','st','n'].forEach(function(k){if(WSPEC[k]) WSPEC[k].f=WSPEC[k].f.concat([F_CURVE,F_OFF,F_TRIM,F_TB,F_WHY])});
   function wsEdit(it){
     var sp=WSPEC[it.k];if(sp&&sp.byT) sp=sp.byT[it.t];if(!sp) return;
     var old=document.getElementById('gEdit');if(old) old.remove();
@@ -975,6 +993,7 @@ try{
     function dec(f){return f.st&&f.st<1?1:0}
     function clampF(f,v){v=+v;if(!isFinite(v)) return null;if(f.only) return v;v=Math.max(f.min,Math.min(f.max,v));return dec(f)?Math.round(v*10)/10:Math.round(v)}
     sp.f.forEach(function(f){
+      if(f.info){var ib=mk('div','','wsf wsinfo');ib.appendChild(mk('span',f.l,'wsl'));var it2=mk('div',f.info(it),'wsinfo-t');ib.appendChild(it2);bx.appendChild(ib);boxes[f.k]=ib;ib.refresh=function(){it2.textContent=f.info(it)};return}
       if(f.ed){
         vals[f.k]=f.g(it);var ebox=mk('div','','wsf');ebox.appendChild(mk('span',f.l,'wsl'));
         ebox.appendChild(cvEditor(function(){return vals[f.k]},function(p){vals[f.k]=p}));
@@ -1010,6 +1029,7 @@ try{
     sv.addEventListener('click',function(){
       var sc0=!!it.sc, hz0=!!it.hz;
       sp.f.forEach(function(f){
+        if(f.info) return;
         var v=vals[f.k];
         if(f.s) f.s(it,v);
         else if(f.def!==undefined&&v===f.def) delete it[f.k];
@@ -4591,10 +4611,11 @@ try{
   for(var v2k3 in V2MS3) if(!MS[v2k3]) MS[v2k3]=V2MS3[v2k3];
   var V2MS4={"Cruise": "Cruise", "Connect the hub first.": "Sambungkan hub dahulu.", "Cruise off. Held controls go back to 0.": "Cruise dimatikan. Kawalan yang ditahan kembali ke 0.", "Cruise on: a control you let go of keeps its value. Bring it back to the middle to stop it. Steering and lights still return.": "Cruise hidup: kawalan yang dilepaskan kekal pada nilainya. Bawa kembali ke tengah untuk berhenti. Stereng dan lampu tetap kembali.", "Cruise on": "Cruise hidup", "Steering eases at speed": "Stereng ikut kelajuan", "Steering": "Stereng", "Throttle": "Pendikit", "Steering at full speed": "Stereng pada kelajuan penuh", "At full throttle the steering turns only this much, so the model does not tip over in fast turns.": "Pada pendikit penuh, stereng hanya berpusing setakat ini supaya model tidak terbalik semasa membelok laju.", "Bluetooth is back. Reconnecting the hub. Motors are at zero.": "Bluetooth hidup semula. Menyambung semula hub. Motor pada sifar.", "Reconnect automatically (back in the app, Bluetooth on again, or app opened)": "Sambung semula automatik (kembali ke app, Bluetooth hidup semula, atau app dibuka)", "Reconnecting the hub from last time. Motors are at zero.": "Menyambung semula hub seperti kali lepas. Motor pada sifar.", "Icon & photo": "Ikon & foto", "Model icon": "Ikon model", "Choose photo": "Pilih foto", "Remove photo": "Buang foto", "No icon": "Tiada ikon", "Car": "Kereta", "Excavator": "Jengkaut", "Crane": "Kren", "Truck": "Lori", "Tractor": "Traktor", "Boat": "Bot", "Photo set for this model.": "Foto ditetapkan untuk model ini.", "Photo removed.": "Foto dibuang.", "That image could not be read.": "Imej itu tidak dapat dibaca.", "No image was chosen.": "Tiada imej dipilih.", "Practice: virtual model": "Latihan: model maya", "tap to put the model back in the middle": "ketik untuk letak model di tengah semula", "Undo": "Batal", "Redo": "Ulang", "Focus mode": "Mod fokus", "Focus mode. Tap the focus button at the top to leave.": "Mod fokus. Ketik butang fokus di atas untuk keluar."};
   for(var v2k4 in V2MS4) if(!MS[v2k4]) MS[v2k4]=V2MS4[v2k4];
-  var V2MS5={"Move the undo bar":"Alih bar undo","Drag to move \u00b7 double-tap to put back":"Seret untuk alih \u00b7 ketik dua kali untuk kembali","Tachometer look":"Rupa takometer","A Racing":"A Lumba","B Twin ring":"B Dwi-cincin","C Chrome":"C Krom","D Digital":"D Digital","E Smooth arc":"E Lengkok licin","F Pro":"F Pro","POWER":"KUASA","LED strip":"Jalur LED","LED arrows":"Anak panah LED","LED bars":"Bar LED","Turn signals":"Isyarat belok","Gear LED":"Gear LED","Light panel":"Panel lampu","Message strip":"Jalur mesej","LED":"LED","LED matrix settings":"Tetapan matriks LED","Drive channel":"Saluran pemanduan","Steering channel (arrows left/right)":"Saluran stereng (anak panah kiri/kanan)","LED bars settings":"Tetapan bar LED","Bar 1":"Bar 1","Bar 2":"Bar 2","Bar 3":"Bar 3","Bar 4":"Bar 4","Turn signal settings":"Tetapan isyarat belok","Steering channel":"Saluran stereng","Blinks from":"Berkelip mulai","Left indicator light":"Lampu isyarat kiri","Right indicator light":"Lampu isyarat kanan","Left indicator":"Isyarat kiri","Right indicator":"Isyarat kanan","Gear LED settings":"Tetapan gear LED","Gear channel":"Saluran gear","Light panel settings":"Tetapan panel lampu","Light 1":"Lampu 1","Light 2":"Lampu 2","Light 3":"Lampu 3","Light 4":"Lampu 4","First channel":"Saluran pertama","First light channel":"Saluran lampu pertama","Message strip settings":"Tetapan jalur mesej","Scroll speed":"Kelajuan gulung","Slow":"Perlahan","Normal":"Biasa","Tachometer":"Takometer","Style":"Gaya","LED ring":"Cincin LED","Needle (tachometer)":"Jarum (takometer)","Response curve":"Lengkung tindak balas","Linear":"Linear","Fine":"Halus","Very fine":"Sangat halus","Fast":"Laju","Custom":"Sendiri",
+  var V2MS5={"Start power (channel)":"Kuasa mula (saluran)","How the hub value is made":"Bagaimana nilai hub dikira","Move the undo bar":"Alih bar undo","Drag to move \u00b7 double-tap to put back":"Seret untuk alih \u00b7 ketik dua kali untuk kembali","Tachometer look":"Rupa takometer","A Racing":"A Lumba","B Twin ring":"B Dwi-cincin","C Chrome":"C Krom","D Digital":"D Digital","E Smooth arc":"E Lengkok licin","F Pro":"F Pro","POWER":"KUASA","LED strip":"Jalur LED","LED arrows":"Anak panah LED","LED bars":"Bar LED","Turn signals":"Isyarat belok","Gear LED":"Gear LED","Light panel":"Panel lampu","Message strip":"Jalur mesej","LED":"LED","LED matrix settings":"Tetapan matriks LED","Drive channel":"Saluran pemanduan","Steering channel (arrows left/right)":"Saluran stereng (anak panah kiri/kanan)","LED bars settings":"Tetapan bar LED","Bar 1":"Bar 1","Bar 2":"Bar 2","Bar 3":"Bar 3","Bar 4":"Bar 4","Turn signal settings":"Tetapan isyarat belok","Steering channel":"Saluran stereng","Blinks from":"Berkelip mulai","Left indicator light":"Lampu isyarat kiri","Right indicator light":"Lampu isyarat kanan","Left indicator":"Isyarat kiri","Right indicator":"Isyarat kanan","Gear LED settings":"Tetapan gear LED","Gear channel":"Saluran gear","Light panel settings":"Tetapan panel lampu","Light 1":"Lampu 1","Light 2":"Lampu 2","Light 3":"Lampu 3","Light 4":"Lampu 4","First channel":"Saluran pertama","First light channel":"Saluran lampu pertama","Message strip settings":"Tetapan jalur mesej","Scroll speed":"Kelajuan gulung","Slow":"Perlahan","Normal":"Biasa","Tachometer":"Takometer","Style":"Gaya","LED ring":"Cincin LED","Needle (tachometer)":"Jarum (takometer)","Response curve":"Lengkung tindak balas","Linear":"Linear","Fine":"Halus","Very fine":"Sangat halus","Fast":"Laju","Custom":"Sendiri",
     "Hazard":"Hazard","Light settings\u2026":"Tetapan lampu\u2026","Turns on by itself":"Menyala sendiri","Brake light":"Lampu brek","Reverse light":"Lampu undur","Follows drive channel":"Ikut saluran pemanduan",
     "Also show (yellow line)":"Turut tunjuk (garis kuning)","Also show (blue line)":"Turut tunjuk (garis biru)","Also show (grey line)":"Turut tunjuk (garis kelabu)"};
   for(var v2k5 in V2MS5) MS[v2k5]=V2MS5[v2k5];
+  MS_RE.push([/^([A-F]\d?): (.+)\. Example: 75 \u2192 hub (-?\d+)\.$/,function(m){return m[1]+': '+m[2].replace(/curve /,'lengkung ').replace(/start power/,'kuasa mula').replace(/drive mode/,'mod pemanduan').replace(/max /,'maks ')+'. Contoh: 75 \u2192 hub '+m[3]+'.'}]);
   MS_RE.push([/^(Linear|Fine|Very fine|Fast|Custom) \u00b7 50% \u2192 (\d+)%$/,function(m){return MS[m[1]]+' \u00b7 50% \u2192 '+m[2]+'%'}]);
   MS_RE.push([/^(\d+) hubs? · (\d+) widgets?$/,function(m){return m[1]+' hub · '+m[2]+' widget'}],
     [/^Output (\d+)%$/,function(m){return 'Keluaran '+m[1]+'%'}],
@@ -5557,16 +5578,17 @@ try{
     /* the bar can be dragged anywhere by its grip; the spot is kept per orientation; double-tap the grip to put it back */
     var UPK='mk6UndoPos';
     function upAll(){try{return JSON.parse(localStorage.getItem(UPK)||'{}')||{}}catch(_){return {}}}
-    function upKey(){return window.innerWidth>window.innerHeight?'l':'p'}
+    function upKey(){return 'l'}
+    function upCan(){return document.documentElement.classList.contains('dash')}
     function upPlace(){
-      var p=upAll()[upKey()];
+      bar.classList.toggle('canmove',upCan());var p=upCan()?upAll()[upKey()]:null;
       if(!p){bar.classList.remove('moved');bar.style.left='';bar.style.top='';return}
       var r=bar.getBoundingClientRect(),w=r.width||220,h=r.height||50;
       var x=Math.max(4,Math.min(window.innerWidth-w-4,p[0]*window.innerWidth)),y=Math.max(4,Math.min(window.innerHeight-h-4,p[1]*window.innerHeight));
       bar.classList.add('moved');bar.style.left=Math.round(x)+'px';bar.style.top=Math.round(y)+'px';
     }
     var dg=null,lastTap=0;
-    grip.addEventListener('pointerdown',function(e){var r=bar.getBoundingClientRect();dg={dx:e.clientX-r.left,dy:e.clientY-r.top,moved:false};try{grip.setPointerCapture(e.pointerId)}catch(_){}e.preventDefault()});
+    grip.addEventListener('pointerdown',function(e){if(!upCan()) return;var r=bar.getBoundingClientRect();dg={dx:e.clientX-r.left,dy:e.clientY-r.top,moved:false};try{grip.setPointerCapture(e.pointerId)}catch(_){}e.preventDefault()});
     grip.addEventListener('pointermove',function(e){if(!dg) return;var r=bar.getBoundingClientRect();
       var x=Math.max(4,Math.min(window.innerWidth-r.width-4,e.clientX-dg.dx)),y=Math.max(4,Math.min(window.innerHeight-r.height-4,e.clientY-dg.dy));
       if(!dg.moved&&Math.abs(x-r.left)+Math.abs(y-r.top)<3) return;dg.moved=true;bar.classList.add('moved','dragging');bar.style.left=Math.round(x)+'px';bar.style.top=Math.round(y)+'px'});
@@ -5575,6 +5597,7 @@ try{
       else{var now=Date.now();if(now-lastTap<400){var a2=upAll();delete a2[upKey()];try{localStorage.setItem(UPK,JSON.stringify(a2))}catch(_){}upPlace();feedback('ok')}lastTap=now}}
     grip.addEventListener('pointerup',upEnd);grip.addEventListener('pointercancel',upEnd);
     window.addEventListener('resize',upPlace);
+    try{new MutationObserver(function(){if(!bar.hidden) upPlace()}).observe(document.documentElement,{attributes:true,attributeFilter:['class']})}catch(_){}
     bar.upPlace=upPlace;
     function apply(js){V2UN.cur=js;try{C.board=JSON.parse(js)}catch(_){return}save();syncBoard();feedback('ok');v2UnPaint()}
     $('#unU').addEventListener('click',function(){v2UnCheck();if(!V2UN.u.length) return;V2UN.r.push(V2UN.cur);apply(V2UN.u.pop())});
@@ -5587,7 +5610,7 @@ try{
     if(js!==V2UN.cur){V2UN.u.push(V2UN.cur);if(V2UN.u.length>20) V2UN.u.shift();V2UN.r=[];V2UN.cur=js}
   }
   function v2UnPaint(){
-    var bar=$('#v2Undo');if(!bar) return;var show=!!bdEditing;if(bar.hidden===show){bar.hidden=!show;if(show&&bar.upPlace) bar.upPlace()}
+    var bar=$('#v2Undo');if(!bar) return;var show=!!bdEditing&&V2.v==='drive';if(bar.hidden===show){bar.hidden=!show;if(show&&bar.upPlace) bar.upPlace()}
     var u=$('#unU'),r=$('#unR');if(u.disabled!==!V2UN.u.length) u.disabled=!V2UN.u.length;if(r.disabled!==!V2UN.r.length) r.disabled=!V2UN.r.length;
   }
   setInterval(function(){v2UnCheck();v2UnPaint()},250);
