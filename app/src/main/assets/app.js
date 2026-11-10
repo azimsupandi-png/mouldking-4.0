@@ -594,7 +594,7 @@ try{
       m.unit=TV.unit?T({'text-anchor':'middle','font-weight':700,fill:MUT,'letter-spacing':'.18em'},TV.unit):null;
       m.sub=T({'text-anchor':'middle','font-weight':700,fill:'#5aa2e6'});
       m.lay=function(cw,ch){
-        m.cmp=ch<150;var dh=m.nch>1?(m.cmp?11:16):0,R=Math.max(18,Math.min(cw/2-6,(ch-dh-8)/2)),cx=cw/2,cy=4+R+Math.max(0,(ch-dh-8-2*R)/2);
+        m.cmp=ch<150;var dh=m.nch>1?(m.cmp?11:16):0,slH=ch>=150?Math.max(12,Math.min(18,ch*.07)):0,R=Math.max(18,Math.min(cw/2-6,(ch-dh-8-slH)/2)),cx=cw/2,cy=slH+4+R+Math.max(0,(ch-dh-8-slH-2*R)/2);m.slH=slH;
         m.cx=cx;m.cy=cy;m.R2=R;m.rr=R*TV.rr;m.ww=R*TV.rw;m.hk='';m.lk='';
         var g=m.tg;while(g.firstChild) g.removeChild(g.firstChild);
         var defs=sv('defs',{},g),uid='t'+(++TACHO.n),RB=R-(TV.bez==='chrome'?6:2);
@@ -614,6 +614,14 @@ try{
           sv('line',{x1:p[0].toFixed(1),y1:p[1].toFixed(1),x2:p2[0].toFixed(1),y2:p2[1].toFixed(1),stroke:big?'#d5d9df':'#5a626e','stroke-width':big?Math.max(1.4,RB*.02):1,'stroke-linecap':'round'},g);
           if(big&&!TV.nolab&&R>=46){var lr=ri-RB*.22,tp=mPol(cx,cy,lr,a);
             sv('text',{x:tp[0].toFixed(1),y:(tp[1]+fsl*.35).toFixed(1),'text-anchor':'middle','font-size':fsl.toFixed(0),'font-weight':600,fill:'#aeb4bd'},g).textContent=String(Math.abs(v))}}
+        // shift lights: a row of LEDs above the dial
+        m.sl=[];if(slH){var sn=12,sw2=Math.min(R*1.7,cw-24),sr=Math.max(2.4,Math.min(4.5,sw2/sn*.32));for(var si=0;si<sn;si++){var scl=si<6?'#1D9E75':si<9?'#EF9F27':'#E24B4A';m.sl.push([sv('circle',{cx:(cx-sw2/2+(si+.5)*sw2/sn).toFixed(1),cy:(slH/2+1).toFixed(1),r:sr.toFixed(1),fill:'rgba(150,160,175,.16)'},g),scl,(si+1)/sn*100])}}
+        // red bezel that pulses above 80
+        m.bz=sv('circle',{cx:cx,cy:cy,r:(R-1).toFixed(1),fill:'none',stroke:'#E24B4A','stroke-width':Math.max(2,R*.035).toFixed(1),opacity:0},g);
+        // gear window: the gear of a Gear widget on the same channel
+        m.gw=(C.board||[]).filter(function(x){return (x.k==='g'||x.k==='lv')&&x.c===it.c})[0]||null;m.gb=null;
+        if(m.gw&&R>=46){var gs=RB*.22,gx=cx+RB*.5,gy=cy+RB*.64;m.gb=sv('rect',{x:(gx-gs/2).toFixed(1),y:(gy-gs/2).toFixed(1),width:gs.toFixed(1),height:gs.toFixed(1),rx:(gs*.18).toFixed(1),fill:'#0b0d11',stroke:'#ffd84a','stroke-width':1.5},g);
+          m.gt=sv('text',{x:gx.toFixed(1),y:(gy+gs*.26).toFixed(1),'text-anchor':'middle','font-size':(gs*.7).toFixed(0),'font-weight':900,fill:'#ffd84a'},g);m.gl=gearsOf(m.gw)}
         m.pkm=TV.peak==='none'?null:TV.peak==='tri'?sv('path',{fill:'#fff',opacity:0},g):TV.peak==='tick'?sv('line',{stroke:'#fff','stroke-width':Math.max(1.6,RB*.025),'stroke-linecap':'round',opacity:0},g):sv('circle',{r:Math.max(1.8,RB*.03),fill:'#fff',opacity:0},g);
         var N=TV.nd,nw=Math.max(1.2,RB*N.w);m.ng=sv('g',{'class':'ndl'},g);
         if(N.from) sv('path',{d:'M'+(cx-nw)+' '+(cy-RB*N.from)+' L'+cx+' '+(cy-RB*N.len)+' L'+(cx+nw)+' '+(cy-RB*N.from)+'Z',fill:N.c},m.ng);
@@ -638,18 +646,34 @@ try{
       m.req=sv('path',{fill:'none','stroke-linecap':'round','stroke-width':5,stroke:th[3]},svg);
       m.zt=sv('line',{stroke:TXT,'stroke-width':2.5,'stroke-linecap':'round'},svg);
       m.hq=[sv('line',{stroke:'#fff','stroke-width':2.5,'stroke-linecap':'round',visibility:'hidden'},svg),sv('line',{stroke:'#fff','stroke-width':2.5,'stroke-linecap':'round',visibility:'hidden'},svg)];
-      m.val=T({'class':'mv','text-anchor':'middle','font-weight':700,fill:TXT});
-      m.sub=T({'text-anchor':'middle','font-size':11,fill:MUT});
+      // inner blue ring = what the hub receives; arrow + big number + unit; 5-second mini graph underneath
+      m.hT=sv('path',{fill:'none',stroke:'rgba(55,138,221,.18)','stroke-linecap':'round'},svg);
+      m.hA=sv('path',{fill:'none',stroke:'#378ADD','stroke-linecap':'round'},svg);
+      m.arw=T({'text-anchor':'middle',fill:'#1D9E75'});
+      m.val=T({'class':'mv','text-anchor':'middle','font-weight':800,fill:TXT});
+      m.unit=T({'text-anchor':'middle','font-weight':700,fill:MUT,'letter-spacing':'.18em'},'% POWER');
+      m.sub=T({'text-anchor':'middle','font-size':11,'font-weight':800,fill:'#5aa2e6'});
+      m.spB=sv('rect',{rx:4,fill:'rgba(0,0,0,.28)'},svg);
+      m.sp=sv('polyline',{fill:'none',stroke:'#ffd84a','stroke-width':1.8,'stroke-linejoin':'round','stroke-linecap':'round'},svg);
+      m.hs=[];m.hsT=0;
       m.lay=function(cw,ch){
         m.cmp=ch<112;
-        var dh=m.nch>1?(m.cmp?12:18):0, R2=Math.max(16,Math.min((cw-12)/2,(ch-dh-7)/1.68));
-        var w=Math.max(5,R2*.16), r=R2-w/2-1, total=1.707*R2+w/2+1, y0=Math.max(1,(ch-dh-total)/2), cx=cw/2, cy=y0+R2+1;
+        var dh=m.nch>1?(m.cmp?12:18):0, R2=Math.max(16,Math.min((cw-12)/2,(ch-dh-7)/(m.cmp?1.68:1.9)));
+        var w=Math.max(5,R2*.16), r=R2-w/2-1, total=(m.cmp?1.707:1.88)*R2+w/2+1, y0=Math.max(1,(ch-dh-total)/2), cx=cw/2, cy=y0+R2+1;
         m.cx=cx;m.cy=cy;m.R2=R2;m.rr=r;m.ww=w;m.hk='';
         for(var j=0;j<24;j++){m.seg[j].setAttribute('d',mArc(cx,cy,r,mAg(-100+j*200/24)-.8,mAg(-100+(j+1)*200/24)+.8));m.seg[j].setAttribute('stroke-width',w.toFixed(1))}
         m.zt.setAttribute('x1',cx);m.zt.setAttribute('x2',cx);m.zt.setAttribute('y1',cy-R2-1);m.zt.setAttribute('y2',cy-r+w/2);m.zt.setAttribute('display',it.ow?'none':'inline');
-        var fs=Math.max(8,Math.min(60,r*.55,(r-w/2)*2*.86/2.75));
-        m.val.setAttribute('font-size',fs.toFixed(0));m.val.setAttribute('x',cx);m.val.setAttribute('y',(cy+fs*.3).toFixed(1));
-        m.sub.setAttribute('display',R2<28?'none':'inline');m.sub.setAttribute('x',cx);m.sub.setAttribute('y',(cy+fs*.3+15).toFixed(1));
+        var hw=Math.max(2.5,R2*.05),hr=r-w/2-hw/2-Math.max(3,R2*.05);m.hr=hr;
+        [m.hT,m.hA].forEach(function(p){p.setAttribute('stroke-width',hw.toFixed(1))});m.hT.setAttribute('d',mArc(cx,cy,hr,mAg(-100),mAg(100)));m.hk2='';
+        var big=R2>=40,fs=Math.max(8,Math.min(64,big?hr*.62:r*.55,(hr-hw)*2*.86/2.4));
+        m.val.setAttribute('font-size',fs.toFixed(0));m.val.setAttribute('x',cx);m.val.setAttribute('y',(cy+fs*.32).toFixed(1));
+        m.arw.setAttribute('display',big?'inline':'none');m.arw.setAttribute('font-size',(fs*.36).toFixed(0));m.arw.setAttribute('x',cx);m.arw.setAttribute('y',(cy-fs*.52).toFixed(1));
+        m.unit.setAttribute('display',big?'inline':'none');m.unit.setAttribute('font-size',Math.max(7,fs*.2).toFixed(0));m.unit.setAttribute('x',cx);m.unit.setAttribute('y',(cy+fs*.32+Math.max(9,fs*.34)).toFixed(1));
+        m.sub.setAttribute('display',R2<28?'none':'inline');m.sub.setAttribute('x',cx);m.sub.setAttribute('y',(cy+fs*.32+(big?Math.max(9,fs*.34)+13:15)).toFixed(1));
+        var spOn=!m.cmp&&R2>=40;m.spOn=spOn;
+        m.spX=cx-R2*.42;m.spW=R2*.84;m.spY=cy+R2*.86;m.spH=R2*.2;
+        m.spB.setAttribute('display',spOn?'inline':'none');m.sp.setAttribute('display',spOn?'inline':'none');
+        m.spB.setAttribute('x',(m.spX-4).toFixed(1));m.spB.setAttribute('y',(m.spY-m.spH-3).toFixed(1));m.spB.setAttribute('width',(m.spW+8).toFixed(1));m.spB.setAttribute('height',(m.spH+6).toFixed(1));
         dots(cw,ch);m.rd='';
       };
     }else if(k==='i'){
@@ -838,10 +862,17 @@ try{
       }
       if(k==='f'&&it.nd){
         if(it.ow){out=Math.max(0,out);oth=Math.max(0,oth)}
-        var nv=Math.max(-100,Math.min(100,out)),nk=String(Math.round(nv)),AGu=it.ow?mAgF:mAg,TVu=m.tv,nnow=performance.now();
+        var nv=Math.max(-100,Math.min(100,out)),AGu=it.ow?mAgF:mAg,TVu=m.tv,nnow=performance.now();
+        // start sweep: when the hub connects, the needle and lights sweep to 100 and back
+        if(S.connected&&!m.wasC) m.swT=nnow;m.wasC=!!S.connected;
+        if(m.swT){var se=(nnow-m.swT)/1000;if(se<1.4){nv=se<.6?se/.6*100:100*(1-(se-.6)/.8)}else m.swT=0}
+        var nk=String(Math.round(nv));
         if(m.nk!==nk){m.nk=nk;m.ng.style.transform='rotate('+(90-AGu(nv)).toFixed(1)+'deg)'}
         var ntx=TVu.unit==='%'||TVu.num[0]>.3?(it.ow?String(Math.round(out)):mSgn(out)):(it.ow?String(Math.round(out)):mSgn(out))+'%';if(m.val.textContent!==ntx) m.val.textContent=ntx;
         m.val.setAttribute('fill',Math.abs(out)>80?'#ff6b6a':'#f2f3f5');
+        m.bz.setAttribute('opacity',Math.abs(nv)>80?(.45+.55*Math.abs(Math.sin(nnow/160))).toFixed(2):0);m.bz.style.filter=Math.abs(nv)>80?'drop-shadow(0 0 6px #E24B4A)':'';
+        if(m.sl.length){var an=Math.abs(nv),fl=an>95&&Math.floor(nnow/110)%2;m.sl.forEach(function(q){var on=an>=q[2]-4,cl=on?(fl?'#ffffff':q[1]):'rgba(150,160,175,.16)';if(q[0].getAttribute('fill')!==cl){q[0].setAttribute('fill',cl);q[0].style.filter=on?'drop-shadow(0 0 3px '+q[1]+')':''}})}
+        if(m.gb){var tv0=Math.round(rt.t[it.c]||0),bi=-1,bd=1e9;m.gl.forEach(function(gd,j){var d=Math.abs(wOut(m.gw,gd[1])-tv0);if(d<bd){bd=d;bi=j}});var gtx=bd<=12&&bi>=0?String(m.gl[bi][0]):'\u2013';if(m.gt.textContent!==gtx) m.gt.textContent=gtx}
         var hot=TVu.pulse&&Math.abs(nv)>80,lk=Math.round(nv/2)+(hot?'p'+Math.floor(nnow/120)%6:'');
         if(m.lk!==lk){m.lk=lk;
           m.segs.forEach(function(q){var md=q[1],on=nv>=0?(md>=0&&md<=nv+.01):(md<=0&&md>=nv),cl=m.smooth?tzSmooth(md):tzCol(md);
@@ -859,8 +890,14 @@ try{
         var nsb=diff?((it.sh?'of ':'hub ')+(oth<0?'−':'')+Math.abs(Math.round(oth))):'';if(m.sub.textContent!==nsb) m.sub.textContent=nsb;
       }else if(k==='f'){
         if(it.ow){out=Math.max(0,out);oth=Math.max(0,oth)}
-        var tx2=it.ow?String(Math.round(out)):mSgn(out);if(m.val.textContent!==tx2) m.val.textContent=tx2;
-        var sb=diff?((it.sh?'of ':'hub ')+(oth<0?'\u2212':'')+Math.abs(Math.round(oth))):'%';if(m.sub.textContent!==sb) m.sub.textContent=sb;
+        var tx2=m.R2>=40?String(Math.abs(Math.round(out))):(it.ow?String(Math.round(out)):mSgn(out));if(m.val.textContent!==tx2) m.val.textContent=tx2;
+        m.val.setAttribute('fill',Math.abs(out)>80?'#ff6b6a':TXT);
+        var aw=out>2?'\u25B2':out<-2?'\u25BC':'\u25CF';if(m.arw.textContent!==aw){m.arw.textContent=aw;m.arw.setAttribute('fill',out<-2?'#378ADD':out>2?'#1D9E75':'#5a626e')}
+        var sb=diff?((it.sh?'of ':'hub ')+(oth<0?'\u2212':'')+Math.abs(Math.round(oth))):(m.R2>=40?'':'%');if(m.sub.textContent!==sb) m.sub.textContent=sb;
+        var hv=Math.round(it.sh?out:(diff?oth:out)),hk2=String(hv);
+        if(m.hk2!==hk2){m.hk2=hk2;m.hA.setAttribute('d',Math.abs(hv)<1?'':mArc(m.cx,m.cy,m.hr,mAg(0),mAg(Math.max(-100,Math.min(100,hv)))))}
+        var nw=performance.now();if(nw-m.hsT>=100){m.hsT=nw;m.hs.push(out);if(m.hs.length>50) m.hs.shift();
+          if(m.spOn){var pts=[];for(var q=0;q<m.hs.length;q++) pts.push((m.spX+(50-m.hs.length+q)*m.spW/49).toFixed(1)+','+(m.spY-Math.min(100,Math.abs(m.hs[q]))/100*m.spH).toFixed(1));m.sp.setAttribute('points',pts.join(' '))}}
         for(j=0;j<24;j++){var vc=it.ow?(j+.5)*100/24:-100+(j+.5)*200/24,on=it.ow?(out>0&&vc<=out):((vc>0&&vc<=out)||(vc<0&&vc>=out));var col=on?mCol(vc,th):TRK;if(m.seg[j].getAttribute('stroke')!==col) m.seg[j].setAttribute('stroke',col)}
         var rd='';if(m.rd!==rd){m.rd=rd;m.req.setAttribute('d',rd)}
       }else{
@@ -4661,7 +4698,7 @@ try{
   for(var v2k3 in V2MS3) if(!MS[v2k3]) MS[v2k3]=V2MS3[v2k3];
   var V2MS4={"Cruise": "Cruise", "Connect the hub first.": "Sambungkan hub dahulu.", "Cruise off. Held controls go back to 0.": "Cruise dimatikan. Kawalan yang ditahan kembali ke 0.", "Cruise on: a control you let go of keeps its value. Bring it back to the middle to stop it. Steering and lights still return.": "Cruise hidup: kawalan yang dilepaskan kekal pada nilainya. Bawa kembali ke tengah untuk berhenti. Stereng dan lampu tetap kembali.", "Cruise on": "Cruise hidup", "Steering eases at speed": "Stereng ikut kelajuan", "Steering": "Stereng", "Throttle": "Pendikit", "Steering at full speed": "Stereng pada kelajuan penuh", "At full throttle the steering turns only this much, so the model does not tip over in fast turns.": "Pada pendikit penuh, stereng hanya berpusing setakat ini supaya model tidak terbalik semasa membelok laju.", "Bluetooth is back. Reconnecting the hub. Motors are at zero.": "Bluetooth hidup semula. Menyambung semula hub. Motor pada sifar.", "Reconnect automatically (back in the app, Bluetooth on again, or app opened)": "Sambung semula automatik (kembali ke app, Bluetooth hidup semula, atau app dibuka)", "Reconnecting the hub from last time. Motors are at zero.": "Menyambung semula hub seperti kali lepas. Motor pada sifar.", "Icon & photo": "Ikon & foto", "Model icon": "Ikon model", "Choose photo": "Pilih foto", "Remove photo": "Buang foto", "No icon": "Tiada ikon", "Car": "Kereta", "Excavator": "Jengkaut", "Crane": "Kren", "Truck": "Lori", "Tractor": "Traktor", "Boat": "Bot", "Photo set for this model.": "Foto ditetapkan untuk model ini.", "Photo removed.": "Foto dibuang.", "That image could not be read.": "Imej itu tidak dapat dibaca.", "No image was chosen.": "Tiada imej dipilih.", "Practice: virtual model": "Latihan: model maya", "tap to put the model back in the middle": "ketik untuk letak model di tengah semula", "Undo": "Batal", "Redo": "Ulang", "Focus mode": "Mod fokus", "Focus mode. Tap the focus button at the top to leave.": "Mod fokus. Ketik butang fokus di atas untuk keluar."};
   for(var v2k4 in V2MS4) if(!MS[v2k4]) MS[v2k4]=V2MS4[v2k4];
-  var V2MS5={"Light program":"Program lampu","Program speed":"Kelajuan program","Chase":"Kejar","Bounce":"Lantun","Alternate":"Berselang","Police":"Polis","All blink":"Kelip semua","Fill":"Isi","Twinkle":"Kerlip","This panel has no light channels to play.":"Panel ini tiada saluran lampu untuk dimainkan.","Start power (channel)":"Kuasa mula (saluran)","How the hub value is made":"Bagaimana nilai hub dikira","Move the undo bar":"Alih bar undo","Drag to move \u00b7 double-tap to put back":"Seret untuk alih \u00b7 ketik dua kali untuk kembali","Tachometer look":"Rupa takometer","A Racing":"A Lumba","B Twin ring":"B Dwi-cincin","C Chrome":"C Krom","D Smooth arc":"D Lengkok licin","E Pro":"E Pro","POWER":"KUASA","LED strip":"Jalur LED","LED arrows":"Anak panah LED","LED bars":"Bar LED","Turn signals":"Isyarat belok","Gear LED":"Gear LED","Light panel":"Panel lampu","Message strip":"Jalur mesej","LED":"LED","LED matrix settings":"Tetapan matriks LED","Drive channel":"Saluran pemanduan","Steering channel (arrows left/right)":"Saluran stereng (anak panah kiri/kanan)","LED bars settings":"Tetapan bar LED","Bar 1":"Bar 1","Bar 2":"Bar 2","Bar 3":"Bar 3","Bar 4":"Bar 4","Turn signal settings":"Tetapan isyarat belok","Steering channel":"Saluran stereng","Blinks from":"Berkelip mulai","Left indicator light":"Lampu isyarat kiri","Right indicator light":"Lampu isyarat kanan","Left indicator":"Isyarat kiri","Right indicator":"Isyarat kanan","Gear LED settings":"Tetapan gear LED","Gear channel":"Saluran gear","Light panel settings":"Tetapan panel lampu","Light 1":"Lampu 1","Light 2":"Lampu 2","Light 3":"Lampu 3","Light 4":"Lampu 4","First channel":"Saluran pertama","First light channel":"Saluran lampu pertama","Message strip settings":"Tetapan jalur mesej","Scroll speed":"Kelajuan gulung","Slow":"Perlahan","Normal":"Biasa","Tachometer":"Takometer","Style":"Gaya","LED ring":"Cincin LED","Needle (tachometer)":"Jarum (takometer)","Response curve":"Lengkung tindak balas","Linear":"Linear","Fine":"Halus","Very fine":"Sangat halus","Fast":"Laju","Custom":"Sendiri",
+  var V2MS5={"% POWER":"% KUASA","Light program":"Program lampu","Program speed":"Kelajuan program","Chase":"Kejar","Bounce":"Lantun","Alternate":"Berselang","Police":"Polis","All blink":"Kelip semua","Fill":"Isi","Twinkle":"Kerlip","This panel has no light channels to play.":"Panel ini tiada saluran lampu untuk dimainkan.","Start power (channel)":"Kuasa mula (saluran)","How the hub value is made":"Bagaimana nilai hub dikira","Move the undo bar":"Alih bar undo","Drag to move \u00b7 double-tap to put back":"Seret untuk alih \u00b7 ketik dua kali untuk kembali","Tachometer look":"Rupa takometer","A Racing":"A Lumba","B Twin ring":"B Dwi-cincin","C Chrome":"C Krom","D Smooth arc":"D Lengkok licin","E Pro":"E Pro","POWER":"KUASA","LED strip":"Jalur LED","LED arrows":"Anak panah LED","LED bars":"Bar LED","Turn signals":"Isyarat belok","Gear LED":"Gear LED","Light panel":"Panel lampu","Message strip":"Jalur mesej","LED":"LED","LED matrix settings":"Tetapan matriks LED","Drive channel":"Saluran pemanduan","Steering channel (arrows left/right)":"Saluran stereng (anak panah kiri/kanan)","LED bars settings":"Tetapan bar LED","Bar 1":"Bar 1","Bar 2":"Bar 2","Bar 3":"Bar 3","Bar 4":"Bar 4","Turn signal settings":"Tetapan isyarat belok","Steering channel":"Saluran stereng","Blinks from":"Berkelip mulai","Left indicator light":"Lampu isyarat kiri","Right indicator light":"Lampu isyarat kanan","Left indicator":"Isyarat kiri","Right indicator":"Isyarat kanan","Gear LED settings":"Tetapan gear LED","Gear channel":"Saluran gear","Light panel settings":"Tetapan panel lampu","Light 1":"Lampu 1","Light 2":"Lampu 2","Light 3":"Lampu 3","Light 4":"Lampu 4","First channel":"Saluran pertama","First light channel":"Saluran lampu pertama","Message strip settings":"Tetapan jalur mesej","Scroll speed":"Kelajuan gulung","Slow":"Perlahan","Normal":"Biasa","Tachometer":"Takometer","Style":"Gaya","LED ring":"Cincin LED","Needle (tachometer)":"Jarum (takometer)","Response curve":"Lengkung tindak balas","Linear":"Linear","Fine":"Halus","Very fine":"Sangat halus","Fast":"Laju","Custom":"Sendiri",
     "Hazard":"Hazard","Light settings\u2026":"Tetapan lampu\u2026","Turns on by itself":"Menyala sendiri","Brake light":"Lampu brek","Reverse light":"Lampu undur","Follows drive channel":"Ikut saluran pemanduan",
     "Also show (yellow line)":"Turut tunjuk (garis kuning)","Also show (blue line)":"Turut tunjuk (garis biru)","Also show (grey line)":"Turut tunjuk (garis kelabu)"};
   for(var v2k5 in V2MS5) MS[v2k5]=V2MS5[v2k5];
