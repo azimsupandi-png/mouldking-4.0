@@ -5643,21 +5643,22 @@ try{
       if(mv){var r=bar.getBoundingClientRect(),all=upAll();all[upKey()]=[r.left/window.innerWidth,r.top/window.innerHeight];try{localStorage.setItem(UPK,JSON.stringify(all))}catch(_){}}
       else{var now=Date.now();if(now-lastTap<400){var a2=upAll();delete a2[upKey()];try{localStorage.setItem(UPK,JSON.stringify(a2))}catch(_){}upPlace();feedback('ok')}lastTap=now}}
     grip.addEventListener('pointerup',upEnd);grip.addEventListener('pointercancel',upEnd);
-    window.addEventListener('resize',upPlace);
+    window.addEventListener('resize',function(){setTimeout(upPlace,60)});
     try{new MutationObserver(function(){if(!bar.hidden) upPlace()}).observe(document.documentElement,{attributes:true,attributeFilter:['class']})}catch(_){}
     bar.upPlace=upPlace;
-    function apply(js){V2UN.cur=js;try{C.board=JSON.parse(js)}catch(_){return}save();syncBoard();feedback('ok');v2UnPaint()}
+    function apply(js){V2UN.cur=js;var o;try{o=JSON.parse(js)}catch(_){return}C.board=o.b;if(o.c&&o.c.length===C.ch.length) C.ch=o.c;save();try{syncAll()}catch(_){syncBoard()}feedback('ok');v2UnPaint()}
     $('#unU').addEventListener('click',function(){v2UnCheck();if(!V2UN.u.length) return;V2UN.r.push(V2UN.cur);apply(V2UN.u.pop())});
     $('#unR').addEventListener('click',function(){v2UnCheck();if(!V2UN.r.length) return;V2UN.u.push(V2UN.cur);apply(V2UN.r.pop())});
   })();
   function v2UnCheck(){
     if(!bdEditing){if(V2UN.on){V2UN.on=false;V2UN.u=[];V2UN.r=[];V2UN.cur=null}return}
-    var js=JSON.stringify(C.board);
+    var js=JSON.stringify({b:C.board,c:C.ch});
     if(!V2UN.on){V2UN.on=true;V2UN.cur=js;V2UN.u=[];V2UN.r=[];return}
     if(js!==V2UN.cur){V2UN.u.push(V2UN.cur);if(V2UN.u.length>20) V2UN.u.shift();V2UN.r=[];V2UN.cur=js}
   }
   function v2UnPaint(){
-    var bar=$('#v2Undo');if(!bar) return;var show=!!bdEditing&&V2.v==='drive';if(bar.hidden===show){bar.hidden=!show;if(show&&bar.upPlace) bar.upPlace()}
+    var bar=$('#v2Undo');if(!bar) return;var show=!!bdEditing&&V2.v==='drive';if(bar.hidden===show){bar.hidden=!show;v2Tog(document.documentElement,'v2-unon',show);if(show&&bar.upPlace) bar.upPlace()}
+    var mv=!!document.querySelector('#boardGrid .moving');if(bar.classList.contains('under')!==mv) bar.classList.toggle('under',mv);
     var u=$('#unU'),r=$('#unR');if(u.disabled!==!V2UN.u.length) u.disabled=!V2UN.u.length;if(r.disabled!==!V2UN.r.length) r.disabled=!V2UN.r.length;
   }
   setInterval(function(){v2UnCheck();v2UnPaint()},250);

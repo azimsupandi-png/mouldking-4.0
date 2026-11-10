@@ -1620,6 +1620,15 @@ html[data-v=drive]:not(.dash) main > #dSim:not([hidden]){display:block!important
 .v2-undo .btn{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 14px;border-radius:19px}.v2-undo .ic{width:18px;height:18px}
 .v2-undo .btn:disabled{opacity:.4}
 html.dash .v2-undo{bottom:12px}
+/* portrait: the page gets room below its content so the bar never sits on top of the last cards */
+html.v2-unon:not(.dash) main{padding-bottom:calc(var(--nav-h,64px) + 28px + 70px + env(safe-area-inset-bottom,0px))!important}
+/* landscape dashboard: compact, icon-only bar so it covers as little of the board as possible */
+html.dash .v2-undo{gap:4px;padding:4px;border-radius:22px}
+html.dash .v2-undo .btn{width:44px;min-height:40px;padding:0;justify-content:center}
+html.dash .v2-undo .btn span{display:none}
+html.dash .v2-undo .v2-ugrip{width:26px;min-height:40px}
+/* while a widget is being dragged, the bar steps aside visually and lets the drag pass under it */
+.v2-undo.under{opacity:.25;pointer-events:none}
 .v2-undo{height:auto!important;max-height:56px;align-items:center;box-sizing:border-box}
 .v2-undo.moved{left:0;top:0;bottom:auto!important;transform:none!important;right:auto!important}
 .v2-undo:not(.canmove) .v2-ugrip{display:none}
