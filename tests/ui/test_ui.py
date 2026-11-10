@@ -419,6 +419,24 @@ async def t_led(b):
     await pg.wait_for_timeout(300)
     r2 = await pg.evaluate("document.querySelectorAll('#boardGrid .bdw[data-k=f] .ndl').length")
     check('tachometer: look A-F can be picked in its settings', r and r2 >= 1, [r, r2])
+    # undo bar: drag it by its grip; the spot is kept; double-tap puts it back
+    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.wait_for_timeout(400)
+    r = await pg.evaluate("""(function(){var g=document.querySelector('#v2Undo .v2-ugrip'),r=g.getBoundingClientRect(),x=r.left+5,y=r.top+5,o={bubbles:true,pointerId:3};
+      g.dispatchEvent(new PointerEvent('pointerdown',Object.assign({clientX:x,clientY:y},o)));g.dispatchEvent(new PointerEvent('pointermove',Object.assign({clientX:40,clientY:200},o)));g.dispatchEvent(new PointerEvent('pointerup',Object.assign({clientX:40,clientY:200},o)));
+      var b=document.getElementById('v2Undo').getBoundingClientRect();return [Math.round(b.left),Math.round(b.top),!!localStorage.getItem('mk6UndoPos')]})()""")
+    check('undo bar can be dragged and its spot is saved', r[0] < 60 and 150 < r[1] < 230 and r[2], r)
+    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.wait_for_timeout(300)
+    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.wait_for_timeout(400)
+    r = await pg.evaluate("var b=document.getElementById('v2Undo').getBoundingClientRect();[Math.round(b.left),Math.round(b.top)]")
+    check('undo bar comes back where it was left', r[0] < 60 and 150 < r[1] < 230, r)
+    r = await pg.evaluate("""(function(){var g=document.querySelector('#v2Undo .v2-ugrip'),o={bubbles:true,pointerId:4,clientX:20,clientY:200};
+      for(var k=0;k<2;k++){g.dispatchEvent(new PointerEvent('pointerdown',o));g.dispatchEvent(new PointerEvent('pointerup',o))}
+      return document.getElementById('v2Undo').classList.contains('moved')})()""")
+    check('double-tap on the grip puts the undo bar back', r is False, r)
+    await pg.evaluate("document.getElementById('bdEdit').click()")
     check('no JS errors (LED widgets)', not pg.errors, pg.errors[:3])
     await ctx.close()
 

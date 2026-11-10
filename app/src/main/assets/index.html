@@ -1615,6 +1615,10 @@ html[data-v=drive]:not(.dash) main > #dSim:not([hidden]){display:block!important
 .v2-undo .btn{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 14px;border-radius:19px}.v2-undo .ic{width:18px;height:18px}
 .v2-undo .btn:disabled{opacity:.4}
 html.dash .v2-undo{bottom:12px}
+.v2-undo.moved{left:0;top:0;bottom:auto;transform:none}
+.v2-undo.dragging{opacity:.85;box-shadow:0 16px 32px rgba(0,0,0,.6)}
+.v2-ugrip{display:inline-flex;align-items:center;justify-content:center;width:30px;min-height:38px;margin:0;padding:0;border:0;border-radius:15px;background:transparent;color:var(--muted,#8a93a0);cursor:grab;touch-action:none;-webkit-tap-highlight-color:transparent}
+.v2-ugrip svg{width:12px;height:20px}.v2-ugrip:active{cursor:grabbing;color:var(--fg,#e8e8ea)}
 /* ---------- 12 · focus mode (landscape) ---------- */
 html.dash.v2-focus #dashBar > :not(#dbFocus):not(#dbCruise){display:none!important}
 html.dash.v2-focus #dbFocus,html.dash.v2-focus #dbCruise{display:inline-flex!important;opacity:.8}
