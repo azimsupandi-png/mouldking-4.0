@@ -271,7 +271,7 @@ async def t_twelve(b):
     check('9 size: a widget can be made 2x1', 'w2' in r, r)
     # 10 gallery: picture cards and category tabs
     r = await pg.evaluate("var t=[...document.querySelectorAll('.v2-gtabs .btn')].find(b=>b.textContent==='Meters');t.click();[document.querySelectorAll('.bd-types .gt svg').length,[...document.querySelectorAll('.bd-types > .btn')].filter(b=>!b.hidden).length]")
-    check('10 gallery: 30 picture cards, Meters tab shows 5', r == [30, 5], r)
+    check('10 gallery: 29 picture cards, Meters tab shows 5', r == [29, 5], r)
     await pg.evaluate("document.getElementById('bdEdit').click()")
     # 8 model colour persists and tints the board
     await pg.evaluate("mk6Go('medit');document.querySelectorAll('#swatches .sw')[2].click()")
@@ -408,10 +408,10 @@ async def t_led(b):
     await pg.wait_for_timeout(500)
     r = await pg.evaluate("[document.querySelectorAll('#boardGrid .lx-lb')[0].classList.contains('on'),(window.__last||'').split(',').map(Number)[4]]")
     check('light panel: a tap turns that light channel on', r[0] and r[1] > 0, r)
-    await pg.evaluate("document.getElementById('bdEdit').click();document.getElementById('bdTXmx').click();document.getElementById('bdAdd').click();document.getElementById('bdTIS').click();document.getElementById('bdAdd').click();document.getElementById('bdEdit').click()")
+    await pg.evaluate("document.getElementById('bdEdit').click();document.getElementById('bdTXmx').click();document.getElementById('bdAdd').click();document.getElementById('bdEdit').click()")
     await pg.wait_for_timeout(300)
     r = await pg.evaluate("[document.querySelectorAll('#boardGrid .lx-mx').length,document.querySelectorAll('#boardGrid .bdw.hzw, #boardGrid .bdw[data-k=i]').length]")
-    check('gallery adds LED arrows and the LED strip', r[0] == 2 and r[1] >= 1, r)
+    check('gallery adds LED arrows', r[0] == 2, r)
     check('no JS errors (LED widgets)', not pg.errors, pg.errors[:3])
     await ctx.close()
 

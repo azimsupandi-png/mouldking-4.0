@@ -578,7 +578,7 @@ try{
       m.val=T({'class':'mv','text-anchor':'middle','font-weight':800,fill:TXT});
       m.sub=T({'text-anchor':'middle','font-size':10,fill:MUT});
       m.lay=function(cw,ch){
-        var dh=m.nch>1?14:0,R=Math.max(20,Math.min(cw/2-6,(ch-dh-6)/1.75)),cx=cw/2,cy=Math.max(R+4,(ch-dh-1.75*R)/2+R+2);
+        m.cmp=ch<150;var dh=m.nch>1?(m.cmp?11:16):0,R=Math.max(18,Math.min(cw/2-6,(ch-dh-8)/2)),cx=cw/2,cy=4+R+Math.max(0,(ch-dh-8-2*R)/2);
         m.cx=cx;m.cy=cy;m.R2=R;m.rr=R*.86;m.ww=R*.08;m.hk='';
         m.face.setAttribute('cx',cx);m.face.setAttribute('cy',cy);m.face.setAttribute('r',R);m.face.setAttribute('stroke-width',Math.max(2,R*.05).toFixed(1));
         var rw=Math.max(3,R*.07);
@@ -591,8 +591,8 @@ try{
         [m.nglow,m.nl].forEach(function(l){l.setAttribute('x1',cx);l.setAttribute('y1',cy+R*.12);l.setAttribute('x2',cx);l.setAttribute('y2',cy-R*.8)});
         m.ng.style.transformBox='view-box';m.ng.style.transformOrigin=cx+'px '+cy+'px';
         m.hub.setAttribute('cx',cx);m.hub.setAttribute('cy',cy);m.hub.setAttribute('r',Math.max(4,R*.1).toFixed(1));
-        var fs=Math.max(10,Math.min(26,R*.24));m.val.setAttribute('font-size',fs.toFixed(0));m.val.setAttribute('x',cx);m.val.setAttribute('y',(cy+R*.48).toFixed(1));
-        m.sub.setAttribute('x',cx);m.sub.setAttribute('y',(cy+R*.48+12).toFixed(1));m.sub.setAttribute('display',R<50?'none':'inline');
+        var fs=Math.max(9,Math.min(24,R*.2));m.val.setAttribute('font-size',fs.toFixed(0));m.val.setAttribute('x',cx);m.val.setAttribute('y',(cy+R*.6).toFixed(1));
+        m.sub.setAttribute('x',cx);m.sub.setAttribute('y',(cy+R*.6+fs*.75).toFixed(1));m.sub.setAttribute('font-size',Math.max(8,Math.min(11,R*.11)).toFixed(0));m.sub.setAttribute('display',R<56?'none':'inline');
         dots(cw,ch);m.nk='';
       };
     }else if(k==='f'){
@@ -2470,10 +2470,10 @@ try{
   var bdSel=[$('#bdTarget'),$('#bdTarget2'),$('#bdTarget3'),$('#bdTarget4')];
   var bdFields=[$('#bdF1'),$('#bdF2'),$('#bdF3'),$('#bdF4')], bdLbl=[$('#bdL1'),$('#bdL2'),$('#bdL3'),$('#bdL4')];
   var bdModeF=$('#bdFM'), bdMode=$('#bdMode'), bdWideChk=$('#bdWideChk'), bdSpring=$('#bdSpring'), bdSpringL=$('#bdSpringL');
-  var bdTypes=[['s',$('#bdTS')],['j',$('#bdTJ')],['d',$('#bdTD')],['m',$('#bdTM')],['l',$('#bdTL')],['t',$('#bdTT')],['b',$('#bdTB')],['w',$('#bdTW')],['a',$('#bdTA')],['y',$('#bdTY')],['f',$('#bdTF')],['f',$('#bdTFN')],['i',$('#bdTIS')],['lx',$('#bdTXmx')],['lx',$('#bdTXeq')],['lx',$('#bdTXts')],['lx',$('#bdTXgi')],['lx',$('#bdTXlp')],['lx',$('#bdTXtk')],['i',$('#bdTI')],['k',$('#bdTK')],['n',$('#bdTN')],['rs',$('#bdTRS')],['g',$('#bdTG')],['st',$('#bdTST')],['lv',$('#bdTLV')],['dp',$('#bdTDP')],['z',$('#bdTZ')],['e',$('#bdTE')],['ps',$('#bdTPS')]];
+  var bdTypes=[['s',$('#bdTS')],['j',$('#bdTJ')],['d',$('#bdTD')],['m',$('#bdTM')],['l',$('#bdTL')],['t',$('#bdTT')],['b',$('#bdTB')],['w',$('#bdTW')],['a',$('#bdTA')],['y',$('#bdTY')],['f',$('#bdTF')],['f',$('#bdTFN')],['lx',$('#bdTXmx')],['lx',$('#bdTXeq')],['lx',$('#bdTXts')],['lx',$('#bdTXgi')],['lx',$('#bdTXlp')],['lx',$('#bdTXtk')],['i',$('#bdTI')],['k',$('#bdTK')],['n',$('#bdTN')],['rs',$('#bdTRS')],['g',$('#bdTG')],['st',$('#bdTST')],['lv',$('#bdTLV')],['dp',$('#bdTDP')],['z',$('#bdTZ')],['e',$('#bdTE')],['ps',$('#bdTPS')]];
   var bdRat=(typeof document.querySelectorAll==='function')?[].slice.call(document.querySelectorAll('.bdRat')):[$('.bdRat'),$('.bdRat'),$('.bdRat'),$('.bdRat')], bdMixRow=$('#bdMixRow');
   bdRat.forEach(function(sel){[100,75,50,25,-25,-50,-75,-100].forEach(function(v){bdOpt(sel,String(v),(v>0?'+':'')+v+'%')});sel.value='100'});
-  var BPRE={bdTFN:{nd:1},bdTIS:{hz:1},bdTXmx:{t:'mx'},bdTXeq:{t:'eq'},bdTXts:{t:'ts'},bdTXgi:{t:'gi'},bdTXlp:{t:'lp'},bdTXtk:{t:'tk'}}, bdBtn=null, bdK='s', bdEditing=false, bdPick=null, bdPickAt=0, bdW=[], dashAdd=false;
+  var BPRE={bdTFN:{nd:1},bdTXmx:{t:'mx'},bdTXeq:{t:'eq'},bdTXts:{t:'ts'},bdTXgi:{t:'gi'},bdTXlp:{t:'lp'},bdTXtk:{t:'tk'}}, bdBtn=null, bdK='s', bdEditing=false, bdPick=null, bdPickAt=0, bdW=[], dashAdd=false;
   function prefillBoard(){
     var n=0;
     activeIdx().forEach(function(i){if(n<4){C.board.push({k:'s',c:i,w:C.ch[i].kind==='hold'?2:1,hold:C.ch[i].kind==='hold'});n++}});
@@ -4092,7 +4092,7 @@ try{
     else if(bdK==='b') C.board.push({k:'b',c:n[0],w:ww});
     else if(bdK==='a') C.board.push({k:'a',c:n[0],w:ww,s:20});
     else if(bdK==='y'||bdK==='v') C.board.push({k:bdK,c:n[0],w:ww,p:Math.round(+$('#bdTgPow').value)||50,d:bdK==='y'?4:1});
-    else if(bdK==='f'||bdK==='i'||bdK==='k'){var bp=bdPre(),bo={k:bdK,c:n[0],w:ww};if(bdK==='f'&&bp.nd) bo.nd=1;if(bdK==='i'&&bp.hz){bo.hz=1;bo.w=2}C.board.push(bo)}
+    else if(bdK==='f'||bdK==='i'||bdK==='k'){var bp=bdPre(),bo={k:bdK,c:n[0],w:ww};if(bdK==='f'&&bp.nd) bo.nd=1;C.board.push(bo)}
     else if(bdK==='lx'){
       var lt=bdPre().t||'mx',lo={k:'lx',t:lt,w:ww};if(lt!=='tk') lo.c=n[0];
       var hb=Math.floor((n[0]||0)/PER)*PER,act=activeIdx().filter(function(i){return i>=hb&&i<hb+PER&&i!==n[0]});
@@ -5213,8 +5213,8 @@ try{
   // ---- 10 · Widget gallery: picture cards with categories instead of a list of names ----
   (function(){
     var box=document.querySelector('#bdEditor .bd-types');if(!box) return;
-    var K={bdTS:'s',bdTJ:'j',bdTD:'d',bdTM:'m',bdTL:'l',bdTT:'t',bdTB:'b',bdTW:'w',bdTA:'a',bdTY:'y',bdTF:'f',bdTFN:'fn',bdTI:'i',bdTIS:'is',bdTXmx:'xmx',bdTXeq:'xeq',bdTXts:'xts',bdTXgi:'xgi',bdTXlp:'xlp',bdTXtk:'xtk',bdTK:'k',bdTN:'n',bdTRS:'rs',bdTG:'g',bdTST:'st',bdTLV:'lv',bdTDP:'dp',bdTZ:'z',bdTE:'e',bdTPS:'ps'};
-    var CAT={drive:['s','j','d','m','st','dp','n','g','lv','rs','y'],light:['l','t','b','w'],meter:['f','fn','i','k','z'],led:['xmx','xeq','xts','xgi','xlp','xtk','is'],safe:['e','ps','a']};
+    var K={bdTS:'s',bdTJ:'j',bdTD:'d',bdTM:'m',bdTL:'l',bdTT:'t',bdTB:'b',bdTW:'w',bdTA:'a',bdTY:'y',bdTF:'f',bdTFN:'fn',bdTI:'i',bdTXmx:'xmx',bdTXeq:'xeq',bdTXts:'xts',bdTXgi:'xgi',bdTXlp:'xlp',bdTXtk:'xtk',bdTK:'k',bdTN:'n',bdTRS:'rs',bdTG:'g',bdTST:'st',bdTLV:'lv',bdTDP:'dp',bdTZ:'z',bdTE:'e',bdTPS:'ps'};
+    var CAT={drive:['s','j','d','m','st','dp','n','g','lv','rs','y'],light:['l','t','b','w'],meter:['f','fn','i','k','z'],led:['xmx','xeq','xts','xgi','xlp','xtk'],safe:['e','ps','a']};
     box.classList.add('v2-gal2');
     Array.prototype.forEach.call(box.querySelectorAll('button'),function(b){
       var k=K[b.id];if(!k) return;b.setAttribute('data-cat',Object.keys(CAT).filter(function(c){return CAT[c].indexOf(k)>=0})[0]||'drive');
@@ -5245,7 +5245,6 @@ try{
       case 'xgi': ['R','N','1','2','3'].forEach(function(t,j){o+='<rect x="'+(7+j*7)+'" y="5" width="6" height="10" rx="1.2" fill="'+(j===3?Y:'#1a1e25')+'"/><text x="'+(10+j*7)+'" y="12.6" font-size="5.5" font-weight="900" text-anchor="middle" fill="'+(j===3?'#1b1b1b':'#4a5260')+'">'+t+'</text>'});for(var q=0;q<7;q++) o+='<circle cx="'+(10+q*4.6)+'" cy="19" r="1" fill="'+(q<5?G:'#2a303b')+'"/>';break;
       case 'xlp': [[8,4,1],[25,4,1],[8,13,0],[25,13,1]].forEach(function(p){o+='<rect x="'+p[0]+'" y="'+p[1]+'" width="15" height="7" rx="2" fill="#1a1e25" stroke="'+S+'" stroke-width=".3"/><circle cx="'+(p[0]+3)+'" cy="'+(p[1]+3.5)+'" r="1.6" fill="'+(p[2]?Y:'#2a303b')+'"/>'});break;
       case 'xtk': o='<rect x="4" y="7" width="40" height="10" rx="2" fill="'+D+'" stroke="'+S+'" stroke-width=".4"/><text x="24" y="14.3" font-size="5.6" font-weight="900" text-anchor="middle" fill="'+Y+'" font-family="monospace">CRUISE 72%</text>';break;
-      case 'is': for(var q=0;q<15;q++){var d=q-7;o+='<rect x="'+(6+q*2.5)+'" y="8" width="1.8" height="8" rx=".5" fill="'+(d>0&&d<=5?(d>4?O:G):'#2a303b')+'"/>'}o+='<line x1="24" y1="6" x2="24" y2="18" stroke="#c9ced6" stroke-width=".3" stroke-dasharray="1 1"/>';break;
       case 'fn': o='<circle cx="24" cy="13" r="10.5" fill="'+D+'" stroke="#9aa3b0" stroke-width=".8"/><path d="M31.5 19.5 A10 10 0 0 0 33.6 15" fill="none" stroke="'+R+'" stroke-width="1.6"/><line x1="24" y1="13" x2="30.5" y2="7.5" stroke="'+Y+'" stroke-width="1.4" stroke-linecap="round"/><circle cx="24" cy="13" r="1.8" fill="#3a414d"/>';break;
       case 's': o='<rect x="22.5" y="2" width="3" height="20" rx="1.5" fill="#3a414d"/>'+kn(24,10,3.6);break;
       case 'j': o='<circle cx="24" cy="12" r="10" fill="'+D+'" stroke="'+S+'" stroke-width=".5"/>'+kn(27,9,3.8);break;
