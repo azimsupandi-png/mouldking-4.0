@@ -271,7 +271,7 @@ async def t_twelve(b):
     check('9 size: a widget can be made 2x1', 'w2' in r, r)
     # 10 gallery: picture cards and category tabs
     r = await pg.evaluate("var t=[...document.querySelectorAll('.v2-gtabs .btn')].find(b=>b.textContent==='Meters');t.click();[document.querySelectorAll('.bd-types .gt svg').length,[...document.querySelectorAll('.bd-types > .btn')].filter(b=>!b.hidden).length]")
-    check('10 gallery: 22 picture cards, Meters tab shows 4', r == [22, 4], r)
+    check('10 gallery: 23 picture cards, Meters tab shows 5', r == [23, 5], r)
     await pg.evaluate("document.getElementById('bdEdit').click()")
     # 8 model colour persists and tints the board
     await pg.evaluate("mk6Go('medit');document.querySelectorAll('#swatches .sw')[2].click()")
@@ -358,6 +358,14 @@ async def t_three(b):
         await pg.wait_for_timeout(120)
         seen.add(await pg.evaluate("(window.__last||'').split(',').map(Number)[4]>0"))
     check('4 hazard: the light flashes on and off', seen == {True, False}, seen)
+    # tachometer: needle style of the arc meter, follows channel A
+    await pg.evaluate("document.getElementById('bdEdit').click();document.getElementById('bdTFN').click();document.getElementById('bdAdd').click();document.getElementById('bdEdit').click()")
+    await pg.wait_for_timeout(300)
+    await pg.evaluate("var r="+SL+";r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=100;r.dispatchEvent(new Event('input',{bubbles:true}))")
+    await pg.wait_for_timeout(1200)
+    r = await pg.evaluate("(function(){var g=document.querySelector('#boardGrid .bdw[data-k=f] .ndl');return g?[g.style.transform,[...document.querySelectorAll('#boardGrid .bdw[data-k=f] text.mv')].map(t=>t.textContent)[0]]:null})()")
+    check('1 tachometer: gallery card adds a needle meter that swings to the value', r and r[0].startswith('rotate(') and r[0] != 'rotate(0.0deg)' and r[1].endswith('%'), r)
+    await pg.evaluate("var r="+SL+";r.value=0;r.dispatchEvent(new Event('input',{bubbles:true}));r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}))")
     check('no JS errors (curve, lights, scope)', not pg.errors, pg.errors[:3])
     await ctx.close()
 

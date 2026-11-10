@@ -184,7 +184,7 @@ try{
         if(ycn>=0&&ycn<NMAX) {out.push({k:'y',c:ycn,w:w,p:(yp>=5&&yp<=100)?yp:50,d:(yd>=1&&yd<=30)?yd:4});if(x.sc===1||x.sc===true) out[out.length-1].sc=1}
       }else if(x.k==='f'||x.k==='i'||x.k==='k'){
         var ocn=Math.round(+x.c);
-        if(ocn>=0&&ocn<NMAX){out.push({k:x.k,c:ocn,w:w});if((x.k==='f'||x.k==='i')&&(x.ow===1||x.ow===true)) out[out.length-1].ow=1;if(x.k==='i'&&(x.hz===1||x.hz===true)) out[out.length-1].hz=1;if(x.k==='k'&&(+x.ws===30||+x.ws===60)) out[out.length-1].ws=+x.ws;if(x.k==='k'&&Array.isArray(x.cs)){var kcs=[];x.cs.forEach(function(q){q=Math.round(+q);if(q>=0&&q<NMAX&&q!==ocn&&kcs.indexOf(q)<0&&kcs.length<3) kcs.push(q)});if(kcs.length) out[out.length-1].cs=kcs}if(x.k==='k'&&(x.tg===1||x.tg===true)){out[out.length-1].tg=1;var tvv=Math.round(+x.tv);out[out.length-1].tv=isFinite(tvv)?Math.max(-100,Math.min(100,tvv)):80}if((x.k==='f'||x.k==='i')&&(+x.th===1||+x.th===2)) out[out.length-1].th=+x.th;if((x.k==='f'||x.k==='i')&&(x.sh===1||x.sh===true)) out[out.length-1].sh=1}
+        if(ocn>=0&&ocn<NMAX){out.push({k:x.k,c:ocn,w:w});if((x.k==='f'||x.k==='i')&&(x.ow===1||x.ow===true)) out[out.length-1].ow=1;if(x.k==='f'&&(x.nd===1||x.nd===true)) out[out.length-1].nd=1;if(x.k==='i'&&(x.hz===1||x.hz===true)) out[out.length-1].hz=1;if(x.k==='k'&&(+x.ws===30||+x.ws===60)) out[out.length-1].ws=+x.ws;if(x.k==='k'&&Array.isArray(x.cs)){var kcs=[];x.cs.forEach(function(q){q=Math.round(+q);if(q>=0&&q<NMAX&&q!==ocn&&kcs.indexOf(q)<0&&kcs.length<3) kcs.push(q)});if(kcs.length) out[out.length-1].cs=kcs}if(x.k==='k'&&(x.tg===1||x.tg===true)){out[out.length-1].tg=1;var tvv=Math.round(+x.tv);out[out.length-1].tv=isFinite(tvv)?Math.max(-100,Math.min(100,tvv)):80}if((x.k==='f'||x.k==='i')&&(+x.th===1||+x.th===2)) out[out.length-1].th=+x.th;if((x.k==='f'||x.k==='i')&&(x.sh===1||x.sh===true)) out[out.length-1].sh=1}
       }else if(x.k==='n'){
         var kcn=Math.round(+x.c);
         if(kcn>=0&&kcn<NMAX){out.push({k:x.k,c:kcn,w:w});var nrt=Math.round(+x.rt*2)/2;if(x.rt!==undefined&&nrt>=0&&nrt<=10&&nrt!==3) out[out.length-1].rt=nrt;if(+x.th===1||+x.th===2) out[out.length-1].th=+x.th;if(x.ow===1||x.ow===true) out[out.length-1].ow=1;if(x.sw===1||x.sw===true) out[out.length-1].sw=1}
@@ -551,7 +551,40 @@ try{
       var sp=Math.min(m.cmp?10:14,(cw-12)/m.nch),rs=Math.min(1,sp/(m.cmp?10:14));
       chs.forEach(function(q,j){sv('circle',{cx:cw/2+(j-(m.nch-1)/2)*sp,cy:ch-(m.cmp?5:7),r:(q===c?(m.cmp?3.5:4.5):(m.cmp?2.4:3))*Math.max(.55,rs),fill:q===c?'var(--danger,#E03E3E)':MUT,opacity:q===c?1:.55},m.dg)});
     }
-    if(k==='f'){
+    if(k==='f'&&it.nd){
+      // tachometer: a needle that swings smoothly, red zone above 80%
+      var ow=!!it.ow,AG=ow?mAgF:mAg;
+      m.face=sv('circle',{fill:'#0b0d11',stroke:'#6b7280'},svg);
+      m.red=[sv('path',{fill:'none',stroke:'#E24B4A'},svg)];if(!ow) m.red.push(sv('path',{fill:'none',stroke:'#E24B4A'},svg));
+      m.tk=[];m.tl=[];
+      var TV=[];for(i=ow?0:-100;i<=100;i+=10) TV.push(i);
+      TV.forEach(function(v){m.tk.push(sv('line',{stroke:TXT,'stroke-linecap':'round'},svg));if(v%(ow?20:50)===0&&Math.abs(v)<100) m.tl.push([v,T({'text-anchor':'middle',fill:MUT,'font-size':10},String(Math.abs(v)))])});
+      m.hq=[sv('line',{stroke:'#378ADD','stroke-width':2.5,'stroke-linecap':'round',visibility:'hidden'},svg),sv('line',{stroke:'#378ADD','stroke-width':2.5,'stroke-linecap':'round',visibility:'hidden'},svg)];
+      m.ng=sv('g',{'class':'ndl'},svg);
+      m.nglow=sv('line',{stroke:'#ffd84a','stroke-width':6,'stroke-linecap':'round',opacity:.35},m.ng);
+      m.nl=sv('line',{stroke:'#ffd84a','stroke-width':3.2,'stroke-linecap':'round'},m.ng);
+      m.hub=sv('circle',{fill:'#2a303b',stroke:'#0d1015','stroke-width':2},svg);
+      m.val=T({'class':'mv','text-anchor':'middle','font-weight':800,fill:TXT});
+      m.sub=T({'text-anchor':'middle','font-size':10,fill:MUT});
+      m.lay=function(cw,ch){
+        var dh=m.nch>1?14:0,R=Math.max(20,Math.min(cw/2-6,(ch-dh-6)/1.75)),cx=cw/2,cy=Math.max(R+4,(ch-dh-1.75*R)/2+R+2);
+        m.cx=cx;m.cy=cy;m.R2=R;m.rr=R*.86;m.ww=R*.08;m.hk='';
+        m.face.setAttribute('cx',cx);m.face.setAttribute('cy',cy);m.face.setAttribute('r',R);m.face.setAttribute('stroke-width',Math.max(2,R*.05).toFixed(1));
+        var rw=Math.max(3,R*.07);
+        m.red[0].setAttribute('d',mArc(cx,cy,R*.86,AG(80),AG(100)));if(m.red[1]) m.red[1].setAttribute('d',mArc(cx,cy,R*.86,AG(-100),AG(-80)));
+        m.red.forEach(function(p){p.setAttribute('stroke-width',rw.toFixed(1))});
+        TV.forEach(function(v,j){var big=v%(ow?20:50)===0,a=AG(v),p0=mPol(cx,cy,R*.93,a),p1=mPol(cx,cy,R*(big?.76:.82),a),ln=m.tk[j];
+          ln.setAttribute('x1',p0[0].toFixed(1));ln.setAttribute('y1',p0[1].toFixed(1));ln.setAttribute('x2',p1[0].toFixed(1));ln.setAttribute('y2',p1[1].toFixed(1));ln.setAttribute('stroke-width',big?2:1)});
+        var fsl=Math.max(7,Math.min(12,R*.13));
+        m.tl.forEach(function(q){var p=mPol(cx,cy,R*.62,AG(q[0]));q[1].setAttribute('x',p[0].toFixed(1));q[1].setAttribute('y',(p[1]+fsl*.35).toFixed(1));q[1].setAttribute('font-size',fsl.toFixed(0));q[1].setAttribute('display',R<44?'none':'inline')});
+        [m.nglow,m.nl].forEach(function(l){l.setAttribute('x1',cx);l.setAttribute('y1',cy+R*.12);l.setAttribute('x2',cx);l.setAttribute('y2',cy-R*.8)});
+        m.ng.style.transformBox='view-box';m.ng.style.transformOrigin=cx+'px '+cy+'px';
+        m.hub.setAttribute('cx',cx);m.hub.setAttribute('cy',cy);m.hub.setAttribute('r',Math.max(4,R*.1).toFixed(1));
+        var fs=Math.max(10,Math.min(26,R*.24));m.val.setAttribute('font-size',fs.toFixed(0));m.val.setAttribute('x',cx);m.val.setAttribute('y',(cy+R*.48).toFixed(1));
+        m.sub.setAttribute('x',cx);m.sub.setAttribute('y',(cy+R*.48+12).toFixed(1));m.sub.setAttribute('display',R<50?'none':'inline');
+        dots(cw,ch);m.nk='';
+      };
+    }else if(k==='f'){
       m.seg=[];for(i=0;i<24;i++) m.seg.push(sv('path',{fill:'none',stroke:TRK},svg));
       m.req=sv('path',{fill:'none','stroke-linecap':'round','stroke-width':5,stroke:th[3]},svg);
       m.zt=sv('line',{stroke:TXT,'stroke-width':2.5,'stroke-linecap':'round'},svg);
@@ -754,7 +787,14 @@ try{
           ln.setAttribute('visibility','visible');
         });
       }
-      if(k==='f'){
+      if(k==='f'&&it.nd){
+        if(it.ow){out=Math.max(0,out);oth=Math.max(0,oth)}
+        var nv=Math.max(-100,Math.min(100,out)),nk=String(Math.round(nv));
+        if(m.nk!==nk){m.nk=nk;m.ng.style.transform='rotate('+(90-(it.ow?mAgF(nv):mAg(nv))).toFixed(1)+'deg)'}
+        var ntx=(it.ow?String(Math.round(out)):mSgn(out))+'%';if(m.val.textContent!==ntx) m.val.textContent=ntx;
+        m.val.setAttribute('fill',Math.abs(out)>80?'#E24B4A':TXT);
+        var nsb=diff?((it.sh?'of ':'hub ')+(oth<0?'\u2212':'')+Math.abs(Math.round(oth))):'';if(m.sub.textContent!==nsb) m.sub.textContent=nsb;
+      }else if(k==='f'){
         if(it.ow){out=Math.max(0,out);oth=Math.max(0,oth)}
         var tx2=it.ow?String(Math.round(out)):mSgn(out);if(m.val.textContent!==tx2) m.val.textContent=tx2;
         var sb=diff?((it.sh?'of ':'hub ')+(oth<0?'\u2212':'')+Math.abs(Math.round(oth))):'%';if(m.sub.textContent!==sb) m.sub.textContent=sb;
@@ -834,7 +874,7 @@ try{
       {k:'la',l:'Turns on by itself',ch:[0,1,2],lab:['Off','Brake light','Reverse light'],only:true,def:0,g:function(it){return C.ch[it.c].la||0},s:function(it,v){C.ch[it.c].kind='light';C.ch[it.c].la=v}},
       {k:'ls',l:'Follows drive channel',ch:[0,1,2,3,4,5],lab:['A','B','C','D','E','F'],only:true,def:0,dep:{k:'la',not:0},g:function(it){return (C.ch[it.c].ls||0)%PER},s:function(it,v){C.ch[it.c].ls=Math.floor(it.c/PER)*PER+v}}]},
     t:{t:'Toggle settings',f:[{k:'p',l:'Power',u:'%',min:5,max:100,st:5,ch:[25,50,75,100]},F_INV,F_CAP]},
-    f:{t:'Meter settings',f:[F_SH,F_TH,{k:'ow',l:'Direction',ch:[0,1],lab:['Both ways','Forward only'],only:true,def:0}]},
+    f:{t:'Meter settings',f:[{k:'nd',l:'Style',ch:[0,1],lab:['LED ring','Needle (tachometer)'],only:true,def:0},F_SH,F_TH,{k:'ow',l:'Direction',ch:[0,1],lab:['Both ways','Forward only'],only:true,def:0}]},
     i:{t:'Meter settings',f:[F_SH,F_TH,{k:'ow',l:'Direction',ch:[0,1],lab:['Both ways','Forward only'],only:true,def:0},{k:'hz',l:'Bar layout',ch:[0,1],lab:['Vertical','Horizontal'],only:true,def:0}]},
     k:{t:'Scope settings',f:[{k:'ws',l:'Time window',ch:[10,30,60],lab:['10 s','30 s','60 s'],only:true,def:10},F_KC(0),F_KC(1),F_KC(2),{k:'tg',l:'Target line',ch:[0,1],lab:['Off','On'],only:true,def:0},{k:'tv',l:'Target value',u:'%',min:-100,max:100,st:5,ch:[-80,-50,50,80,100],def:80}]},
     y:{t:'Ramp settings',f:[{k:'p',l:'Target power',u:'%',min:5,max:100,st:5,ch:[25,50,75,100]},{k:'d',l:'Ramp time',u:'s',min:1,max:30,st:1,ch:[2,4,6,10]},{k:'sc',l:'Show scope',ch:[0,1],lab:['Off','On'],only:true,def:0},F_INV,F_CAP]},
@@ -2400,10 +2440,10 @@ try{
   var bdSel=[$('#bdTarget'),$('#bdTarget2'),$('#bdTarget3'),$('#bdTarget4')];
   var bdFields=[$('#bdF1'),$('#bdF2'),$('#bdF3'),$('#bdF4')], bdLbl=[$('#bdL1'),$('#bdL2'),$('#bdL3'),$('#bdL4')];
   var bdModeF=$('#bdFM'), bdMode=$('#bdMode'), bdWideChk=$('#bdWideChk'), bdSpring=$('#bdSpring'), bdSpringL=$('#bdSpringL');
-  var bdTypes=[['s',$('#bdTS')],['j',$('#bdTJ')],['d',$('#bdTD')],['m',$('#bdTM')],['l',$('#bdTL')],['t',$('#bdTT')],['b',$('#bdTB')],['w',$('#bdTW')],['a',$('#bdTA')],['y',$('#bdTY')],['f',$('#bdTF')],['i',$('#bdTI')],['k',$('#bdTK')],['n',$('#bdTN')],['rs',$('#bdTRS')],['g',$('#bdTG')],['st',$('#bdTST')],['lv',$('#bdTLV')],['dp',$('#bdTDP')],['z',$('#bdTZ')],['e',$('#bdTE')],['ps',$('#bdTPS')]];
+  var bdTypes=[['s',$('#bdTS')],['j',$('#bdTJ')],['d',$('#bdTD')],['m',$('#bdTM')],['l',$('#bdTL')],['t',$('#bdTT')],['b',$('#bdTB')],['w',$('#bdTW')],['a',$('#bdTA')],['y',$('#bdTY')],['f',$('#bdTF')],['f',$('#bdTFN')],['i',$('#bdTI')],['k',$('#bdTK')],['n',$('#bdTN')],['rs',$('#bdTRS')],['g',$('#bdTG')],['st',$('#bdTST')],['lv',$('#bdTLV')],['dp',$('#bdTDP')],['z',$('#bdTZ')],['e',$('#bdTE')],['ps',$('#bdTPS')]];
   var bdRat=(typeof document.querySelectorAll==='function')?[].slice.call(document.querySelectorAll('.bdRat')):[$('.bdRat'),$('.bdRat'),$('.bdRat'),$('.bdRat')], bdMixRow=$('#bdMixRow');
   bdRat.forEach(function(sel){[100,75,50,25,-25,-50,-75,-100].forEach(function(v){bdOpt(sel,String(v),(v>0?'+':'')+v+'%')});sel.value='100'});
-  var bdK='s', bdEditing=false, bdPick=null, bdPickAt=0, bdW=[], dashAdd=false;
+  var bdNd=false, bdK='s', bdEditing=false, bdPick=null, bdPickAt=0, bdW=[], dashAdd=false;
   function prefillBoard(){
     var n=0;
     activeIdx().forEach(function(i){if(n<4){C.board.push({k:'s',c:i,w:C.ch[i].kind==='hold'?2:1,hold:C.ch[i].kind==='hold'});n++}});
@@ -2440,7 +2480,7 @@ try{
   }
   function bdSetKind(k){
     bdK=k;
-    bdTypes.forEach(function(t){t[1].setAttribute('aria-pressed',String(t[0]===k))});
+    bdTypes.forEach(function(t){t[1].setAttribute('aria-pressed',String(t[0]===k&&(k!=='f'||(t[1].id==='bdTFN')===bdNd)))});
     bdWideChk.checked=(k==='j'||k==='d'||k==='m');
     bdWideChk.disabled=(k==='d');
     if(k==='d') bdWideChk.checked=true;
@@ -3016,7 +3056,7 @@ try{
       }else if(it.k==='f'||it.k==='i'||it.k==='k'){
         var mtc=it.c;
         if(!isActive(mtc)) return;
-        var mhd=bdHead(el,(it.k==='f'?'Arc meter':it.k==='i'?'LED meter':'Scope')+' \u00b7 '+tagOf(mtc)+' \u00b7 '+C.ch[mtc].name,it,it.k==='i');
+        var mhd=bdHead(el,(it.k==='f'?(it.nd?'Tachometer':'Arc meter'):it.k==='i'?'LED meter':'Scope')+' \u00b7 '+tagOf(mtc)+' \u00b7 '+C.ch[mtc].name,it,it.k==='i');
         el.classList.add('mtrw');if(it.k==='i'&&it.hz) el.classList.add('hzw');
         w.mtr=meterBuild(el,it);w.mtr.hd=mhd;
       }else if(it.k==='n'){
@@ -3897,7 +3937,7 @@ try{
     if(k!==dashLastK){dashLastK=k;syncLayout();return}
     if(dashOn()){dashFit();setTimeout(dashFit,250)}
   });
-  bdTypes.forEach(function(t){t[1].addEventListener('click',function(){bdSetKind(t[0])})});
+  bdTypes.forEach(function(t){t[1].addEventListener('click',function(){bdNd=t[1].id==='bdTFN';bdSetKind(t[0])})});
   bdMode.addEventListener('change',bdFill);
   $('#bdAdd').addEventListener('click',function(){
     if(C.board.length>=16){bdNote.textContent='The board is full (16 controls).';return}
@@ -3913,7 +3953,7 @@ try{
     else if(bdK==='b') C.board.push({k:'b',c:n[0],w:ww});
     else if(bdK==='a') C.board.push({k:'a',c:n[0],w:ww,s:20});
     else if(bdK==='y'||bdK==='v') C.board.push({k:bdK,c:n[0],w:ww,p:Math.round(+$('#bdTgPow').value)||50,d:bdK==='y'?4:1});
-    else if(bdK==='f'||bdK==='i'||bdK==='k') C.board.push({k:bdK,c:n[0],w:ww});
+    else if(bdK==='f'||bdK==='i'||bdK==='k'){C.board.push({k:bdK,c:n[0],w:ww});if(bdK==='f'&&bdNd) C.board[C.board.length-1].nd=1}
     else if(bdK==='n') C.board.push({k:bdK,c:n[0],w:ww});
     else if(bdK==='u') C.board.push({k:'u',c:n[0],w:ww,p:Math.round(+$('#bdTgPow').value)||50});
     else if(bdK==='g'||bdK==='lv') C.board.push({k:bdK,c:n[0],w:ww});
@@ -4234,7 +4274,7 @@ try{
     [/^of (\u2212?\d+)$/,function(m){return 'dari '+m[1]}],
     [/^hub (\u2212?\d+)$/,function(m){return 'hub '+m[1]}],
     [/^Target ([+\u2212]?\d+)$/,function(m){return 'Sasaran '+m[1]}],
-    [/^(Gear|Dial|Ramp|Auto-stop|Switch|Arc meter|LED meter|Scope) \u00b7 (.+)$/,function(m){return ({'Arc meter':'Meter arka','LED meter':'Meter LED',Scope:'Osiloskop',Switch:'Suis',Nudge:'Tolak',Gear:'Gear',Dial:'Dail',Cruise:'Pelayaran',Ramp:'Naik perlahan',Step:'Langkah','Auto-stop':'Henti auto',Position:'Kedudukan'})[m[1]]+' \u00b7 '+m[2]}],
+    [/^(Gear|Dial|Ramp|Auto-stop|Switch|Arc meter|Tachometer|LED meter|Scope) \u00b7 (.+)$/,function(m){return ({'Arc meter':'Meter arka',Tachometer:'Takometer','LED meter':'Meter LED',Scope:'Osiloskop',Switch:'Suis',Nudge:'Tolak',Gear:'Gear',Dial:'Dail',Cruise:'Pelayaran',Ramp:'Naik perlahan',Step:'Langkah','Auto-stop':'Henti auto',Position:'Kedudukan'})[m[1]]+' \u00b7 '+m[2]}],
     [/^(\d+) s limit \u00b7 tap to change$/,function(m){return 'Had '+m[1]+' s \u00b7 ketik untuk tukar'}],
     [/^Auto-stop: channel (\S+) stopped after (\d+) s\.$/,function(m){return 'Henti auto: saluran '+m[1]+' dihentikan selepas '+m[2]+' s.'}],
     [/^Gear (\d)$/,function(m){return 'Gear '+m[1]}],
@@ -4359,7 +4399,7 @@ try{
   for(var v2k3 in V2MS3) if(!MS[v2k3]) MS[v2k3]=V2MS3[v2k3];
   var V2MS4={"Cruise": "Cruise", "Connect the hub first.": "Sambungkan hub dahulu.", "Cruise off. Held controls go back to 0.": "Cruise dimatikan. Kawalan yang ditahan kembali ke 0.", "Cruise on: a control you let go of keeps its value. Bring it back to the middle to stop it. Steering and lights still return.": "Cruise hidup: kawalan yang dilepaskan kekal pada nilainya. Bawa kembali ke tengah untuk berhenti. Stereng dan lampu tetap kembali.", "Cruise on": "Cruise hidup", "Steering eases at speed": "Stereng ikut kelajuan", "Steering": "Stereng", "Throttle": "Pendikit", "Steering at full speed": "Stereng pada kelajuan penuh", "At full throttle the steering turns only this much, so the model does not tip over in fast turns.": "Pada pendikit penuh, stereng hanya berpusing setakat ini supaya model tidak terbalik semasa membelok laju.", "Bluetooth is back. Reconnecting the hub. Motors are at zero.": "Bluetooth hidup semula. Menyambung semula hub. Motor pada sifar.", "Reconnect automatically (back in the app, Bluetooth on again, or app opened)": "Sambung semula automatik (kembali ke app, Bluetooth hidup semula, atau app dibuka)", "Reconnecting the hub from last time. Motors are at zero.": "Menyambung semula hub seperti kali lepas. Motor pada sifar.", "Icon & photo": "Ikon & foto", "Model icon": "Ikon model", "Choose photo": "Pilih foto", "Remove photo": "Buang foto", "No icon": "Tiada ikon", "Car": "Kereta", "Excavator": "Jengkaut", "Crane": "Kren", "Truck": "Lori", "Tractor": "Traktor", "Boat": "Bot", "Photo set for this model.": "Foto ditetapkan untuk model ini.", "Photo removed.": "Foto dibuang.", "That image could not be read.": "Imej itu tidak dapat dibaca.", "No image was chosen.": "Tiada imej dipilih.", "Practice: virtual model": "Latihan: model maya", "tap to put the model back in the middle": "ketik untuk letak model di tengah semula", "Undo": "Batal", "Redo": "Ulang", "Focus mode": "Mod fokus", "Focus mode. Tap the focus button at the top to leave.": "Mod fokus. Ketik butang fokus di atas untuk keluar."};
   for(var v2k4 in V2MS4) if(!MS[v2k4]) MS[v2k4]=V2MS4[v2k4];
-  var V2MS5={"Response curve":"Lengkung tindak balas","Linear":"Linear","Fine":"Halus","Very fine":"Sangat halus","Fast":"Laju","Custom":"Sendiri",
+  var V2MS5={"Tachometer":"Takometer","Style":"Gaya","LED ring":"Cincin LED","Needle (tachometer)":"Jarum (takometer)","Response curve":"Lengkung tindak balas","Linear":"Linear","Fine":"Halus","Very fine":"Sangat halus","Fast":"Laju","Custom":"Sendiri",
     "Hazard":"Hazard","Light settings\u2026":"Tetapan lampu\u2026","Turns on by itself":"Menyala sendiri","Brake light":"Lampu brek","Reverse light":"Lampu undur","Follows drive channel":"Ikut saluran pemanduan",
     "Also show (yellow line)":"Turut tunjuk (garis kuning)","Also show (blue line)":"Turut tunjuk (garis biru)","Also show (grey line)":"Turut tunjuk (garis kelabu)"};
   for(var v2k5 in V2MS5) MS[v2k5]=V2MS5[v2k5];
@@ -5025,8 +5065,8 @@ try{
   // ---- 10 · Widget gallery: picture cards with categories instead of a list of names ----
   (function(){
     var box=document.querySelector('#bdEditor .bd-types');if(!box) return;
-    var K={bdTS:'s',bdTJ:'j',bdTD:'d',bdTM:'m',bdTL:'l',bdTT:'t',bdTB:'b',bdTW:'w',bdTA:'a',bdTY:'y',bdTF:'f',bdTI:'i',bdTK:'k',bdTN:'n',bdTRS:'rs',bdTG:'g',bdTST:'st',bdTLV:'lv',bdTDP:'dp',bdTZ:'z',bdTE:'e',bdTPS:'ps'};
-    var CAT={drive:['s','j','d','m','st','dp','n','g','lv','rs','y'],light:['l','t','b','w'],meter:['f','i','k','z'],safe:['e','ps','a']};
+    var K={bdTS:'s',bdTJ:'j',bdTD:'d',bdTM:'m',bdTL:'l',bdTT:'t',bdTB:'b',bdTW:'w',bdTA:'a',bdTY:'y',bdTF:'f',bdTFN:'fn',bdTI:'i',bdTK:'k',bdTN:'n',bdTRS:'rs',bdTG:'g',bdTST:'st',bdTLV:'lv',bdTDP:'dp',bdTZ:'z',bdTE:'e',bdTPS:'ps'};
+    var CAT={drive:['s','j','d','m','st','dp','n','g','lv','rs','y'],light:['l','t','b','w'],meter:['f','fn','i','k','z'],safe:['e','ps','a']};
     box.classList.add('v2-gal2');
     Array.prototype.forEach.call(box.querySelectorAll('button'),function(b){
       var k=K[b.id];if(!k) return;b.setAttribute('data-cat',Object.keys(CAT).filter(function(c){return CAT[c].indexOf(k)>=0})[0]||'drive');
@@ -5051,6 +5091,7 @@ try{
     function ring(x,y,r,f,col){var n=12,s='';for(var q=0;q<n;q++){var a=(135+270*(q+.5)/n)*Math.PI/180,on=(q+.5)/n<=f;s+='<line x1="'+(x+(r-1.6)*Math.cos(a)).toFixed(1)+'" y1="'+(y+(r-1.6)*Math.sin(a)).toFixed(1)+'" x2="'+(x+r*Math.cos(a)).toFixed(1)+'" y2="'+(y+r*Math.sin(a)).toFixed(1)+'" stroke="'+(on?(col||G):'#3a414d')+'" stroke-width="1.6"/>'}return s}
     function pill(x,y,w,h,txt,f,c){return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="'+(h/2)+'" fill="'+(f||'#2a303b')+'" stroke="'+S+'" stroke-width=".4"/>'+(txt?'<text x="'+(x+w/2)+'" y="'+(y+h/2+1.6)+'" font-size="4.4" font-weight="900" text-anchor="middle" fill="'+(c||'#c5ccd6')+'">'+txt+'</text>':'')}
     switch(k){
+      case 'fn': o='<circle cx="24" cy="13" r="10.5" fill="'+D+'" stroke="#9aa3b0" stroke-width=".8"/><path d="M31.5 19.5 A10 10 0 0 0 33.6 15" fill="none" stroke="'+R+'" stroke-width="1.6"/><line x1="24" y1="13" x2="30.5" y2="7.5" stroke="'+Y+'" stroke-width="1.4" stroke-linecap="round"/><circle cx="24" cy="13" r="1.8" fill="#3a414d"/>';break;
       case 's': o='<rect x="22.5" y="2" width="3" height="20" rx="1.5" fill="#3a414d"/>'+kn(24,10,3.6);break;
       case 'j': o='<circle cx="24" cy="12" r="10" fill="'+D+'" stroke="'+S+'" stroke-width=".5"/>'+kn(27,9,3.8);break;
       case 'd': o='<circle cx="13" cy="12" r="9" fill="'+D+'" stroke="'+S+'" stroke-width=".5"/>'+kn(13,12,3.2)+'<circle cx="35" cy="12" r="9" fill="'+D+'" stroke="'+S+'" stroke-width=".5"/>'+kn(35,12,3.2);break;
