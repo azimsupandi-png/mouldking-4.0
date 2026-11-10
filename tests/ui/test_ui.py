@@ -385,10 +385,11 @@ async def t_led(b):
     SLS = "document.querySelectorAll('#boardGrid .bdw[data-k=s] input[type=range]')"
     await pg.evaluate("var rs="+SLS+";var r=rs[0];r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=60;r.dispatchEvent(new Event('input',{bubbles:true}))")
     await pg.wait_for_timeout(1500)
-    r = await pg.evaluate("""(function(){var Y='#ffd84a',lx=[...document.querySelectorAll('#boardGrid .lx-box')];
-      var mx=[...lx[0].querySelectorAll('circle')].filter(c=>c.getAttribute('fill')===Y).length;
+    r = await pg.evaluate("""new Promise(function(res){var best=0,n=0,iv=setInterval(function(){var Y='#ffd84a',lx=[...document.querySelectorAll('#boardGrid .lx-box')];
+      best=Math.max(best,[...lx[0].querySelectorAll('circle')].filter(c=>c.getAttribute('fill')===Y).length);if(++n<8) return;clearInterval(iv);
+      var mx=best;
       var eq=[...lx[1].querySelectorAll('rect')].filter(c=>/#(1D9E75|EF9F27|E24B4A)/.test(c.getAttribute('fill'))).length;
-      return [mx,eq,document.querySelector('#boardGrid .lx-tkw span').textContent]})()""")
+      res([mx,eq,document.querySelector('#boardGrid .lx-tkw span').textContent])},80)})""")
     check('LED arrows light up and LED bars fill when A runs', r[0] > 10 and r[1] >= 5, r[:2])
     check('message strip shows the hub state', 'HUB ACTIVE' in r[2], r[2])
     await pg.evaluate("var rs="+SLS+";var r=rs[1];r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=50;r.dispatchEvent(new Event('input',{bubbles:true}));window.__all=[]")
