@@ -412,6 +412,13 @@ async def t_led(b):
     await pg.wait_for_timeout(300)
     r = await pg.evaluate("[document.querySelectorAll('#boardGrid .lx-mx').length,document.querySelectorAll('#boardGrid .bdw.hzw, #boardGrid .bdw[data-k=i]').length]")
     check('gallery adds LED arrows', r[0] == 2, r)
+    # tachometer looks A-F: each builds, and the setting is kept
+    await pg.evaluate("document.getElementById('bdEdit').click();document.getElementById('bdTFN').click();document.getElementById('bdAdd').click();var w=[...document.querySelectorAll('#boardGrid .bdw[data-k=f]')].pop();[...w.querySelectorAll('.bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Widget settings').click()")
+    await pg.wait_for_timeout(200)
+    r = await pg.evaluate("var box=[...document.querySelectorAll('#gEdit .wsf')].find(f=>f.querySelector('.wsl').textContent==='Tachometer look');var ok=!!box;if(box) [...box.querySelectorAll('button')].find(b=>b.textContent==='F Pro').click();[...document.querySelectorAll('#gEdit .gact button')].find(b=>b.textContent==='Save').click();document.getElementById('bdEdit').click();ok")
+    await pg.wait_for_timeout(300)
+    r2 = await pg.evaluate("document.querySelectorAll('#boardGrid .bdw[data-k=f] .ndl').length")
+    check('tachometer: look A-F can be picked in its settings', r and r2 >= 1, [r, r2])
     check('no JS errors (LED widgets)', not pg.errors, pg.errors[:3])
     await ctx.close()
 
