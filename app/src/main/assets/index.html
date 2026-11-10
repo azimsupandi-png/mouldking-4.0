@@ -1571,6 +1571,11 @@ html.dash-l:not(.v2-dbopen) #dashBar > .btn.v2-dbkeep{display:inline-flex!import
 .lx-lpg{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:6px;width:100%}
 .lx-lb{display:flex;align-items:center;gap:8px;justify-content:flex-start;min-width:0;width:100%;min-height:42px;padding:0 10px;border-radius:12px;border:1px solid var(--line,#2a303b);background:#161a21;color:var(--fg,#e8e8ea);font:700 12.5px var(--f-body,Roboto,sans-serif);overflow:hidden;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .lx-lb.on{border-color:rgba(255,216,74,.55);background:linear-gradient(180deg,#2a2614,#1a1810)}
+.lx-box.lx-lp{flex-direction:column;align-items:stretch;gap:6px}
+.lx-pg{min-height:38px;border-radius:12px;border:1px solid var(--line,#2a303b);background:#161a21;color:var(--fg,#e8e8ea);font:800 12.5px var(--f-body,Roboto,sans-serif);letter-spacing:.03em;cursor:pointer}
+.lx-pg[aria-pressed=true]{background:#ffd84a;color:#1b1b1b;border-color:#ffd84a;box-shadow:0 0 10px rgba(255,216,74,.45)}
+:root.dash .dw .lx-pg{min-height:30px;flex:0 0 auto}
+html[data-ui=light]:not(.dash) .lx-pg{background:#f1f2f4;color:#1b1f26;border-color:#c9ced6}
 .lx-lb:disabled{opacity:.5}
 :root.dash .dw .lx-lpg{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);align-content:stretch;height:100%;gap:5px}
 :root.dash .dw .lx-lb{min-height:0;height:100%;max-height:46px;padding:0 8px;font-size:12px;gap:6px}
