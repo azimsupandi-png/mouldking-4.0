@@ -127,7 +127,7 @@ try{
     if(!g.every(function(q){return isFinite(q)})||g[0]<0||g[1]<0||g[2]<mn[0]||g[3]<mn[1]||g[0]+g[2]>gx||g[1]+g[3]>gy) return null;
     return g;
   }
-  var DMIN={rs:[8,8],st:[8,8],lv:[6,12],dp:[10,10],s:[12,6],j:[10,12],d:[20,12],m:[12,6],l:[6,6],t:[6,6],b:[6,6],e:[6,6],g:[12,6],z:[8,6],n:[8,8],w:[12,6],a:[10,6],y:[12,6],f:[10,8],i:[6,10],k:[12,8],ps:[8,9]};
+  var DMIN={lx:[8,5],rs:[8,8],st:[8,8],lv:[6,12],dp:[10,10],s:[12,6],j:[10,12],d:[20,12],m:[12,6],l:[6,6],t:[6,6],b:[6,6],e:[6,6],g:[12,6],z:[8,6],n:[8,8],w:[12,6],a:[10,6],y:[12,6],f:[10,8],i:[6,10],k:[12,8],ps:[8,9]};
   function ci(v,lo,hi,def){v=Math.round(+v);return (v>=lo&&v<=hi)?v:def}
   function cleanJc(j){
     if(!j||typeof j!=='object') return null;
@@ -213,6 +213,16 @@ try{
         if(x.rt!==undefined&&rrt>=0&&rrt<=10&&rrt!==3) ro.rt=rrt;
         if(rhb>=1&&rhb<=2&&rhb*PER+rns<=NMAX) ro.hb=rhb;
         out.push(ro);
+      }else if(x.k==='lx'){
+        var lxt=['mx','eq','ts','gi','lp','tk'].indexOf(x.t)>=0?x.t:null, lxc=Math.round(+x.c);
+        if(lxt&&(lxt==='tk'||(lxc>=0&&lxc<NMAX))){
+          var lxo={k:'lx',t:lxt,w:w};if(lxt!=='tk') lxo.c=lxc;
+          var lxd=Math.round(+x.d);if(lxt==='mx'&&lxd>=0&&lxd<NMAX&&lxd!==lxc) lxo.d=lxd;
+          if((lxt==='eq'||lxt==='lp')&&Array.isArray(x.cs)){var lcs=[];x.cs.forEach(function(q){q=Math.round(+q);if(q>=0&&q<NMAX&&q!==lxc&&lcs.indexOf(q)<0&&lcs.length<3) lcs.push(q)});if(lcs.length) lxo.cs=lcs}
+          if(lxt==='ts'){var lth=Math.round(+x.th);if([10,30].indexOf(lth)>=0) lxo.th=lth}
+          if(lxt==='tk'){var lsp=Math.round(+x.sp);if(lsp===1||lsp===3) lxo.sp=lsp}
+          out.push(lxo);
+        }
       }else if(x.k==='z'){
         var za=Math.round(+x.a);
         out.push({k:'z',w:w,a:(za>=0&&za<=240)?za:15});
@@ -226,7 +236,7 @@ try{
         if(x.h===2&&it0.k!=='d') it0.h=2;
         if((x.tb===1||x.tb===true)&&['s','st','n'].indexOf(it0.k)>=0) it0.tb=1;
         if(g1) it0.g=g1;
-        if(['e','z','a','l','j','d','w','f','i','k','rs','dp','ps'].indexOf(it0.k)<0){
+        if(['e','z','a','l','j','d','w','f','i','k','rs','dp','ps','lx'].indexOf(it0.k)<0){
           if(x.inv===1||x.inv===true) it0.inv=1;
           var cp0=Math.round(+x.cap);if(cp0>=10&&cp0<100) it0.cap=cp0;
           if(it0.k==='s'){var sn0=Math.round(+x.snap);if([5,10,25].indexOf(sn0)>=0) it0.snap=sn0}
@@ -254,7 +264,7 @@ try{
       o.trim=Math.round(num(x.trim,-20,20,0));
       o.kind=(x.kind==='hold'||x.kind==='light')?x.kind:'slider';
       o.blink=['off','slow','fast','pulse','hazard'].indexOf(x.blink)>=0?x.blink:'off';
-      o.la=(x.la===1||x.la===2)?x.la:0;o.ls=idxOf(x.ls,0,false);
+      o.la=[1,2,3,4].indexOf(x.la)>=0?x.la:0;o.ls=idxOf(x.ls,0,false);
       o.bright=Math.round(num(x.bright,0,100,100));
       o.stp=pickOf(x.stp,[1,5,10],5);
     });
@@ -469,6 +479,7 @@ try{
     var c=C.ch[i];if(!c.la||S.estop||c.ls===i||!C.ch[c.ls]) return 0;
     var t=crzT(c.ls)||0,now=performance.now(),st=LAUTO[i]||(LAUTO[i]={mv:false,until:0});
     if(c.la===2) return t<=-5?1:0;
+    if(c.la===3||c.la===4){var blk=Math.floor(now/450)%2===0;return ((c.la===3&&t<=-20)||(c.la===4&&t>=20))&&blk?1:0}
     if(Math.abs(t)>=10) st.mv=true;
     else if(Math.abs(t)<5&&st.mv){st.mv=false;st.until=now+1500}
     return now<st.until?1:0;
@@ -521,7 +532,7 @@ try{
     });
     var mtr=false;
     var hdone={};
-    (C.board||[]).forEach(function(o){if(o.k==='k'||(o.k==='y'&&o.sc)){[o.c].concat(o.k==='k'&&o.cs?o.cs:[]).forEach(function(hc,hj){if(hdone[hc]) return;hdone[hc]=1;var hh=HIST[hc]||(HIST[hc]=[]);var rs0=hj?'live':(RECS[hc]||'live');if(rs0==='rec'&&hh.length>=600) RECS[hc]='done';else if(rs0!=='done'){hh.push(S.estop?0:(crzT(hc)||0));HCNT[hc]=(HCNT[hc]||0)+1;if(hh.length>600) hh.shift()}});mtr=true}else if(o.k==='f'||o.k==='i') mtr=true});
+    (C.board||[]).forEach(function(o){if(o.k==='k'||(o.k==='y'&&o.sc)){[o.c].concat(o.k==='k'&&o.cs?o.cs:[]).forEach(function(hc,hj){if(hdone[hc]) return;hdone[hc]=1;var hh=HIST[hc]||(HIST[hc]=[]);var rs0=hj?'live':(RECS[hc]||'live');if(rs0==='rec'&&hh.length>=600) RECS[hc]='done';else if(rs0!=='done'){hh.push(S.estop?0:(crzT(hc)||0));HCNT[hc]=(HCNT[hc]||0)+1;if(hh.length>600) hh.shift()}});mtr=true}else if(o.k==='f'||o.k==='i'||o.k==='lx') mtr=true});
     if(C.board&&(mtr||C.board.some(function(o){return o.k==='a'}))&&typeof paintBoard==='function') paintBoard();
   }
   setInterval(autoTick,100);
@@ -847,7 +858,26 @@ try{
   function F_KC(j){return {k:'cs'+j,l:['Also show (yellow line)','Also show (blue line)','Also show (grey line)'][j],ch:[-1,0,1,2,3,4,5],lab:['Off','A','B','C','D','E','F'],only:true,def:-1,
     g:function(it){var v=(it.cs||[])[j];return v===undefined?-1:v%PER},
     s:function(it,v){var a=(it.cs||[]).slice(),hb=Math.floor(it.c/PER)*PER;a[j]=v<0?null:hb+v;a=a.filter(function(q,qi){return q!==null&&q!==undefined&&q!==it.c&&a.indexOf(q)===qi});if(a.length) it.cs=a; else delete it.cs}}}
+  // a channel picker for the same hub as the widget's first channel
+  function F_CHN(key,l,off){return {k:key,l:l,ch:(off?[-1]:[]).concat([0,1,2,3,4,5]),lab:(off?['Off']:[]).concat(['A','B','C','D','E','F']),only:true,def:off?-1:0,
+    g:function(it){var v=it[key];return v===undefined||v<0?-1:v%PER},
+    s:function(it,v){var hb=Math.floor((it.c||0)/PER)*PER;if(v<0) delete it[key]; else it[key]=hb+v}}}
+  function F_CSN(j,l){return {k:'cs'+j,l:l,ch:[-1,0,1,2,3,4,5],lab:['Off','A','B','C','D','E','F'],only:true,def:-1,
+    g:function(it){var v=(it.cs||[])[j];return v===undefined?-1:v%PER},
+    s:function(it,v){var a=(it.cs||[]).slice(),hb=Math.floor(it.c/PER)*PER;a[j]=v<0?null:hb+v;a=a.filter(function(q,qi){return q!==null&&q!==undefined&&q!==it.c&&a.indexOf(q)===qi});if(a.length) it.cs=a; else delete it.cs}}}
+  // turn-signal widget: pick the light channels that blink with it (stored on those channels)
+  function F_IND(side,l){var la=side?4:3;return {k:'ind'+side,l:l,ch:[-1,0,1,2,3,4,5],lab:['Off','A','B','C','D','E','F'],only:true,def:-1,
+    g:function(it){var hb=Math.floor(it.c/PER)*PER;for(var q=0;q<PER;q++){var cc=C.ch[hb+q];if(cc&&cc.kind==='light'&&cc.la===la&&cc.ls===it.c) return q}return -1},
+    s:function(it,v){var hb=Math.floor(it.c/PER)*PER;for(var q=0;q<PER;q++){var cc=C.ch[hb+q];if(cc&&cc.la===la&&cc.ls===it.c) cc.la=0}
+      if(v>=0&&hb+v!==it.c){var cl=C.ch[hb+v];cl.kind='light';cl.la=la;cl.ls=it.c;syncChannel(hb+v)}}}}
   var WSPEC={
+    lx:{byT:{
+      mx:{t:'LED matrix settings',f:[F_CHN('c','Drive channel'),F_CHN('d','Steering channel (arrows left/right)',true)]},
+      eq:{t:'LED bars settings',f:[F_CHN('c','Bar 1'),F_CSN(0,'Bar 2'),F_CSN(1,'Bar 3'),F_CSN(2,'Bar 4')]},
+      ts:{t:'Turn signal settings',f:[F_CHN('c','Steering channel'),{k:'th',l:'Blinks from',ch:[10,20,30],lab:['10%','20%','30%'],only:true,def:20},F_IND(0,'Left indicator light'),F_IND(1,'Right indicator light')]},
+      gi:{t:'Gear LED settings',f:[F_CHN('c','Gear channel')]},
+      lp:{t:'Light panel settings',f:[F_CHN('c','Light 1'),F_CSN(0,'Light 2'),F_CSN(1,'Light 3'),F_CSN(2,'Light 4')]},
+      tk:{t:'Message strip settings',f:[{k:'sp',l:'Scroll speed',ch:[1,2,3],lab:['Slow','Normal','Fast'],only:true,def:2}]}}},
     s:{t:'Slider settings',f:[F_INV,F_CAP,F_PC,F_PI,{k:'snap',l:'Snap to',ch:[0,5,10,25],lab:['Off','5%','10%','25%'],only:true,def:0}]},
     m:{t:'Mix settings',f:[F_INV,F_CAP]},
     rs:{t:'Selector settings',f:[{k:'p',l:'Output power',u:'%',min:5,max:100,st:5,ch:[25,50,75,100],def:100},
@@ -871,7 +901,7 @@ try{
     l:{t:'Light settings',f:[
       {k:'br',l:'Brightness',u:'%',ch:[25,50,75,100],only:true,def:100,g:function(it){return C.ch[it.c].bright||100},s:function(it,v){C.ch[it.c].bright=v;syncChannel(it.c)}},
       {k:'bl',l:'Blink',ch:[0,1,2,3,4],lab:['Steady','Slow','Fast','Pulse','Hazard'],only:true,def:0,g:function(it){return Math.max(0,['off','slow','fast','pulse','hazard'].indexOf(C.ch[it.c].blink||'off'))},s:function(it,v){C.ch[it.c].kind='light';C.ch[it.c].blink=['off','slow','fast','pulse','hazard'][v];syncChannel(it.c)}},
-      {k:'la',l:'Turns on by itself',ch:[0,1,2],lab:['Off','Brake light','Reverse light'],only:true,def:0,g:function(it){return C.ch[it.c].la||0},s:function(it,v){C.ch[it.c].kind='light';C.ch[it.c].la=v}},
+      {k:'la',l:'Turns on by itself',ch:[0,1,2,3,4],lab:['Off','Brake light','Reverse light','Left indicator','Right indicator'],only:true,def:0,g:function(it){return C.ch[it.c].la||0},s:function(it,v){C.ch[it.c].kind='light';C.ch[it.c].la=v}},
       {k:'ls',l:'Follows drive channel',ch:[0,1,2,3,4,5],lab:['A','B','C','D','E','F'],only:true,def:0,dep:{k:'la',not:0},g:function(it){return (C.ch[it.c].ls||0)%PER},s:function(it,v){C.ch[it.c].ls=Math.floor(it.c/PER)*PER+v}}]},
     t:{t:'Toggle settings',f:[{k:'p',l:'Power',u:'%',min:5,max:100,st:5,ch:[25,50,75,100]},F_INV,F_CAP]},
     f:{t:'Meter settings',f:[{k:'nd',l:'Style',ch:[0,1],lab:['LED ring','Needle (tachometer)'],only:true,def:0},F_SH,F_TH,{k:'ow',l:'Direction',ch:[0,1],lab:['Both ways','Forward only'],only:true,def:0}]},
@@ -892,7 +922,7 @@ try{
   var F_CURVE={k:'cvv',l:'Response curve',ed:true,ch:[],g:function(it){return (C.ch[it.c].cv||[25,50,75]).slice()},s:function(it,v){C.ch[it.c].cv=v}};
   ['s','st','n'].forEach(function(k){if(WSPEC[k]) WSPEC[k].f=WSPEC[k].f.concat([F_CURVE,F_TRIM,F_TB])});
   function wsEdit(it){
-    var sp=WSPEC[it.k];if(!sp) return;
+    var sp=WSPEC[it.k];if(sp&&sp.byT) sp=sp.byT[it.t];if(!sp) return;
     var old=document.getElementById('gEdit');if(old) old.remove();
     var ov=document.createElement('div');ov.id='gEdit';ov.className='gedit';
     var bx=document.createElement('div');bx.className='gbox';ov.appendChild(bx);
@@ -2440,10 +2470,10 @@ try{
   var bdSel=[$('#bdTarget'),$('#bdTarget2'),$('#bdTarget3'),$('#bdTarget4')];
   var bdFields=[$('#bdF1'),$('#bdF2'),$('#bdF3'),$('#bdF4')], bdLbl=[$('#bdL1'),$('#bdL2'),$('#bdL3'),$('#bdL4')];
   var bdModeF=$('#bdFM'), bdMode=$('#bdMode'), bdWideChk=$('#bdWideChk'), bdSpring=$('#bdSpring'), bdSpringL=$('#bdSpringL');
-  var bdTypes=[['s',$('#bdTS')],['j',$('#bdTJ')],['d',$('#bdTD')],['m',$('#bdTM')],['l',$('#bdTL')],['t',$('#bdTT')],['b',$('#bdTB')],['w',$('#bdTW')],['a',$('#bdTA')],['y',$('#bdTY')],['f',$('#bdTF')],['f',$('#bdTFN')],['i',$('#bdTI')],['k',$('#bdTK')],['n',$('#bdTN')],['rs',$('#bdTRS')],['g',$('#bdTG')],['st',$('#bdTST')],['lv',$('#bdTLV')],['dp',$('#bdTDP')],['z',$('#bdTZ')],['e',$('#bdTE')],['ps',$('#bdTPS')]];
+  var bdTypes=[['s',$('#bdTS')],['j',$('#bdTJ')],['d',$('#bdTD')],['m',$('#bdTM')],['l',$('#bdTL')],['t',$('#bdTT')],['b',$('#bdTB')],['w',$('#bdTW')],['a',$('#bdTA')],['y',$('#bdTY')],['f',$('#bdTF')],['f',$('#bdTFN')],['i',$('#bdTIS')],['lx',$('#bdTXmx')],['lx',$('#bdTXeq')],['lx',$('#bdTXts')],['lx',$('#bdTXgi')],['lx',$('#bdTXlp')],['lx',$('#bdTXtk')],['i',$('#bdTI')],['k',$('#bdTK')],['n',$('#bdTN')],['rs',$('#bdTRS')],['g',$('#bdTG')],['st',$('#bdTST')],['lv',$('#bdTLV')],['dp',$('#bdTDP')],['z',$('#bdTZ')],['e',$('#bdTE')],['ps',$('#bdTPS')]];
   var bdRat=(typeof document.querySelectorAll==='function')?[].slice.call(document.querySelectorAll('.bdRat')):[$('.bdRat'),$('.bdRat'),$('.bdRat'),$('.bdRat')], bdMixRow=$('#bdMixRow');
   bdRat.forEach(function(sel){[100,75,50,25,-25,-50,-75,-100].forEach(function(v){bdOpt(sel,String(v),(v>0?'+':'')+v+'%')});sel.value='100'});
-  var bdNd=false, bdK='s', bdEditing=false, bdPick=null, bdPickAt=0, bdW=[], dashAdd=false;
+  var BPRE={bdTFN:{nd:1},bdTIS:{hz:1},bdTXmx:{t:'mx'},bdTXeq:{t:'eq'},bdTXts:{t:'ts'},bdTXgi:{t:'gi'},bdTXlp:{t:'lp'},bdTXtk:{t:'tk'}}, bdBtn=null, bdK='s', bdEditing=false, bdPick=null, bdPickAt=0, bdW=[], dashAdd=false;
   function prefillBoard(){
     var n=0;
     activeIdx().forEach(function(i){if(n<4){C.board.push({k:'s',c:i,w:C.ch[i].kind==='hold'?2:1,hold:C.ch[i].kind==='hold'});n++}});
@@ -2458,6 +2488,7 @@ try{
       (bdK==='j'?(tank?['Left motor','Right motor']:['Drive','Steer']):
       (tank?['Left stick: Left motor','Left stick: Right motor','Right stick: Left motor','Right stick: Right motor']:
             ['Left stick: Drive','Left stick: Steer','Right stick: Drive','Right stick: Steer']))));
+    if(bdK==='lx'){var lxt0=bdPre().t;n=lxt0==='tk'?0:1;L=[{mx:'Drive channel',eq:'First channel',ts:'Steering channel',gi:'Gear channel',lp:'First light channel'}[lxt0]||'Channel']}
     bdSel.forEach(function(sel,q){
       var show=q<n;
       bdFields[q].hidden=!show;
@@ -2480,7 +2511,8 @@ try{
   }
   function bdSetKind(k){
     bdK=k;
-    bdTypes.forEach(function(t){t[1].setAttribute('aria-pressed',String(t[0]===k&&(k!=='f'||(t[1].id==='bdTFN')===bdNd)))});
+    if(bdBtn&&!bdTypes.some(function(t){return t[1].id===bdBtn&&t[0]===k})) bdBtn=null;
+    bdTypes.forEach(function(t){t[1].setAttribute('aria-pressed',String(t[0]===k&&(bdBtn?t[1].id===bdBtn:!BPRE[t[1].id])))});
     bdWideChk.checked=(k==='j'||k==='d'||k==='m');
     bdWideChk.disabled=(k==='d');
     if(k==='d') bdWideChk.checked=true;
@@ -2606,6 +2638,7 @@ try{
     if(k==='dp') return L?[12,14]:[16,14];
     if(k==='g') return L?[24,6]:[24,7];
     if(k==='z') return L?[10,6]:[16,6];
+    if(k==='lx') return ({mx:L?[10,12]:[14,12],eq:L?[12,12]:[16,12],ts:L?[12,6]:[16,6],gi:L?[14,7]:[20,7],lp:L?[16,10]:[16,10],tk:L?[22,5]:[24,5]})[it.t]||[12,6];
     if(k==='ps') return L?[9,12]:[12,12];
     return L?[8,6]:[12,6];
   }
@@ -3364,6 +3397,9 @@ try{
         ['pointerup','pointercancel','lostpointercapture'].forEach(function(ev){pb.addEventListener(ev,function(){pv.dn=false;clearTimeout(pv.tm);pb.classList.remove('dn')})});
         pb.addEventListener('contextmenu',function(e){e.preventDefault()});
         el.appendChild(pb);w.vw=pv;
+      }else if(it.k==='lx'){
+        if(it.t!=='tk'&&!isActive(it.c)) return;
+        w.lx=lxBuild(el,it);
       }else if(it.k==='z'){
         bdHead(el,'Session timer',it,false);
         var zd=document.createElement('button');zd.type='button';zd.className='sesst';
@@ -3539,6 +3575,106 @@ try{
     v.glowg.setAttribute('opacity',on&&!flt?.95:.55);
     v.b.classList.toggle('flt',flt);
   }
+  /* ---------- LED widgets: matrix, bars, turn signals, gear, light panel, message strip ---------- */
+  var LXOFF='rgba(150,160,175,.17)';
+  function lxCol(v){v=Math.abs(v);return v>80?'#E24B4A':v>55?'#EF9F27':'#1D9E75'}
+  var LXPAT={up:['00011000','00111100','01111110','11111111','00111100','00111100','00111100','00111100'],
+    dn:['00111100','00111100','00111100','00111100','11111111','01111110','00111100','00011000'],
+    rt:['00001000','00001100','11111110','11111111','11111111','11111110','00001100','00001000'],
+    lt:['00010000','00110000','01111111','11111111','11111111','01111111','00110000','00010000'],
+    st:['10000001','01000010','00100100','00011000','00011000','00100100','01000010','10000001'],
+    id:['00000000','00000000','00000000','00011000','00011000','00000000','00000000','00000000']};
+  function lxOut(c){var v=Math.round(rt.o[c]||0);return isFinite(v)?v:0}
+  function lxBuild(el,it){
+    var t=it.t,c=it.c,o={it:it,key:''},TXT='var(--fg,#e8e8ea)',MUT='var(--muted,#8a93a0)';
+    var NAME={mx:'LED arrows',eq:'LED bars',ts:'Turn signals',gi:'Gear LED',lp:'Light panel',tk:'Message strip'}[t];
+    var hd=bdHead(el,(t==='tk'||t==='lp')?NAME:NAME+' \u00b7 '+tagOf(c)+' \u00b7 '+C.ch[c].name,it,t!=='tk'&&t!=='lp');
+    o.hd=hd;
+    var box=document.createElement('div');box.className='lx-box lx-'+t;el.appendChild(box);
+    function SVG0(w,h){var g=sv('svg',{viewBox:'0 0 '+w+' '+h,'class':'lx-svg','preserveAspectRatio':'xMidYMid meet','aria-hidden':'true'},box);return g}
+    if(t==='mx'){
+      var g=SVG0(100,100);sv('rect',{x:2,y:2,width:96,height:96,rx:10,'class':'lx-pan'},g);
+      o.d=[];for(var r=0;r<8;r++)for(var q=0;q<8;q++)o.d.push(sv('circle',{cx:13.5+q*10.4,cy:13.5+r*10.4,r:3.9,fill:LXOFF},g));
+      o.paint=function(){
+        var a=S.estop?0:Math.round(crzT(c)||0),b=(it.d>=0&&it.d!==undefined)?Math.round(crzT(it.d)||0):0,now=performance.now();
+        var dir=S.estop?'st':Math.abs(b)>30?(b>0?'rt':'lt'):a>5?'up':a<-5?'dn':'id';
+        var per=Math.max(220,900-Math.abs(a)*7),on=(dir==='st'||Math.abs(a)>5)?(now%per<per*.65):true;
+        var key=dir+(on?1:0);if(o.key===key) return;o.key=key;
+        var P=LXPAT[dir],cl=dir==='st'?'#E24B4A':'#ffd84a';
+        o.d.forEach(function(d,ix){d.setAttribute('fill',on&&P[ix>>3][ix&7]==='1'?cl:LXOFF)});
+        if(hd){var tx={up:'\u25B2 '+a,dn:'\u25BC '+(-a),rt:'\u25B6',lt:'\u25C0',st:'STOP',id:'0'}[dir];if(hd.textContent!==tx) hd.textContent=tx}
+      };
+    }else if(t==='eq'){
+      var chs=[c].concat(it.cs||[]),n=chs.length,W=n*30+10,g2=SVG0(W,124);sv('rect',{x:1,y:1,width:W-2,height:104,rx:9,'class':'lx-pan'},g2);
+      o.b=chs.map(function(ch,j){var a=[];for(var k=0;k<10;k++) a.push(sv('rect',{x:10+j*30,y:92-k*9,width:20,height:6.4,rx:1.6,fill:LXOFF},g2));
+        sv('text',{x:20+j*30,y:119,'text-anchor':'middle','font-size':11,'font-weight':800,fill:TXT},g2).textContent=tagOf(ch);return a});
+      o.paint=function(){
+        var vs=chs.map(lxOut),key=vs.map(function(v){return Math.round(Math.abs(v)/10)}).join(',');
+        if(o.key!==key){o.key=key;o.b.forEach(function(arr,j){var v=Math.abs(vs[j]);arr.forEach(function(rc,k){var vv=(k+.5)*10;rc.setAttribute('fill',vv<=v?lxCol(vv):LXOFF)})})}
+        if(hd){var tx=mSgn(vs[0]);if(hd.textContent!==tx) hd.textContent=tx}
+      };
+    }else if(t==='ts'){
+      var g3=SVG0(200,60);sv('rect',{x:2,y:2,width:196,height:56,rx:12,'class':'lx-pan'},g3);
+      o.L=sv('path',{d:'M50 14 l-30 16 30 16z',fill:LXOFF},g3);o.R=sv('path',{d:'M150 14 l30 16 -30 16z',fill:LXOFF},g3);
+      o.q=[];for(var k3=0;k3<5;k3++) o.q.push(sv('circle',{cx:76+k3*12,cy:30,r:4,fill:LXOFF},g3));
+      o.paint=function(){
+        var b=S.estop?0:Math.round(crzT(c)||0),th=it.th||20,now=performance.now(),bl=Math.floor(now/450)%2===0,rgt=b>=th,lft=b<=-th,sq=Math.floor(now/110)%6;
+        var key=(rgt?'r':lft?'l':'-')+(bl?1:0)+sq;if(o.key===key) return;o.key=key;
+        o.R.setAttribute('fill',rgt&&bl?'#EF9F27':LXOFF);o.L.setAttribute('fill',lft&&bl?'#EF9F27':LXOFF);
+        o.q.forEach(function(d,j){var on=bl&&(rgt?j<sq:lft?(4-j)<sq:false);d.setAttribute('fill',on?'#EF9F27':LXOFF)});
+        if(hd){var tx=rgt?'\u25B6':lft?'\u25C0':'\u2014';if(hd.textContent!==tx) hd.textContent=tx}
+      };
+    }else if(t==='gi'){
+      var gw=(C.board||[]).filter(function(x){return x.k==='g'&&x.c===c})[0]||{},gl=gearsOf(gw),gn=gl.length,GW=gn*36+8,g4=SVG0(GW,72);
+      sv('rect',{x:1,y:1,width:GW-2,height:70,rx:10,'class':'lx-pan'},g4);
+      o.g=gl.map(function(gd,j){var rc=sv('rect',{x:8+j*36,y:8,width:28,height:36,rx:6,fill:'#11141a'},g4);var tx=sv('text',{x:22+j*36,y:33,'text-anchor':'middle','font-size':19,'font-weight':900,fill:'#3a414d'},g4);tx.textContent=gd[0];return [rc,tx,wOut(gw,gd[1])]});
+      o.p=[];for(var k4=0;k4<11;k4++) o.p.push(sv('circle',{cx:12+k4*(GW-24)/10,cy:58,r:3.4,fill:LXOFF},g4));
+      o.paint=function(){
+        var tv=Math.round(rt.t[c]||0),best=-1,bd=1e9;o.g.forEach(function(gg,j){var dd=Math.abs(gg[2]-tv);if(dd<bd){bd=dd;best=j}});
+        if(bd>12) best=-1;
+        var pw=Math.abs(lxOut(c)),key=best+'|'+Math.round(pw/9);if(o.key===key) return;o.key=key;
+        o.g.forEach(function(gg,j){var on=j===best;gg[0].setAttribute('fill',on?'#ffd84a':'#11141a');gg[1].setAttribute('fill',on?'#1b1b1b':'#3a414d')});
+        o.p.forEach(function(d,j){var vv=(j+.5)/11*100;d.setAttribute('fill',vv<=pw?lxCol(vv):LXOFF)});
+        if(hd){var tx=best>=0?o.g[best][1].textContent:'\u2013';if(hd.textContent!==tx) hd.textContent=tx}
+      };
+    }else if(t==='lp'){
+      var lcs=[c].concat(it.cs||[]).filter(isActive),grid=document.createElement('div');grid.className='lx-lpg';box.appendChild(grid);
+      o.bs=lcs.map(function(lc){
+        var b=document.createElement('button');b.type='button';b.className='lx-lb';
+        var dot=document.createElement('i');var nm=document.createElement('span');nm.textContent=tagOf(lc)+' \u00b7 '+C.ch[lc].name;b.appendChild(dot);b.appendChild(nm);
+        var lp=0,lpd=false;
+        b.addEventListener('pointerdown',function(){lpd=false;clearTimeout(lp);lp=setTimeout(function(){lpd=true;if(S.estop||S.play) return;var any=lcs.some(function(x){return rt.t[x]>0});
+          lcs.forEach(function(x){if(C.ch[x].kind!=='light'){C.ch[x].kind='light';syncChannel(x)}setT(x,any?0:(C.ch[x].bright||100),false)});feedback('hold');save()},650)});
+        ['pointerup','pointercancel','pointerleave'].forEach(function(ev){b.addEventListener(ev,function(){clearTimeout(lp)})});
+        b.addEventListener('contextmenu',function(e){e.preventDefault()});
+        b.addEventListener('click',function(){if(lpd){lpd=false;return}noteInput();if(S.estop||S.play) return;
+          if(C.ch[lc].kind!=='light'){C.ch[lc].kind='light';syncChannel(lc);save()}setT(lc,rt.t[lc]>0?0:(C.ch[lc].bright||100),false)});
+        grid.appendChild(b);return [b,lc];
+      });
+      o.paint=function(){var key=o.bs.map(function(q){return rt.t[q[1]]>0?1:0}).join('')+(S.estop?'e':'');if(o.key===key) return;o.key=key;
+        o.bs.forEach(function(q){q[0].classList.toggle('on',rt.t[q[1]]>0);q[0].setAttribute('aria-pressed',String(rt.t[q[1]]>0));q[0].disabled=!!S.estop});};
+    }else{
+      var tw=document.createElement('div');tw.className='lx-tkw';var sp=document.createElement('span');tw.appendChild(sp);box.appendChild(tw);
+      o.pend='';
+      function msg(){
+        var m=[];if(S.estop) m.push('E-STOP ON');
+        if(!S.connected) m.push('HUB NOT CONNECTED'); else m.push('HUB ACTIVE');
+        if(CRZ.on){var ks=Object.keys(CRZ.v);m.push(ks.length?'CRUISE '+ks.map(function(k){return tagOf(+k)+' '+mSgn(CRZ.v[k])+'%'}).join(' '):'CRUISE ON')}
+        var mv=activeIdx().filter(function(i){return C.ch[i].kind!=='light'&&Math.abs(lxOut(i))>=10}).map(function(i){return tagOf(i)+' '+mSgn(Math.round(lxOut(i)/10)*10)+'%'});
+        if(mv.length) m.push(mv.join('  '));
+        var p=-1;if(NB&&NB.battery){try{p=+NB.battery()}catch(e){}}if(p>=0) m.push('PHONE '+p+'%');
+        var ap=activeProfile();m.push(ap&&ap.name?ap.name:'MK6');
+        return m.join('   \u2022   ');
+      }
+      function skey(){return [S.estop?1:0,S.connected?1:0,CRZ.on?Object.keys(CRZ.v).length+1:0].join('')}
+      function apply(restart){var tx=msg();o.sk=skey();if(sp.textContent===tx) return;sp.textContent=tx;var dur=Math.max(5,tx.length*([0,.22,.15,.09][it.sp||2]));sp.style.animationDuration=dur.toFixed(1)+'s';
+        if(restart){sp.style.animation='none';void sp.offsetWidth;sp.style.animation='';sp.style.animationDuration=dur.toFixed(1)+'s'}}
+      sp.addEventListener('animationiteration',function(){apply(false)});apply(false);
+      // hub, E-Stop and Cruise changes show at once; the rest waits for the next pass
+      o.paint=function(){if(o.sk!==skey()) apply(true)};
+    }
+    return o;
+  }
   function paintBoard(){
     if(!bdW||!bdW.length) return;
     mirrorPairs();
@@ -3626,6 +3762,8 @@ try{
         w.gear.bs.forEach(function(b,i){b.classList.toggle('on',i===gi0);b.disabled=S.estop||!!S.play});
       }else if(w.vw){
         paintVw(w.vw);
+      }else if(w.lx){
+        w.lx.paint();
       }else if(w.sess){
         var sm=SESS.ms, tx0=fmtSess(sm), aMs=(w.it.a||0)*60000;
         if(w.sess.t.textContent!==tx0) w.sess.t.textContent=tx0;
@@ -3937,12 +4075,13 @@ try{
     if(k!==dashLastK){dashLastK=k;syncLayout();return}
     if(dashOn()){dashFit();setTimeout(dashFit,250)}
   });
-  bdTypes.forEach(function(t){t[1].addEventListener('click',function(){bdNd=t[1].id==='bdTFN';bdSetKind(t[0])})});
+  bdTypes.forEach(function(t){t[1].addEventListener('click',function(){bdBtn=BPRE[t[1].id]?t[1].id:null;bdSetKind(t[0])})});
+  function bdPre(){return (bdBtn&&BPRE[bdBtn])||{}}
   bdMode.addEventListener('change',bdFill);
   $('#bdAdd').addEventListener('click',function(){
     if(C.board.length>=16){bdNote.textContent='The board is full (16 controls).';return}
     var v=bdSel.map(function(s){return s.value});
-    if(!v[0]&&bdK!=='e'&&bdK!=='z'&&bdK!=='rs'&&bdK!=='ps'){bdNote.textContent='Nothing to add.';return}
+    if(!v[0]&&bdK!=='e'&&bdK!=='z'&&bdK!=='rs'&&bdK!=='ps'&&!(bdK==='lx'&&bdPre().t==='tk')){bdNote.textContent='Nothing to add.';return}
     var ww=bdWideChk.checked?2:1, m=bdMode.value==='tank'?'tank':'axis', n=v.map(function(x){return Math.round(+x)});
     var hd=!bdSpring.checked;
     if(bdK==='w'){
@@ -3953,7 +4092,16 @@ try{
     else if(bdK==='b') C.board.push({k:'b',c:n[0],w:ww});
     else if(bdK==='a') C.board.push({k:'a',c:n[0],w:ww,s:20});
     else if(bdK==='y'||bdK==='v') C.board.push({k:bdK,c:n[0],w:ww,p:Math.round(+$('#bdTgPow').value)||50,d:bdK==='y'?4:1});
-    else if(bdK==='f'||bdK==='i'||bdK==='k'){C.board.push({k:bdK,c:n[0],w:ww});if(bdK==='f'&&bdNd) C.board[C.board.length-1].nd=1}
+    else if(bdK==='f'||bdK==='i'||bdK==='k'){var bp=bdPre(),bo={k:bdK,c:n[0],w:ww};if(bdK==='f'&&bp.nd) bo.nd=1;if(bdK==='i'&&bp.hz){bo.hz=1;bo.w=2}C.board.push(bo)}
+    else if(bdK==='lx'){
+      var lt=bdPre().t||'mx',lo={k:'lx',t:lt,w:ww};if(lt!=='tk') lo.c=n[0];
+      var hb=Math.floor((n[0]||0)/PER)*PER,act=activeIdx().filter(function(i){return i>=hb&&i<hb+PER&&i!==n[0]});
+      if(lt==='mx'){var sg=(C.ss&&C.ss.on&&C.ss.st!==n[0])?C.ss.st:-1;if(sg<0){var stw=C.board.filter(function(x){return x.k==='st'&&x.c!==n[0]})[0];if(stw) sg=stw.c}if(sg>=0) lo.d=sg}
+      if(lt==='eq'&&act.length) lo.cs=act.filter(function(i){return C.ch[i].kind!=='light'}).slice(0,3);
+      if(lt==='lp'){var ls0=act.filter(function(i){return C.ch[i].kind==='light'}).slice(0,3);if(ls0.length) lo.cs=ls0}
+      if(lo.cs&&!lo.cs.length) delete lo.cs;
+      C.board.push(lo);
+    }
     else if(bdK==='n') C.board.push({k:bdK,c:n[0],w:ww});
     else if(bdK==='u') C.board.push({k:'u',c:n[0],w:ww,p:Math.round(+$('#bdTgPow').value)||50});
     else if(bdK==='g'||bdK==='lv') C.board.push({k:bdK,c:n[0],w:ww});
@@ -4399,7 +4547,7 @@ try{
   for(var v2k3 in V2MS3) if(!MS[v2k3]) MS[v2k3]=V2MS3[v2k3];
   var V2MS4={"Cruise": "Cruise", "Connect the hub first.": "Sambungkan hub dahulu.", "Cruise off. Held controls go back to 0.": "Cruise dimatikan. Kawalan yang ditahan kembali ke 0.", "Cruise on: a control you let go of keeps its value. Bring it back to the middle to stop it. Steering and lights still return.": "Cruise hidup: kawalan yang dilepaskan kekal pada nilainya. Bawa kembali ke tengah untuk berhenti. Stereng dan lampu tetap kembali.", "Cruise on": "Cruise hidup", "Steering eases at speed": "Stereng ikut kelajuan", "Steering": "Stereng", "Throttle": "Pendikit", "Steering at full speed": "Stereng pada kelajuan penuh", "At full throttle the steering turns only this much, so the model does not tip over in fast turns.": "Pada pendikit penuh, stereng hanya berpusing setakat ini supaya model tidak terbalik semasa membelok laju.", "Bluetooth is back. Reconnecting the hub. Motors are at zero.": "Bluetooth hidup semula. Menyambung semula hub. Motor pada sifar.", "Reconnect automatically (back in the app, Bluetooth on again, or app opened)": "Sambung semula automatik (kembali ke app, Bluetooth hidup semula, atau app dibuka)", "Reconnecting the hub from last time. Motors are at zero.": "Menyambung semula hub seperti kali lepas. Motor pada sifar.", "Icon & photo": "Ikon & foto", "Model icon": "Ikon model", "Choose photo": "Pilih foto", "Remove photo": "Buang foto", "No icon": "Tiada ikon", "Car": "Kereta", "Excavator": "Jengkaut", "Crane": "Kren", "Truck": "Lori", "Tractor": "Traktor", "Boat": "Bot", "Photo set for this model.": "Foto ditetapkan untuk model ini.", "Photo removed.": "Foto dibuang.", "That image could not be read.": "Imej itu tidak dapat dibaca.", "No image was chosen.": "Tiada imej dipilih.", "Practice: virtual model": "Latihan: model maya", "tap to put the model back in the middle": "ketik untuk letak model di tengah semula", "Undo": "Batal", "Redo": "Ulang", "Focus mode": "Mod fokus", "Focus mode. Tap the focus button at the top to leave.": "Mod fokus. Ketik butang fokus di atas untuk keluar."};
   for(var v2k4 in V2MS4) if(!MS[v2k4]) MS[v2k4]=V2MS4[v2k4];
-  var V2MS5={"Tachometer":"Takometer","Style":"Gaya","LED ring":"Cincin LED","Needle (tachometer)":"Jarum (takometer)","Response curve":"Lengkung tindak balas","Linear":"Linear","Fine":"Halus","Very fine":"Sangat halus","Fast":"Laju","Custom":"Sendiri",
+  var V2MS5={"LED strip":"Jalur LED","LED arrows":"Anak panah LED","LED bars":"Bar LED","Turn signals":"Isyarat belok","Gear LED":"Gear LED","Light panel":"Panel lampu","Message strip":"Jalur mesej","LED":"LED","LED matrix settings":"Tetapan matriks LED","Drive channel":"Saluran pemanduan","Steering channel (arrows left/right)":"Saluran stereng (anak panah kiri/kanan)","LED bars settings":"Tetapan bar LED","Bar 1":"Bar 1","Bar 2":"Bar 2","Bar 3":"Bar 3","Bar 4":"Bar 4","Turn signal settings":"Tetapan isyarat belok","Steering channel":"Saluran stereng","Blinks from":"Berkelip mulai","Left indicator light":"Lampu isyarat kiri","Right indicator light":"Lampu isyarat kanan","Left indicator":"Isyarat kiri","Right indicator":"Isyarat kanan","Gear LED settings":"Tetapan gear LED","Gear channel":"Saluran gear","Light panel settings":"Tetapan panel lampu","Light 1":"Lampu 1","Light 2":"Lampu 2","Light 3":"Lampu 3","Light 4":"Lampu 4","First channel":"Saluran pertama","First light channel":"Saluran lampu pertama","Message strip settings":"Tetapan jalur mesej","Scroll speed":"Kelajuan gulung","Slow":"Perlahan","Normal":"Biasa","Tachometer":"Takometer","Style":"Gaya","LED ring":"Cincin LED","Needle (tachometer)":"Jarum (takometer)","Response curve":"Lengkung tindak balas","Linear":"Linear","Fine":"Halus","Very fine":"Sangat halus","Fast":"Laju","Custom":"Sendiri",
     "Hazard":"Hazard","Light settings\u2026":"Tetapan lampu\u2026","Turns on by itself":"Menyala sendiri","Brake light":"Lampu brek","Reverse light":"Lampu undur","Follows drive channel":"Ikut saluran pemanduan",
     "Also show (yellow line)":"Turut tunjuk (garis kuning)","Also show (blue line)":"Turut tunjuk (garis biru)","Also show (grey line)":"Turut tunjuk (garis kelabu)"};
   for(var v2k5 in V2MS5) MS[v2k5]=V2MS5[v2k5];
@@ -5065,8 +5213,8 @@ try{
   // ---- 10 · Widget gallery: picture cards with categories instead of a list of names ----
   (function(){
     var box=document.querySelector('#bdEditor .bd-types');if(!box) return;
-    var K={bdTS:'s',bdTJ:'j',bdTD:'d',bdTM:'m',bdTL:'l',bdTT:'t',bdTB:'b',bdTW:'w',bdTA:'a',bdTY:'y',bdTF:'f',bdTFN:'fn',bdTI:'i',bdTK:'k',bdTN:'n',bdTRS:'rs',bdTG:'g',bdTST:'st',bdTLV:'lv',bdTDP:'dp',bdTZ:'z',bdTE:'e',bdTPS:'ps'};
-    var CAT={drive:['s','j','d','m','st','dp','n','g','lv','rs','y'],light:['l','t','b','w'],meter:['f','fn','i','k','z'],safe:['e','ps','a']};
+    var K={bdTS:'s',bdTJ:'j',bdTD:'d',bdTM:'m',bdTL:'l',bdTT:'t',bdTB:'b',bdTW:'w',bdTA:'a',bdTY:'y',bdTF:'f',bdTFN:'fn',bdTI:'i',bdTIS:'is',bdTXmx:'xmx',bdTXeq:'xeq',bdTXts:'xts',bdTXgi:'xgi',bdTXlp:'xlp',bdTXtk:'xtk',bdTK:'k',bdTN:'n',bdTRS:'rs',bdTG:'g',bdTST:'st',bdTLV:'lv',bdTDP:'dp',bdTZ:'z',bdTE:'e',bdTPS:'ps'};
+    var CAT={drive:['s','j','d','m','st','dp','n','g','lv','rs','y'],light:['l','t','b','w'],meter:['f','fn','i','k','z'],led:['xmx','xeq','xts','xgi','xlp','xtk','is'],safe:['e','ps','a']};
     box.classList.add('v2-gal2');
     Array.prototype.forEach.call(box.querySelectorAll('button'),function(b){
       var k=K[b.id];if(!k) return;b.setAttribute('data-cat',Object.keys(CAT).filter(function(c){return CAT[c].indexOf(k)>=0})[0]||'drive');
@@ -5075,7 +5223,7 @@ try{
       b.appendChild(th);b.appendChild(lb);
     });
     var tabs=document.createElement('div');tabs.className='v2-gtabs';tabs.setAttribute('role','group');tabs.setAttribute('aria-label','Widget type');
-    [['all','All'],['drive','Drive'],['light','Lights & buttons'],['meter','Meters'],['safe','Safety']].forEach(function(c,n){
+    [['all','All'],['drive','Drive'],['light','Lights & buttons'],['meter','Meters'],['led','LED'],['safe','Safety']].forEach(function(c,n){
       var t=document.createElement('button');t.type='button';t.className='btn';t.textContent=c[1];t.setAttribute('aria-pressed',String(n===0));
       t.addEventListener('click',function(){Array.prototype.forEach.call(tabs.children,function(x){x.setAttribute('aria-pressed',String(x===t))});
         Array.prototype.forEach.call(box.querySelectorAll('button[data-cat]'),function(b){b.hidden=c[0]!=='all'&&b.getAttribute('data-cat')!==c[0]})});
@@ -5091,6 +5239,13 @@ try{
     function ring(x,y,r,f,col){var n=12,s='';for(var q=0;q<n;q++){var a=(135+270*(q+.5)/n)*Math.PI/180,on=(q+.5)/n<=f;s+='<line x1="'+(x+(r-1.6)*Math.cos(a)).toFixed(1)+'" y1="'+(y+(r-1.6)*Math.sin(a)).toFixed(1)+'" x2="'+(x+r*Math.cos(a)).toFixed(1)+'" y2="'+(y+r*Math.sin(a)).toFixed(1)+'" stroke="'+(on?(col||G):'#3a414d')+'" stroke-width="1.6"/>'}return s}
     function pill(x,y,w,h,txt,f,c){return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="'+(h/2)+'" fill="'+(f||'#2a303b')+'" stroke="'+S+'" stroke-width=".4"/>'+(txt?'<text x="'+(x+w/2)+'" y="'+(y+h/2+1.6)+'" font-size="4.4" font-weight="900" text-anchor="middle" fill="'+(c||'#c5ccd6')+'">'+txt+'</text>':'')}
     switch(k){
+      case 'xmx': (function(){var A=['00011000','00111100','01111110','11111111','00111100','00111100'];for(var r=0;r<6;r++)for(var q=0;q<8;q++)o+='<circle cx="'+(14.5+q*2.7)+'" cy="'+(5+r*2.8)+'" r="1.05" fill="'+(A[r][q]==='1'?Y:'#2a303b')+'"/>'})();break;
+      case 'xeq': [7,4,2,9].forEach(function(v,j){for(var q=0;q<10;q++) o+='<rect x="'+(13+j*6)+'" y="'+(20.5-q*1.9)+'" width="4.4" height="1.3" fill="'+(q<v?(q>7?R:q>5?O:G):'#2a303b')+'"/>'});break;
+      case 'xts': o='<path d="M15 7 l-7 5 7 5z" fill="#2a303b"/><path d="M33 7 l7 5 -7 5z" fill="'+O+'"/><circle cx="20" cy="12" r="1.3" fill="#2a303b"/><circle cx="24" cy="12" r="1.3" fill="'+O+'"/><circle cx="28" cy="12" r="1.3" fill="'+O+'"/>';break;
+      case 'xgi': ['R','N','1','2','3'].forEach(function(t,j){o+='<rect x="'+(7+j*7)+'" y="5" width="6" height="10" rx="1.2" fill="'+(j===3?Y:'#1a1e25')+'"/><text x="'+(10+j*7)+'" y="12.6" font-size="5.5" font-weight="900" text-anchor="middle" fill="'+(j===3?'#1b1b1b':'#4a5260')+'">'+t+'</text>'});for(var q=0;q<7;q++) o+='<circle cx="'+(10+q*4.6)+'" cy="19" r="1" fill="'+(q<5?G:'#2a303b')+'"/>';break;
+      case 'xlp': [[8,4,1],[25,4,1],[8,13,0],[25,13,1]].forEach(function(p){o+='<rect x="'+p[0]+'" y="'+p[1]+'" width="15" height="7" rx="2" fill="#1a1e25" stroke="'+S+'" stroke-width=".3"/><circle cx="'+(p[0]+3)+'" cy="'+(p[1]+3.5)+'" r="1.6" fill="'+(p[2]?Y:'#2a303b')+'"/>'});break;
+      case 'xtk': o='<rect x="4" y="7" width="40" height="10" rx="2" fill="'+D+'" stroke="'+S+'" stroke-width=".4"/><text x="24" y="14.3" font-size="5.6" font-weight="900" text-anchor="middle" fill="'+Y+'" font-family="monospace">CRUISE 72%</text>';break;
+      case 'is': for(var q=0;q<15;q++){var d=q-7;o+='<rect x="'+(6+q*2.5)+'" y="8" width="1.8" height="8" rx=".5" fill="'+(d>0&&d<=5?(d>4?O:G):'#2a303b')+'"/>'}o+='<line x1="24" y1="6" x2="24" y2="18" stroke="#c9ced6" stroke-width=".3" stroke-dasharray="1 1"/>';break;
       case 'fn': o='<circle cx="24" cy="13" r="10.5" fill="'+D+'" stroke="#9aa3b0" stroke-width=".8"/><path d="M31.5 19.5 A10 10 0 0 0 33.6 15" fill="none" stroke="'+R+'" stroke-width="1.6"/><line x1="24" y1="13" x2="30.5" y2="7.5" stroke="'+Y+'" stroke-width="1.4" stroke-linecap="round"/><circle cx="24" cy="13" r="1.8" fill="#3a414d"/>';break;
       case 's': o='<rect x="22.5" y="2" width="3" height="20" rx="1.5" fill="#3a414d"/>'+kn(24,10,3.6);break;
       case 'j': o='<circle cx="24" cy="12" r="10" fill="'+D+'" stroke="'+S+'" stroke-width=".5"/>'+kn(27,9,3.8);break;

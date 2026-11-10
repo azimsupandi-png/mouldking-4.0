@@ -1563,6 +1563,25 @@ html.dash-l:not(.v2-dbopen) #dashBar > .btn.v2-dbkeep{display:inline-flex!import
 #dashBar > .btn.v2-dbkeep{align-items:center!important;justify-content:center!important;line-height:1!important;padding-top:0!important;padding-bottom:0!important;min-width:44px}
 #dashBar > .btn.v2-dbkeep .ic{display:block;margin:0}
 #boardGrid > .bdw[data-crz]:not(.dw){position:relative}
+.lx-box{position:relative;width:100%;min-width:0;display:flex;align-items:center;justify-content:center;min-height:96px}
+.lx-box.lx-ts,.lx-box.lx-tk{min-height:52px}.lx-box.lx-gi{min-height:72px}.lx-box.lx-lp{min-height:0}
+.lx-svg{display:block;width:100%;height:100%;max-height:170px}
+:root.dash .dw .lx-box{flex:1 1 auto;min-height:0}:root.dash .dw .lx-svg{position:absolute;inset:0;max-height:none}
+.lx-pan{fill:#07090c;stroke:#3a414d;stroke-width:1.2}
+.lx-lpg{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:6px;width:100%}
+.lx-lb{display:flex;align-items:center;gap:8px;justify-content:flex-start;min-width:0;width:100%;min-height:42px;padding:0 10px;border-radius:12px;border:1px solid var(--line,#2a303b);background:#161a21;color:var(--fg,#e8e8ea);font:700 12.5px var(--f-body,Roboto,sans-serif);overflow:hidden;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.lx-lb.on{border-color:rgba(255,216,74,.55);background:linear-gradient(180deg,#2a2614,#1a1810)}
+.lx-lb:disabled{opacity:.5}
+:root.dash .dw .lx-lpg{align-content:center;height:100%}
+html[data-ui=light]:not(.dash) .lx-lb{background:#f1f2f4;color:#1b1f26;border-color:#c9ced6}
+html[data-ui=light]:not(.dash) .lx-lb.on{background:#fff4c2;border-color:#d9a400}
+.lx-lb span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lx-lb i{flex:0 0 auto;width:12px;height:12px;border-radius:50%;background:rgba(150,160,175,.25)}
+.lx-lb.on i{background:#ffd84a;box-shadow:0 0 8px #ffd84a}
+.lx-tkw{width:100%;overflow:hidden;border-radius:10px;background:#07090c;border:1px solid #3a414d;padding:8px 0;background-image:radial-gradient(rgba(150,160,175,.14) 1px,transparent 1.3px);background-size:6px 6px}
+.lx-tkw span{display:inline-block;white-space:nowrap;padding-left:100%;color:#ffd84a;font:900 18px/1.1 ui-monospace,monospace;text-shadow:0 0 6px rgba(255,216,74,.7);animation:lxtk 12s linear infinite}
+@keyframes lxtk{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+@media (prefers-reduced-motion:reduce){.lx-tkw span{animation-duration:40s!important}}
 .mtr .ndl{transition:transform .28s cubic-bezier(.3,1.35,.5,1)}
 #boardGrid > .bdw[data-crz]::before{content:attr(data-crz);position:absolute;right:10px;top:8px;z-index:3;padding:2px 8px;border-radius:9px;background:var(--acc);color:#1b1b1b;font:800 10.5px var(--f-body);letter-spacing:.03em;pointer-events:none}
 #dbFocus .ic{width:18px;height:18px}
@@ -1992,6 +2011,13 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
           <button class="btn" id="bdTF" type="button" aria-pressed="false">Arc meter</button>
           <button class="btn" id="bdTFN" type="button" aria-pressed="false">Tachometer</button>
           <button class="btn" id="bdTI" type="button" aria-pressed="false">LED meter</button>
+          <button class="btn" id="bdTIS" type="button" aria-pressed="false">LED strip</button>
+          <button class="btn" id="bdTXmx" type="button" aria-pressed="false">LED arrows</button>
+          <button class="btn" id="bdTXeq" type="button" aria-pressed="false">LED bars</button>
+          <button class="btn" id="bdTXts" type="button" aria-pressed="false">Turn signals</button>
+          <button class="btn" id="bdTXgi" type="button" aria-pressed="false">Gear LED</button>
+          <button class="btn" id="bdTXlp" type="button" aria-pressed="false">Light panel</button>
+          <button class="btn" id="bdTXtk" type="button" aria-pressed="false">Message strip</button>
           <button class="btn" id="bdTK" type="button" aria-pressed="false">Scope</button>
           <button class="btn" id="bdTN" type="button" aria-pressed="false">Dial</button>
           <button class="btn" id="bdTRS" type="button" aria-pressed="false">Dial selector</button>

@@ -271,7 +271,7 @@ async def t_twelve(b):
     check('9 size: a widget can be made 2x1', 'w2' in r, r)
     # 10 gallery: picture cards and category tabs
     r = await pg.evaluate("var t=[...document.querySelectorAll('.v2-gtabs .btn')].find(b=>b.textContent==='Meters');t.click();[document.querySelectorAll('.bd-types .gt svg').length,[...document.querySelectorAll('.bd-types > .btn')].filter(b=>!b.hidden).length]")
-    check('10 gallery: 23 picture cards, Meters tab shows 5', r == [23, 5], r)
+    check('10 gallery: 30 picture cards, Meters tab shows 5', r == [30, 5], r)
     await pg.evaluate("document.getElementById('bdEdit').click()")
     # 8 model colour persists and tints the board
     await pg.evaluate("mk6Go('medit');document.querySelectorAll('#swatches .sw')[2].click()")
@@ -367,6 +367,51 @@ async def t_three(b):
     check('1 tachometer: gallery card adds a needle meter that swings to the value', r and r[0].startswith('rotate(') and r[0] != 'rotate(0.0deg)' and r[1].endswith('%'), r)
     await pg.evaluate("var r="+SL+";r.value=0;r.dispatchEvent(new Event('input',{bubbles:true}));r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}))")
     check('no JS errors (curve, lights, scope)', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
+async def t_led(b):
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'LED',cfg:{layout:'board',limit:100,ramp:100,
+      ch:[{},{},{},{},{kind:'light'},{kind:'light',la:4,ls:1}],
+      board:[{k:'s',c:0,w:1},{k:'s',c:1,w:1},{k:'g',c:2,w:2},{k:'lx',t:'mx',c:0,d:1,w:1},{k:'lx',t:'eq',c:0,cs:[1],w:1},{k:'lx',t:'ts',c:1,w:1},{k:'lx',t:'gi',c:2,w:1},{k:'lx',t:'lp',c:4,cs:[5],w:2},{k:'lx',t:'tk',w:2}]}}],prefs:{seen:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML)
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.wait_for_timeout(300)
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f;(window.__all=window.__all||[]).push(f)};mk6Go('home');document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.wait_for_timeout(400)
+    SLS = "document.querySelectorAll('#boardGrid .bdw[data-k=s] input[type=range]')"
+    await pg.evaluate("var rs="+SLS+";var r=rs[0];r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=60;r.dispatchEvent(new Event('input',{bubbles:true}))")
+    await pg.wait_for_timeout(1500)
+    r = await pg.evaluate("""(function(){var Y='#ffd84a',lx=[...document.querySelectorAll('#boardGrid .lx-box')];
+      var mx=[...lx[0].querySelectorAll('circle')].filter(c=>c.getAttribute('fill')===Y).length;
+      var eq=[...lx[1].querySelectorAll('rect')].filter(c=>/#(1D9E75|EF9F27|E24B4A)/.test(c.getAttribute('fill'))).length;
+      return [mx,eq,document.querySelector('#boardGrid .lx-tkw span').textContent]})()""")
+    check('LED arrows light up and LED bars fill when A runs', r[0] > 10 and r[1] >= 5, r[:2])
+    check('message strip shows the hub state', 'HUB ACTIVE' in r[2], r[2])
+    await pg.evaluate("var rs="+SLS+";var r=rs[1];r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=50;r.dispatchEvent(new Event('input',{bubbles:true}));window.__all=[]")
+    seen = set(); ind = set()
+    for _ in range(12):
+        await pg.wait_for_timeout(110)
+        seen.add(await pg.evaluate("document.querySelectorAll('#boardGrid .lx-ts path')[1].getAttribute('fill')"))
+    ind = await pg.evaluate("[...new Set((window.__all||[]).map(f=>String(f).split(',').map(Number)[5]>0))]")
+    check('turn signal: right arrow blinks when steering passes 20%', '#EF9F27' in seen and len(seen) == 2, seen)
+    check('turn signal: the right indicator light channel blinks too', sorted(ind) == [False, True], ind)
+    await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw[data-k=g] .tgd')].find(b=>b.textContent==='2').click()")
+    await pg.wait_for_timeout(400)
+    r = await pg.evaluate("[...document.querySelectorAll('#boardGrid .lx-gi text')].filter(t=>t.getAttribute('fill')==='#1b1b1b').map(t=>t.textContent)")
+    check('gear LED follows the gear widget', r == ['2'], r)
+    await pg.evaluate("document.querySelectorAll('#boardGrid .lx-lb')[0].click()")
+    await pg.wait_for_timeout(500)
+    r = await pg.evaluate("[document.querySelectorAll('#boardGrid .lx-lb')[0].classList.contains('on'),(window.__last||'').split(',').map(Number)[4]]")
+    check('light panel: a tap turns that light channel on', r[0] and r[1] > 0, r)
+    await pg.evaluate("document.getElementById('bdEdit').click();document.getElementById('bdTXmx').click();document.getElementById('bdAdd').click();document.getElementById('bdTIS').click();document.getElementById('bdAdd').click();document.getElementById('bdEdit').click()")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[document.querySelectorAll('#boardGrid .lx-mx').length,document.querySelectorAll('#boardGrid .bdw.hzw, #boardGrid .bdw[data-k=i]').length]")
+    check('gallery adds LED arrows and the LED strip', r[0] == 2 and r[1] >= 1, r)
+    check('no JS errors (LED widgets)', not pg.errors, pg.errors[:3])
     await ctx.close()
 
 async def t_lefty(b):
@@ -487,7 +532,7 @@ async def t_open_relink(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
