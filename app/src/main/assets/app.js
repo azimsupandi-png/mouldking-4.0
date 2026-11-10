@@ -552,12 +552,12 @@ try{
   function tzDim(v){v=Math.abs(v);return v>80?'rgba(226,75,74,.22)':v>55?'rgba(239,159,39,.18)':'rgba(29,158,117,.16)'}
   // tachometer looks A-F (num: [size, y, weight] relative to the face radius)
   var TACHO=[
-    {bez:'dark',seg:1,rr:.84,rw:.14,nd:{c:'#ff8a1f',w:.045,len:.66,tail:.2,cw:1},num:[.24,.5,900],unit:'POWER',peak:'tri'},
-    {bez:'dark',seg:1,rr:.86,rw:.12,hubArc:1,nd:{c:'#e8e8ea',w:.04,len:.6,tail:.12},num:[.26,.48,800],peak:'tick'},
-    {bez:'chrome',seg:1,rr:.84,rw:.12,glass:1,nd:{c:'#f4f5f7',w:.035,len:.68,tail:.16,tip:'#E24B4A'},num:[.22,.52,800],peak:'dot'},
+    {bez:'dark',seg:1,rr:.84,rw:.14,nd:{c:'#ff8a1f',w:.045,len:.66,tail:.2,cw:1},num:[.2,.52,900],unit:'POWER',peak:'tri'},
+    {bez:'dark',seg:1,rr:.86,rw:.12,hubArc:1,nd:{c:'#e8e8ea',w:.04,len:.6,tail:.12},num:[.21,.5,800],peak:'tick'},
+    {bez:'chrome',seg:1,rr:.84,rw:.12,glass:1,nd:{c:'#f4f5f7',w:.035,len:.68,tail:.16,tip:'#E24B4A'},num:[.2,.52,800],peak:'dot'},
     {bez:'dark',seg:1,rr:.86,rw:.15,nolab:1,nd:{c:'#ffd84a',w:.06,len:.86,from:.66},num:[.42,.08,800],unit:'%',peak:'tri'},
-    {bez:'dark',seg:0,rr:.8,rw:.1,out:1,nd:{c:'#e8e8ea',w:.03,len:.7,tail:.1,glow:1},num:[.24,.5,700],peak:'tick'},
-    {bez:'dark',seg:2,rr:.86,rw:.11,minor:1,pulse:1,nd:{c:'#ffffff',w:.03,len:.66,tail:.18,cw:1,glow:1},num:[.23,.5,800],unit:'POWER',peak:'tick'}];
+    {bez:'dark',seg:0,rr:.84,rw:.1,nd:{c:'#e8e8ea',w:.03,len:.7,tail:.1,glow:1},num:[.2,.52,700],peak:'tick'},
+    {bez:'dark',seg:2,rr:.86,rw:.11,minor:1,pulse:1,nd:{c:'#ffffff',w:.03,len:.66,tail:.18,cw:1,glow:1},num:[.2,.52,800],unit:'POWER',peak:'tick'}];
   TACHO.n=0;
   function meterBuild(el,it){
     var k=it.k, c=it.c, th=MTH[(it.th===1||it.th===2)?it.th:0], i, chs=activeIdx();
@@ -601,7 +601,7 @@ try{
         var step=TV.minor&&R>=60?5:10,maj=ow?20:50,fsl=Math.max(7,Math.min(12,RB*.105)),ri=rr-rw/2-RB*.04;
         for(var v=LO;v<=100;v+=step){var big=v%maj===0,mid=v%10===0,a=AG(v),p=mPol(cx,cy,ri,a),p2=mPol(cx,cy,ri-RB*(big?.1:mid?.06:.035),a);
           sv('line',{x1:p[0].toFixed(1),y1:p[1].toFixed(1),x2:p2[0].toFixed(1),y2:p2[1].toFixed(1),stroke:big?'#d5d9df':'#5a626e','stroke-width':big?Math.max(1.4,RB*.02):1,'stroke-linecap':'round'},g);
-          if(big&&!TV.nolab&&R>=46){var end=(v===LO||v===100),lr=(TV.out||end)?rr+rw/2+RB*.1:ri-RB*.22,tp=mPol(cx,cy,lr,a);
+          if(big&&!TV.nolab&&R>=46){var lr=ri-RB*.22,tp=mPol(cx,cy,lr,a);
             sv('text',{x:tp[0].toFixed(1),y:(tp[1]+fsl*.35).toFixed(1),'text-anchor':'middle','font-size':fsl.toFixed(0),'font-weight':600,fill:'#aeb4bd'},g).textContent=String(Math.abs(v))}}
         m.pkm=TV.peak==='tri'?sv('path',{fill:'#fff',opacity:0},g):TV.peak==='tick'?sv('line',{stroke:'#fff','stroke-width':Math.max(1.6,RB*.025),'stroke-linecap':'round',opacity:0},g):sv('circle',{r:Math.max(1.8,RB*.03),fill:'#fff',opacity:0},g);
         var N=TV.nd,nw=Math.max(1.2,RB*N.w);m.ng=sv('g',{'class':'ndl'},g);
@@ -805,7 +805,7 @@ try{
       var zn=Math.abs(out)>80?2:(Math.abs(out)>55?1:0);
       if(m.lz!==undefined&&zn===2&&m.lz<2&&!bdEditing) dialBuzz();
       m.lz=zn;
-      var diff=Math.abs(rq-hub)>=1;
+      var diff=Math.abs(rq-hub)>=2;
       // tick(s) on the scale at the hub's limit
       var hlim=Math.round(hubMax(c)),hkey=hlim+'|'+(it.sh?1:0)+(it.ow?1:0);
       if(m.hk!==hkey&&m.hq){
@@ -2679,7 +2679,7 @@ try{
     if(k==='dp') return L?[12,14]:[16,14];
     if(k==='g') return L?[24,6]:[24,7];
     if(k==='z') return L?[10,6]:[16,6];
-    if(k==='lx') return ({mx:L?[10,12]:[14,12],eq:L?[12,12]:[16,12],ts:L?[12,6]:[16,6],gi:L?[14,7]:[20,7],lp:L?[16,10]:[16,10],tk:L?[22,5]:[24,5]})[it.t]||[12,6];
+    if(k==='lx') return ({mx:L?[10,12]:[14,12],eq:L?[12,12]:[16,12],ts:L?[12,6]:[16,6],gi:L?[14,7]:[20,7],lp:L?[16,((it.cs||[]).length>1?9:6)]:[16,10],tk:L?[22,6]:[24,5]})[it.t]||[12,6];
     if(k==='ps') return L?[9,12]:[12,12];
     return L?[8,6]:[12,6];
   }
@@ -3698,7 +3698,8 @@ try{
         o.bs.forEach(function(q){q[0].classList.toggle('on',rt.t[q[1]]>0);q[0].setAttribute('aria-pressed',String(rt.t[q[1]]>0));q[0].disabled=!!S.estop});};
     }else{
       var tw=document.createElement('div');tw.className='lx-tkw';var sp=document.createElement('span');tw.appendChild(sp);box.appendChild(tw);
-      o.pend='';
+      var sp1=document.createElement('b'),sp2=document.createElement('b');sp2.setAttribute('aria-hidden','true');sp.appendChild(sp1);sp.appendChild(sp2);
+      o.pend='';var SEPK='   \u2022   ';
       function msg(){
         var m=[];if(S.estop) m.push('E-STOP ON');
         if(!S.connected) m.push('HUB NOT CONNECTED'); else m.push('HUB ACTIVE');
@@ -3710,7 +3711,7 @@ try{
         return m.join('   \u2022   ');
       }
       function skey(){return [S.estop?1:0,S.connected?1:0,CRZ.on?Object.keys(CRZ.v).length+1:0].join('')}
-      function apply(restart){var tx=msg();o.sk=skey();if(sp.textContent===tx) return;sp.textContent=tx;var dur=Math.max(5,tx.length*([0,.22,.15,.09][it.sp||2]));sp.style.animationDuration=dur.toFixed(1)+'s';
+      function apply(restart){var tx=msg();o.sk=skey();if(sp1.textContent===tx+SEPK) return;sp1.textContent=tx+SEPK;sp2.textContent=tx+SEPK;var dur=Math.max(5,tx.length*([0,.22,.15,.09][it.sp||2]));sp.style.animationDuration=dur.toFixed(1)+'s';
         if(restart){sp.style.animation='none';void sp.offsetWidth;sp.style.animation='';sp.style.animationDuration=dur.toFixed(1)+'s'}}
       sp.addEventListener('animationiteration',function(){apply(false)});apply(false);
       // hub, E-Stop and Cruise changes show at once; the rest waits for the next pass
