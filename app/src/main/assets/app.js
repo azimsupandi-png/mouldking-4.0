@@ -594,7 +594,7 @@ try{
       m.unit=TV.unit?T({'text-anchor':'middle','font-weight':700,fill:MUT,'letter-spacing':'.18em'},TV.unit):null;
       m.sub=T({'text-anchor':'middle','font-weight':700,fill:'#5aa2e6'});
       m.lay=function(cw,ch){
-        m.cmp=ch<150;var dh=m.nch>1?(m.cmp?11:16):0,slH=ch>=150?Math.max(12,Math.min(18,ch*.07)):0,R=Math.max(18,Math.min(cw/2-6,(ch-dh-8-slH)/2)),cx=cw/2,cy=slH+4+R+Math.max(0,(ch-dh-8-slH-2*R)/2);m.slH=slH;
+        m.cmp=ch<150;var dh=m.nch>1?(m.cmp?11:16):0,slH=0,R=Math.max(18,Math.min(cw/2-6,(ch-dh-8-slH)/2)),cx=cw/2,cy=slH+4+R+Math.max(0,(ch-dh-8-slH-2*R)/2);m.slH=slH;
         m.cx=cx;m.cy=cy;m.R2=R;m.rr=R*TV.rr;m.ww=R*TV.rw;m.hk='';m.lk='';
         var g=m.tg;while(g.firstChild) g.removeChild(g.firstChild);
         var defs=sv('defs',{},g),uid='t'+(++TACHO.n),RB=R-(TV.bez==='chrome'?6:2);
@@ -617,7 +617,6 @@ try{
         // shift lights: a row of LEDs above the dial
         m.sl=[];if(slH){var sn=12,sw2=Math.min(R*1.7,cw-24),sr=Math.max(2.4,Math.min(4.5,sw2/sn*.32));for(var si=0;si<sn;si++){var scl=si<6?'#1D9E75':si<9?'#EF9F27':'#E24B4A';m.sl.push([sv('circle',{cx:(cx-sw2/2+(si+.5)*sw2/sn).toFixed(1),cy:(slH/2+1).toFixed(1),r:sr.toFixed(1),fill:'rgba(150,160,175,.16)'},g),scl,(si+1)/sn*100])}}
         // red bezel that pulses above 80
-        m.bz=sv('circle',{cx:cx,cy:cy,r:(R-1).toFixed(1),fill:'none',stroke:'#E24B4A','stroke-width':Math.max(2,R*.035).toFixed(1),opacity:0},g);
         // gear window: the gear of a Gear widget on the same channel
         m.gw=(C.board||[]).filter(function(x){return (x.k==='g'||x.k==='lv')&&x.c===it.c})[0]||null;m.gb=null;
         if(m.gw&&R>=46){var gs=RB*.22,gx=cx+RB*.5,gy=cy+RB*.64;m.gb=sv('rect',{x:(gx-gs/2).toFixed(1),y:(gy-gs/2).toFixed(1),width:gs.toFixed(1),height:gs.toFixed(1),rx:(gs*.18).toFixed(1),fill:'#0b0d11',stroke:'#ffd84a','stroke-width':1.5},g);
@@ -870,7 +869,7 @@ try{
         if(m.nk!==nk){m.nk=nk;m.ng.style.transform='rotate('+(90-AGu(nv)).toFixed(1)+'deg)'}
         var ntx=TVu.unit==='%'||TVu.num[0]>.3?(it.ow?String(Math.round(out)):mSgn(out)):(it.ow?String(Math.round(out)):mSgn(out))+'%';if(m.val.textContent!==ntx) m.val.textContent=ntx;
         m.val.setAttribute('fill',Math.abs(out)>80?'#ff6b6a':'#f2f3f5');
-        m.bz.setAttribute('opacity',Math.abs(nv)>80?(.45+.55*Math.abs(Math.sin(nnow/160))).toFixed(2):0);m.bz.style.filter=Math.abs(nv)>80?'drop-shadow(0 0 6px #E24B4A)':'';
+        
         if(m.sl.length){var an=Math.abs(nv),fl=an>95&&Math.floor(nnow/110)%2;m.sl.forEach(function(q){var on=an>=q[2]-4,cl=on?(fl?'#ffffff':q[1]):'rgba(150,160,175,.16)';if(q[0].getAttribute('fill')!==cl){q[0].setAttribute('fill',cl);q[0].style.filter=on?'drop-shadow(0 0 3px '+q[1]+')':''}})}
         if(m.gb){var tv0=Math.round(rt.t[it.c]||0),bi=-1,bd=1e9;m.gl.forEach(function(gd,j){var d=Math.abs(wOut(m.gw,gd[1])-tv0);if(d<bd){bd=d;bi=j}});var gtx=bd<=12&&bi>=0?String(m.gl[bi][0]):'\u2013';if(m.gt.textContent!==gtx) m.gt.textContent=gtx}
         var hot=TVu.pulse&&Math.abs(nv)>80,lk=Math.round(nv/2)+(hot?'p'+Math.floor(nnow/120)%6:'');
@@ -895,7 +894,7 @@ try{
         var aw=out>2?'\u25B2':out<-2?'\u25BC':'\u25CF';if(m.arw.textContent!==aw){m.arw.textContent=aw;m.arw.setAttribute('fill',out<-2?'#378ADD':out>2?'#1D9E75':'#5a626e')}
         var sb=diff?((it.sh?'of ':'hub ')+(oth<0?'\u2212':'')+Math.abs(Math.round(oth))):(m.R2>=40?'':'%');if(m.sub.textContent!==sb) m.sub.textContent=sb;
         var hv=Math.round(it.sh?out:(diff?oth:out)),hk2=String(hv);
-        if(m.hk2!==hk2){m.hk2=hk2;m.hA.setAttribute('d',Math.abs(hv)<1?'':mArc(m.cx,m.cy,m.hr,mAg(0),mAg(Math.max(-100,Math.min(100,hv)))))}
+        if(m.hk2!==hk2){m.hk2=hk2;var hc=Math.max(-100,Math.min(100,hv));m.hA.setAttribute('d',Math.abs(hv)<1?'':(it.ow?mArc(m.cx,m.cy,m.hr,mAg(-100),mAg(-100+2*Math.max(0,hc))):mArc(m.cx,m.cy,m.hr,mAg(0),mAg(hc))))}
         var nw=performance.now();if(nw-m.hsT>=100){m.hsT=nw;m.hs.push(out);if(m.hs.length>50) m.hs.shift();
           if(m.spOn){var pts=[];for(var q=0;q<m.hs.length;q++) pts.push((m.spX+(50-m.hs.length+q)*m.spW/49).toFixed(1)+','+(m.spY-Math.min(100,Math.abs(m.hs[q]))/100*m.spH).toFixed(1));m.sp.setAttribute('points',pts.join(' '))}}
         for(j=0;j<24;j++){var vc=it.ow?(j+.5)*100/24:-100+(j+.5)*200/24,on=it.ow?(out>0&&vc<=out):((vc>0&&vc<=out)||(vc<0&&vc>=out));var col=on?mCol(vc,th):TRK;if(m.seg[j].getAttribute('stroke')!==col) m.seg[j].setAttribute('stroke',col)}
