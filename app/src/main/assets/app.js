@@ -337,7 +337,7 @@ try{
     });
     return out;
   }
-  function cleanPrefs(p){p=(p&&typeof p==='object')?p:{};return {practice:p.practice===true,sound:p.sound!==false,haptic:p.haptic!==false,lang:p.lang==='ms'?'ms':'en',seen:p.seen===true,lock:p.lock===true,kidLimit:pickOf(p.kidLimit,[100,70,50,30],50),lim:cleanLim(p.lim),autoBackup:p.autoBackup!==false,full:p.full!==false,relink:p.relink!==false,fx:(p.fx==='full'||p.fx==='lite')?p.fx:'auto',lastBackup:Math.max(0,+p.lastBackup||0),tpls:cleanTpls(p.tpls),ui:p.ui==='light'?'light':'dark',fs:pickOf(p.fs,[100,115,130],100),hc:p.hc===true,linkOn:p.linkOn===true,focus:p.focus===true,playLim:pickOf(p.playLim,[0,10,20,30,45,60],0),lefty:p.lefty===true,meter:p.meter!==false}}
+  function cleanPrefs(p){p=(p&&typeof p==='object')?p:{};return {practice:p.practice===true,sound:p.sound!==false,haptic:p.haptic!==false,lang:p.lang==='ms'?'ms':'en',seen:p.seen===true,lock:p.lock===true,kidLimit:pickOf(p.kidLimit,[100,70,50,30],50),lim:cleanLim(p.lim),autoBackup:p.autoBackup!==false,full:p.full!==false,relink:p.relink!==false,fx:(p.fx==='full'||p.fx==='lite')?p.fx:'auto',lastBackup:Math.max(0,+p.lastBackup||0),tpls:cleanTpls(p.tpls),ui:p.ui==='light'?'light':'dark',fs:pickOf(p.fs,[100,115,130],100),hc:p.hc===true,linkOn:p.linkOn===true,lpFix:p.lpFix===1?1:0,focus:p.focus===true,playLim:pickOf(p.playLim,[0,10,20,30,45,60],0),lefty:p.lefty===true,meter:p.meter!==false}}
   var store={active:null,profiles:[],prefs:cleanPrefs()};
   try{
     var raw=localStorage.getItem('mk6v2');
@@ -971,6 +971,7 @@ try{
   // read-only: how the hub value is made from the widget value, with this channel's settings
   var F_WHY={k:'why',l:'How the hub value is made',info:function(it){
     var c=C.ch[it.c],p=[];
+    if(c.kind==='light') return tagOf(it.c)+' is set as a LIGHT channel: brightness curve 40 + 60\u00b7(v/100)^1.5, so 20 \u2192 45, 75 \u2192 79. Change its type to Motor in the channel settings.';
     p.push('curve '+cvName(c.cv||[25,50,75]));
     if(c.off) p.push('start power +'+c.off+'%');
     if(c.max<100) p.push('max '+c.max+'%');
@@ -3705,17 +3706,20 @@ try{
       o.bs=lcs.map(function(lc){
         var b=document.createElement('button');b.type='button';b.className='lx-lb';
         var dot=document.createElement('i');var nm=document.createElement('span');nm.textContent=tagOf(lc)+' \u00b7 '+C.ch[lc].name;b.appendChild(dot);b.appendChild(nm);
+        var isL=C.ch[lc].kind==='light';if(!isL){b.classList.add('nl');b.title='Not a light channel';var nn=document.createElement('small');nn.textContent='not a light';b.appendChild(nn)}
         var lp=0,lpd=false;
         b.addEventListener('pointerdown',function(){lpd=false;clearTimeout(lp);lp=setTimeout(function(){lpd=true;if(S.estop||S.play) return;var any=lcs.some(function(x){return rt.t[x]>0});
-          lcs.forEach(function(x){if(C.ch[x].kind!=='light'){C.ch[x].kind='light';syncChannel(x)}setT(x,any?0:(C.ch[x].bright||100),false)});feedback('hold');save()},650)});
+          lcs.forEach(function(x){if(C.ch[x].kind==='light') setT(x,any?0:(C.ch[x].bright||100),false)});feedback('hold')},650)});
         ['pointerup','pointercancel','pointerleave'].forEach(function(ev){b.addEventListener(ev,function(){clearTimeout(lp)})});
         b.addEventListener('contextmenu',function(e){e.preventDefault()});
         b.addEventListener('click',function(){if(lpd){lpd=false;return}noteInput();if(S.estop||S.play) return;
-          if(C.ch[lc].kind!=='light'){C.ch[lc].kind='light';syncChannel(lc);save()}setT(lc,rt.t[lc]>0?0:(C.ch[lc].bright||100),false)});
+          // a motor channel is never switched on from here (and never turned into a light)
+          if(C.ch[lc].kind!=='light'){toast(tagOf(lc)+' is not a light channel. Pick light channels in this panel\u2019s settings.',3500);return}
+          setT(lc,rt.t[lc]>0?0:(C.ch[lc].bright||100),false)});
         grid.appendChild(b);return [b,lc];
       });
       o.paint=function(){var key=o.bs.map(function(q){return rt.t[q[1]]>0?1:0}).join('')+(S.estop?'e':'');if(o.key===key) return;o.key=key;
-        o.bs.forEach(function(q){q[0].classList.toggle('on',rt.t[q[1]]>0);q[0].setAttribute('aria-pressed',String(rt.t[q[1]]>0));q[0].disabled=!!S.estop});};
+        o.bs.forEach(function(q){q[0].classList.toggle('on',C.ch[q[1]].kind==='light'&&rt.t[q[1]]>0);q[0].setAttribute('aria-pressed',String(rt.t[q[1]]>0));q[0].disabled=!!S.estop});};
     }else{
       var tw=document.createElement('div');tw.className='lx-tkw';var sp=document.createElement('span');tw.appendChild(sp);box.appendChild(tw);
       var sp1=document.createElement('b'),sp2=document.createElement('b');sp2.setAttribute('aria-hidden','true');sp.appendChild(sp1);sp.appendChild(sp2);
@@ -4162,7 +4166,9 @@ try{
       var hb=Math.floor((n[0]||0)/PER)*PER,act=activeIdx().filter(function(i){return i>=hb&&i<hb+PER&&i!==n[0]});
       if(lt==='mx'){var sg=(C.ss&&C.ss.on&&C.ss.st!==n[0])?C.ss.st:-1;if(sg<0){var stw=C.board.filter(function(x){return x.k==='st'&&x.c!==n[0]})[0];if(stw) sg=stw.c}if(sg>=0) lo.d=sg}
       if(lt==='eq'&&act.length) lo.cs=act.filter(function(i){return C.ch[i].kind!=='light'}).slice(0,3);
-      if(lt==='lp'){var ls0=act.filter(function(i){return C.ch[i].kind==='light'}).slice(0,3);if(ls0.length) lo.cs=ls0}
+      if(lt==='lp'){var all0=activeIdx().filter(function(i){return i>=hb&&i<hb+PER&&C.ch[i].kind==='light'});
+        if(all0.length&&C.ch[lo.c].kind!=='light') lo.c=all0[0];
+        var ls0=all0.filter(function(i){return i!==lo.c}).slice(0,3);if(ls0.length) lo.cs=ls0}
       if(lo.cs&&!lo.cs.length) delete lo.cs;
       C.board.push(lo);
     }
@@ -4611,10 +4617,11 @@ try{
   for(var v2k3 in V2MS3) if(!MS[v2k3]) MS[v2k3]=V2MS3[v2k3];
   var V2MS4={"Cruise": "Cruise", "Connect the hub first.": "Sambungkan hub dahulu.", "Cruise off. Held controls go back to 0.": "Cruise dimatikan. Kawalan yang ditahan kembali ke 0.", "Cruise on: a control you let go of keeps its value. Bring it back to the middle to stop it. Steering and lights still return.": "Cruise hidup: kawalan yang dilepaskan kekal pada nilainya. Bawa kembali ke tengah untuk berhenti. Stereng dan lampu tetap kembali.", "Cruise on": "Cruise hidup", "Steering eases at speed": "Stereng ikut kelajuan", "Steering": "Stereng", "Throttle": "Pendikit", "Steering at full speed": "Stereng pada kelajuan penuh", "At full throttle the steering turns only this much, so the model does not tip over in fast turns.": "Pada pendikit penuh, stereng hanya berpusing setakat ini supaya model tidak terbalik semasa membelok laju.", "Bluetooth is back. Reconnecting the hub. Motors are at zero.": "Bluetooth hidup semula. Menyambung semula hub. Motor pada sifar.", "Reconnect automatically (back in the app, Bluetooth on again, or app opened)": "Sambung semula automatik (kembali ke app, Bluetooth hidup semula, atau app dibuka)", "Reconnecting the hub from last time. Motors are at zero.": "Menyambung semula hub seperti kali lepas. Motor pada sifar.", "Icon & photo": "Ikon & foto", "Model icon": "Ikon model", "Choose photo": "Pilih foto", "Remove photo": "Buang foto", "No icon": "Tiada ikon", "Car": "Kereta", "Excavator": "Jengkaut", "Crane": "Kren", "Truck": "Lori", "Tractor": "Traktor", "Boat": "Bot", "Photo set for this model.": "Foto ditetapkan untuk model ini.", "Photo removed.": "Foto dibuang.", "That image could not be read.": "Imej itu tidak dapat dibaca.", "No image was chosen.": "Tiada imej dipilih.", "Practice: virtual model": "Latihan: model maya", "tap to put the model back in the middle": "ketik untuk letak model di tengah semula", "Undo": "Batal", "Redo": "Ulang", "Focus mode": "Mod fokus", "Focus mode. Tap the focus button at the top to leave.": "Mod fokus. Ketik butang fokus di atas untuk keluar."};
   for(var v2k4 in V2MS4) if(!MS[v2k4]) MS[v2k4]=V2MS4[v2k4];
-  var V2MS5={"Start power (channel)":"Kuasa mula (saluran)","How the hub value is made":"Bagaimana nilai hub dikira","Move the undo bar":"Alih bar undo","Drag to move \u00b7 double-tap to put back":"Seret untuk alih \u00b7 ketik dua kali untuk kembali","Tachometer look":"Rupa takometer","A Racing":"A Lumba","B Twin ring":"B Dwi-cincin","C Chrome":"C Krom","D Digital":"D Digital","E Smooth arc":"E Lengkok licin","F Pro":"F Pro","POWER":"KUASA","LED strip":"Jalur LED","LED arrows":"Anak panah LED","LED bars":"Bar LED","Turn signals":"Isyarat belok","Gear LED":"Gear LED","Light panel":"Panel lampu","Message strip":"Jalur mesej","LED":"LED","LED matrix settings":"Tetapan matriks LED","Drive channel":"Saluran pemanduan","Steering channel (arrows left/right)":"Saluran stereng (anak panah kiri/kanan)","LED bars settings":"Tetapan bar LED","Bar 1":"Bar 1","Bar 2":"Bar 2","Bar 3":"Bar 3","Bar 4":"Bar 4","Turn signal settings":"Tetapan isyarat belok","Steering channel":"Saluran stereng","Blinks from":"Berkelip mulai","Left indicator light":"Lampu isyarat kiri","Right indicator light":"Lampu isyarat kanan","Left indicator":"Isyarat kiri","Right indicator":"Isyarat kanan","Gear LED settings":"Tetapan gear LED","Gear channel":"Saluran gear","Light panel settings":"Tetapan panel lampu","Light 1":"Lampu 1","Light 2":"Lampu 2","Light 3":"Lampu 3","Light 4":"Lampu 4","First channel":"Saluran pertama","First light channel":"Saluran lampu pertama","Message strip settings":"Tetapan jalur mesej","Scroll speed":"Kelajuan gulung","Slow":"Perlahan","Normal":"Biasa","Tachometer":"Takometer","Style":"Gaya","LED ring":"Cincin LED","Needle (tachometer)":"Jarum (takometer)","Response curve":"Lengkung tindak balas","Linear":"Linear","Fine":"Halus","Very fine":"Sangat halus","Fast":"Laju","Custom":"Sendiri",
+  var V2MS5={"not a light":"bukan lampu","Not a light channel":"Bukan saluran lampu","Fixed: a motor channel had been turned into a light by the light panel.":"Dibetulkan: satu saluran motor telah ditukar menjadi lampu oleh panel lampu.","Start power (channel)":"Kuasa mula (saluran)","How the hub value is made":"Bagaimana nilai hub dikira","Move the undo bar":"Alih bar undo","Drag to move \u00b7 double-tap to put back":"Seret untuk alih \u00b7 ketik dua kali untuk kembali","Tachometer look":"Rupa takometer","A Racing":"A Lumba","B Twin ring":"B Dwi-cincin","C Chrome":"C Krom","D Digital":"D Digital","E Smooth arc":"E Lengkok licin","F Pro":"F Pro","POWER":"KUASA","LED strip":"Jalur LED","LED arrows":"Anak panah LED","LED bars":"Bar LED","Turn signals":"Isyarat belok","Gear LED":"Gear LED","Light panel":"Panel lampu","Message strip":"Jalur mesej","LED":"LED","LED matrix settings":"Tetapan matriks LED","Drive channel":"Saluran pemanduan","Steering channel (arrows left/right)":"Saluran stereng (anak panah kiri/kanan)","LED bars settings":"Tetapan bar LED","Bar 1":"Bar 1","Bar 2":"Bar 2","Bar 3":"Bar 3","Bar 4":"Bar 4","Turn signal settings":"Tetapan isyarat belok","Steering channel":"Saluran stereng","Blinks from":"Berkelip mulai","Left indicator light":"Lampu isyarat kiri","Right indicator light":"Lampu isyarat kanan","Left indicator":"Isyarat kiri","Right indicator":"Isyarat kanan","Gear LED settings":"Tetapan gear LED","Gear channel":"Saluran gear","Light panel settings":"Tetapan panel lampu","Light 1":"Lampu 1","Light 2":"Lampu 2","Light 3":"Lampu 3","Light 4":"Lampu 4","First channel":"Saluran pertama","First light channel":"Saluran lampu pertama","Message strip settings":"Tetapan jalur mesej","Scroll speed":"Kelajuan gulung","Slow":"Perlahan","Normal":"Biasa","Tachometer":"Takometer","Style":"Gaya","LED ring":"Cincin LED","Needle (tachometer)":"Jarum (takometer)","Response curve":"Lengkung tindak balas","Linear":"Linear","Fine":"Halus","Very fine":"Sangat halus","Fast":"Laju","Custom":"Sendiri",
     "Hazard":"Hazard","Light settings\u2026":"Tetapan lampu\u2026","Turns on by itself":"Menyala sendiri","Brake light":"Lampu brek","Reverse light":"Lampu undur","Follows drive channel":"Ikut saluran pemanduan",
     "Also show (yellow line)":"Turut tunjuk (garis kuning)","Also show (blue line)":"Turut tunjuk (garis biru)","Also show (grey line)":"Turut tunjuk (garis kelabu)"};
   for(var v2k5 in V2MS5) MS[v2k5]=V2MS5[v2k5];
+  MS_RE.push([/^([A-F]\d?) is not a light channel\. Pick light channels in this panel\u2019s settings\.$/,function(m){return m[1]+' bukan saluran lampu. Pilih saluran lampu dalam tetapan panel ini.'}],[/^Fixed: (\d+) motor channels had been turned into lights by the light panel\.$/,function(m){return 'Dibetulkan: '+m[1]+' saluran motor telah ditukar menjadi lampu oleh panel lampu.'}]);
   MS_RE.push([/^([A-F]\d?): (.+)\. Example: 75 \u2192 hub (-?\d+)\.$/,function(m){return m[1]+': '+m[2].replace(/curve /,'lengkung ').replace(/start power/,'kuasa mula').replace(/drive mode/,'mod pemanduan').replace(/max /,'maks ')+'. Contoh: 75 \u2192 hub '+m[3]+'.'}]);
   MS_RE.push([/^(Linear|Fine|Very fine|Fast|Custom) \u00b7 50% \u2192 (\d+)%$/,function(m){return MS[m[1]]+' \u00b7 50% \u2192 '+m[2]+'%'}]);
   MS_RE.push([/^(\d+) hubs? · (\d+) widgets?$/,function(m){return m[1]+' hub · '+m[2]+' widget'}],
@@ -5642,6 +5649,25 @@ try{
     try{new MutationObserver(fit).observe(document.documentElement,{attributes:true,attributeFilter:['class']})}catch(_){}
     try{var ro=new ResizeObserver(fit);['#v2Pill','#estop'].forEach(function(q){var el=$(q);if(el) ro.observe(el)})}catch(_){}
     setInterval(fit,1000);fit();
+  })();
+  /* repair (once): an earlier light panel could turn a motor channel into a light when tapped.
+     A light channel that sits in a light panel, is driven by a motor control (slider, stick, dial...)
+     and has no light switch of its own goes back to being a motor channel. */
+  (function(){
+    if(store.prefs.lpFix) return;
+    var DRV=['s','st','j','d','dp','n','g','lv','y','a','w','b','t','m'],fixed=0;
+    (store.profiles||[]).forEach(function(p){
+      var cf=p.cfg;if(!cf||!cf.board||!cf.ch) return;
+      var inLp={},drv={},lsw={};
+      cf.board.forEach(function(it){
+        if(it.k==='lx'&&it.t==='lp') [it.c].concat(it.cs||[]).forEach(function(x){inLp[x]=1});
+        else if(it.k==='l') lsw[it.c]=1;
+        else if(DRV.indexOf(it.k)>=0){[it.c,it.d].forEach(function(x){if(typeof x==='number'&&x>=0) drv[x]=1});if(it.k==='m'&&Array.isArray(it.t)) it.t.forEach(function(z){drv[z.c]=1})}
+      });
+      Object.keys(inLp).forEach(function(k){var x=+k,ch=cf.ch[x];if(ch&&ch.kind==='light'&&drv[x]&&!lsw[x]){ch.kind='slider';fixed++}});
+    });
+    store.prefs.lpFix=1;
+    if(fixed){try{save()}catch(_){}try{syncAll()}catch(_){}setTimeout(function(){toast(fixed===1?'Fixed: a motor channel had been turned into a light by the light panel.':'Fixed: '+fixed+' motor channels had been turned into lights by the light panel.',5000)},1200)}
   })();
   // the first syncAll() runs before the board is set up; draw the board once everything exists
   try{syncBoard()}catch(_){}
