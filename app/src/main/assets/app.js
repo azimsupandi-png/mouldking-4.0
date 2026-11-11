@@ -722,9 +722,6 @@ try{
       m.lb=T({'text-anchor':'end','font-size':11,fill:MUT},it.ow?'0':'-100');
       m.val=T({'class':'mv','text-anchor':'middle','font-size':15,'font-weight':700,fill:TXT});
       svg.removeChild(m.val); // the LED meter shows its value as small yellow text in the card header instead
-      // value tag that rides on the tip of the lit bar
-      m.vg=sv('g',{visibility:'hidden'},svg);m.vr=sv('rect',{rx:5,height:16,width:34,fill:'#0d1015','stroke-width':1.5},m.vg);
-      m.vt=sv('text',{'text-anchor':'middle','font-size':11,'font-weight':800,y:12},m.vg);
       // LED shape: 0 square, 1 round, 2 thin line
       var segShape=function(r,x,y,w,h){var ls=it.ls||0,d;
         if(ls===1){d=Math.max(2,Math.min(w,h));x+=(w-d)/2;y+=(h-d)/2;w=h=d;r.setAttribute('rx',(d/2).toFixed(1))}
@@ -739,7 +736,7 @@ try{
           else{hty=4;hly=avail-2;hbh=Math.max(10,hly-12-hty)}
           var hsw=hbw/20, hcx=hbL+hbw/2;
           m.hzOn=true;m.bx0=hbL;m.bw=hbw;m.by0=hty;m.bh=hbh;m.hk='';
-          m.seg.forEach(function(r,j){segShape(r,hbL+j*hsw,hty,Math.max(2,hsw-2),hbh)});m.vk='';
+          m.seg.forEach(function(r,j){segShape(r,hbL+j*hsw,hty,Math.max(2,hsw-2),hbh)});
           m.mid.setAttribute('display',it.ow?'none':'inline');m.mid.setAttribute('x1',hcx);m.mid.setAttribute('x2',hcx);m.mid.setAttribute('y1',hty-2);m.mid.setAttribute('y2',hty+hbh+2);
           [m.lb,m.lm,m.lt].forEach(function(q){q.setAttribute('display',noLab?'none':'inline')});
           m.lb.setAttribute('text-anchor','start');m.lb.setAttribute('x',hbL);m.lb.setAttribute('y',hly);
@@ -750,7 +747,7 @@ try{
         m.hzOn=false;[m.lb,m.lm,m.lt].forEach(function(q){q.setAttribute('display','inline')});m.lt.setAttribute('text-anchor','end');m.lm.setAttribute('text-anchor','end');m.lb.setAttribute('text-anchor','end');
         var dh=m.nch>1?16:0, top=6, bot=Math.max(top+60,ch-dh-4), x0=36, colw=Math.max(24,cw-x0-12);
         var sh=(bot-top)/20, md=(top+bot)/2;m.md=md;m.half=(bot-top)/2;m.cx0=x0+colw+4;m.x0=x0;m.cw=colw;m.top=top;m.bot=bot;m.hk='';
-        m.seg.forEach(function(r,j){segShape(r,x0,top+j*sh,colw,Math.max(2,sh-2))});m.vk='';
+        m.seg.forEach(function(r,j){segShape(r,x0,top+j*sh,colw,Math.max(2,sh-2))});
         m.mid.setAttribute('display',it.ow?'none':'inline');m.mid.setAttribute('x1',x0-5);m.mid.setAttribute('x2',x0+colw+5);m.mid.setAttribute('y1',md);m.mid.setAttribute('y2',md);
         m.lt.setAttribute('x',x0-8);m.lt.setAttribute('y',top+10);m.lm.setAttribute('x',x0-8);m.lm.setAttribute('y',md+4);m.lb.setAttribute('x',x0-8);m.lb.setAttribute('y',bot-2);
         m.rq.setAttribute('x',m.cx0);dots(cw,ch);
@@ -950,16 +947,6 @@ try{
         var tx3=it.ow?String(Math.round(out)):mSgn(out);if(m.hd&&m.hd.textContent!==tx3) m.hd.textContent=tx3;
         for(j=0;j<20;j++){var vv=it.hz?(it.ow?(j+.5)*5:-100+(j+.5)*10):(it.ow?100-(j+.5)*5:100-(j+.5)*10),on2=it.ow?(out>0&&vv<=out):((vv>0&&vv<=out)||(vv<0&&vv>=out));var cl=on2?(vv<0?th[3]:mCol(vv,th)):TRK;if(m.seg[j].getAttribute('fill')!==cl) m.seg[j].setAttribute('fill',cl)}
         m.rq.setAttribute('visibility','hidden');
-        var vo=Math.max(-100,Math.min(100,Math.round(out))),vk=vo+'|'+m.dim;
-        if(m.vk!==vk){m.vk=vk;
-          if(Math.abs(vo)<1){m.vg.setAttribute('visibility','hidden')}else{
-            var vcl=vo<0?th[3]:mCol(vo,th),vtx=it.ow?String(vo):mSgn(vo),vw=vtx.length*7+10,vx,vy;
-            if(m.hzOn){var tipx=it.ow?m.bx0+vo/100*m.bw:m.bx0+m.bw/2+vo/100*m.bw/2;vx=Math.max(m.bx0,Math.min(m.bx0+m.bw-vw,tipx-vw/2));vy=m.by0+m.bh/2-8}
-            else{var tipy=it.ow?m.bot-vo/100*(m.bot-m.top):m.md-vo/100*m.half;vx=m.x0+m.cw/2-vw/2;vy=Math.max(m.top,Math.min(m.bot-16,tipy-8))}
-            m.vr.setAttribute('width',vw);m.vr.setAttribute('stroke',vcl);m.vt.setAttribute('x',vw/2);m.vt.setAttribute('fill',vcl);m.vt.textContent=vtx;
-            m.vg.setAttribute('transform','translate('+vx.toFixed(1)+' '+vy.toFixed(1)+')');m.vg.setAttribute('visibility','visible');
-          }
-        }
       }
     };
     return m;
@@ -3290,7 +3277,6 @@ try{
         nbx.appendChild(nsv);
         var nk=document.createElement('div');nk.className='dialk';nk.setAttribute('role','slider');nk.setAttribute('aria-valuemin',it.ow?'0':'-100');nk.setAttribute('aria-valuemax','100');
         var ni=document.createElement('i');nk.appendChild(ni);
-        var nvb=document.createElement('b');nvb.className='dialv';nk.appendChild(nvb);
         // The dial only turns relative to where it is now: touching it never jumps to another value,
         // and it stops at the ends (0 and 100) instead of wrapping round.
         var nAng=0,nLa=0;
@@ -3341,7 +3327,7 @@ try{
           nPend=false;nLong=false;w.drag=false;
         })});
         nk.addEventListener('contextmenu',function(e){e.preventDefault()});
-        nbx.appendChild(nk);nw.appendChild(nbx);el.appendChild(nw);w.dial={c:nc,k:nk,i:ni,v:nvb,sg:nsg,lv:null};
+        nbx.appendChild(nk);nw.appendChild(nbx);el.appendChild(nw);w.dial={c:nc,k:nk,i:ni,sg:nsg,lv:null};
         var nchs=activeIdx();
         if(it.sw&&nchs.length>1){
           // Swipe sideways on the card (outside the knob) to move the dial to the next channel.
@@ -3859,20 +3845,20 @@ try{
     }else if(t==='eq'){
       // Both ways: forward lights up from the middle line, reverse lights down in blue.
       // Each bar shows its value on top; tap a bar to mute its channel.
-      var chs=[c].concat(it.cs||[]),n=chs.length,W=n*30+10,g2=SVG0(W,138),EQ2=!it.ow,NS=EQ2?14:10,PT=EQ2?6.43:9,SH=EQ2?4.7:6.4;
+      var chs=[c].concat(it.cs||[]),n=chs.length,W=n*30+10,g2=SVG0(W,125),EQ2=!it.ow,NS=EQ2?14:10,PT=EQ2?6.43:9,SH=EQ2?4.7:6.4;g2.setAttribute('viewBox','0 13 '+W+' 125');
       sv('rect',{x:1,y:14,width:W-2,height:104,rx:9,'class':'lx-pan'},g2);
       if(EQ2) sv('line',{x1:6,x2:W-6,y1:66,y2:66,stroke:'rgba(200,208,220,.35)','stroke-width':1},g2);
       o.v=[];o.m=[];
       o.b=chs.map(function(ch,j){var a=[];
         for(var k=0;k<NS;k++){var y=EQ2?(k<7?62.5-k*PT-SH:69.5+(k-7)*PT):105-k*PT-SH;a.push(sv('rect',{x:10+j*30,y:y.toFixed(2),width:20,height:SH,rx:1.4,fill:LXOFF},g2))}
-        o.v.push(sv('text',{x:20+j*30,y:10,'text-anchor':'middle','font-size':9,'font-weight':800,fill:TXT},g2));
         sv('text',{x:20+j*30,y:133,'text-anchor':'middle','font-size':11,'font-weight':800,fill:TXT},g2).textContent=tagOf(ch);
         o.m.push(sv('rect',{x:6+j*30,y:15,width:28,height:102,rx:6,fill:'rgba(10,12,16,.6)',visibility:'hidden'},g2));
+        o.v.push(sv('text',{x:20+j*30,y:69,'text-anchor':'middle','font-size':8,'font-weight':900,fill:'#E24B4A'},g2));
         return a});
       g2.style.pointerEvents='auto';g2.style.cursor='pointer';
       g2.addEventListener('click',function(e){
         if(bdEditing) return;
-        var rc=g2.getBoundingClientRect(),sc=Math.min(rc.width/W,rc.height/138),x0=rc.left+(rc.width-W*sc)/2,j=Math.floor(((e.clientX-x0)/sc-5)/30);
+        var rc=g2.getBoundingClientRect(),sc=Math.min(rc.width/W,rc.height/125),x0=rc.left+(rc.width-W*sc)/2,j=Math.floor(((e.clientX-x0)/sc-5)/30);
         if(j<0||j>=n) return;var ch=chs[j];
         if(MUTE[ch]) delete MUTE[ch]; else MUTE[ch]=1;
         o.key='';feedback(MUTE[ch]?'hold':'ok');
@@ -3884,8 +3870,7 @@ try{
             if(EQ2){if(k<7){var vv=(k+.5)/7*100;on=v>0&&vv<=v;cl=lxCol(vv)}else{var vr=(k-7+.5)/7*100;on=v<0&&vr<=-v;cl='#378ADD'}}
             else{var va=(k+.5)*10;on=va<=Math.abs(v);cl=lxCol(va)}
             rc.setAttribute('fill',on&&!mu?cl:LXOFF)});
-          var tx=mu?'MUTE':(EQ2?mSgn(v):String(Math.abs(Math.round(v))));if(o.v[j].textContent!==tx) o.v[j].textContent=tx;
-          o.v[j].setAttribute('fill',mu?'#E24B4A':(EQ2&&v<0?'#6fb0ff':'var(--fg,#e8e8ea)'));
+          var tx=mu?'MUTE':'';if(o.v[j].textContent!==tx) o.v[j].textContent=tx;
           o.m[j].setAttribute('visibility',mu?'visible':'hidden')})}
         if(hd){var tx=mSgn(vs[0]);if(hd.textContent!==tx) hd.textContent=tx}
       };
@@ -4003,7 +3988,6 @@ try{
         w.dial.i.style.transform='rotate('+(w.it.ow?-135+dv/100*270:dv/100*135)+'deg)';
         w.dial.k.setAttribute('aria-valuenow',String(dv));
         w.dial.k.classList.toggle('on',dv!==0);
-        var dvt=w.it.ow?String(Math.round(dv)):mSgn(dv);if(w.dial.v.textContent!==dvt) w.dial.v.textContent=dvt;
         if(w.dial.lv!==dv){w.dial.lv=dv;w.dial.sg.forEach(function(q){var on=w.it.ow?q.v<=dv&&dv>0:(q.v>0&&q.v<=dv)||(q.v<0&&q.v>=dv),col=on?mCol(q.v,MTH[(w.it.th===1||w.it.th===2)?w.it.th:0]):'rgba(150,160,175,.32)';if(q.f!==col){q.f=col;q.e.setAttribute('fill',col)}})}
       }else if(w.rsd){
         var rd0=w.rsd,rsel=rd0.cur(),ron=!S.estop&&rd0.on();

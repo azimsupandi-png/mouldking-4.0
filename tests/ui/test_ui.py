@@ -632,7 +632,7 @@ async def t_wup(b):
     await pg.wait_for_timeout(1500)
     r = await pg.evaluate("""(function(){var eq=document.querySelector('#boardGrid .lx-eq');var rc=[...eq.querySelectorAll('rect')];
       return [rc.filter(c=>c.getAttribute('fill')==='#378ADD').length,rc.filter(c=>/#(1D9E75|EF9F27|E24B4A)/.test(c.getAttribute('fill'))).length,[...eq.querySelectorAll('text')].map(t=>t.textContent).join(' ')]})()""")
-    check('7a/7b LED bars: reverse lights blue, forward green, values on top', r[0] >= 2 and r[1] >= 3 and '+' in r[2] and '\u2212' in r[2], r)
+    check('7a LED bars: reverse lights blue, forward green, no numbers on top', r[0] >= 2 and r[1] >= 3 and r[2].split() == ['A', 'B'], r)
     await pg.evaluate("""(function(){var g=document.querySelector('#boardGrid .lx-eq svg'),rc=g.getBoundingClientRect();g.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:rc.left+rc.width/2-16,clientY:rc.top+rc.height/2}))})()""")
     await pg.wait_for_timeout(2500)
     r = await pg.evaluate("[(window.__last||'').split(',').map(Number)[0],document.querySelector('#boardGrid .lx-eq').textContent.indexOf('MUTE')>=0]")
@@ -647,13 +647,14 @@ async def t_wup(b):
       function ev(t,x,y){k.dispatchEvent(new PointerEvent(t,{bubbles:true,clientX:x,clientY:y,pointerId:5}))}
       ev('pointerdown',cx,cy-R);for(var a=0;a<=60;a+=5){var r=a*Math.PI/180;ev('pointermove',cx+R*Math.sin(r),cy-R*Math.cos(r))}ev('pointerup',cx+R*Math.sin(1.05),cy-R*Math.cos(1.05))})()""")
     await pg.wait_for_timeout(300)
-    r = await pg.evaluate("[document.querySelector('#boardGrid .bdw[data-k=n] .dialv').textContent]")
-    check('9a dial shows its value in the middle', r[0] not in ('', '0'), r)
+    await pg.wait_for_timeout(1500)
+    r = await pg.evaluate("[(window.__last||'').split(',').map(Number)[2],document.querySelectorAll('#boardGrid .bdw[data-k=n] .dialv').length]")
+    check('dial turns, and has no number in the middle', r[0] != 0 and r[1] == 0, r)
     await pg.evaluate("""(function(){var k=window.__k,rc=k.getBoundingClientRect(),cx=rc.left+rc.width/2,cy=rc.top+rc.height/2;
       k.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:cx,clientY:cy,pointerId:6}));k.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,clientX:cx,clientY:cy,pointerId:6}))})()""")
-    await pg.wait_for_timeout(300)
-    r = await pg.evaluate("document.querySelector('#boardGrid .bdw[data-k=n] .dialv').textContent")
-    check('9c tapping the dial centre sets it to 0', r == '0', r)
+    await pg.wait_for_timeout(2500)
+    r = await pg.evaluate("(window.__last||'').split(',').map(Number)[2]")
+    check('9c tapping the dial centre sets it to 0', r == 0, r)
     # fine turning: same 60 degree turn gives a smaller value
     await pg.evaluate("""(function(){var B=JSON.parse(localStorage.getItem('mk6v2'));})()""")
     # selector scenes: long-press on, then turn to position 3
@@ -672,7 +673,7 @@ async def t_wup(b):
     r = await pg.evaluate("""(function(){var w=document.querySelector('#boardGrid .bdw[data-k=i]');var rc=[...w.querySelectorAll('rect')];
       var seg=rc.filter(x=>x.getAttribute('width')===x.getAttribute('height')&&+x.getAttribute('rx')>1);
       return [seg.length,rc.filter(x=>x.getAttribute('fill')==='#378ADD').length,[...w.querySelectorAll('text')].map(t=>t.textContent).filter(t=>/^\u2212[0-9]/.test(t)).length]})()""")
-    check('13a/b/c LED meter: round LEDs, reverse in blue, value tag at the tip', r[0] >= 20 and r[1] >= 5 and r[2] >= 1, r)
+    check('13a/c LED meter: round LEDs, reverse in blue, no value tag on the bar', r[0] >= 20 and r[1] >= 5 and r[2] == 0, r)
     # matrix: own icon scrolls
     seen = set()
     for _ in range(6):
