@@ -271,7 +271,7 @@ async def t_twelve(b):
     check('9 size: a widget can be made 2x1', 'w2' in r, r)
     # 10 gallery: picture cards and category tabs
     r = await pg.evaluate("var t=[...document.querySelectorAll('.v2-gtabs .btn')].find(b=>b.textContent==='Meters');t.click();[document.querySelectorAll('.bd-types .gt svg').length,[...document.querySelectorAll('.bd-types > .btn')].filter(b=>!b.hidden).length]")
-    check('10 gallery: 29 picture cards, Meters tab shows 5', r == [29, 5], r)
+    check('10 gallery: 32 picture cards, Meters tab shows 6', r == [32, 6], r)
     await pg.evaluate("document.getElementById('bdEdit').click()")
     # 8 model colour persists and tints the board
     await pg.evaluate("mk6Go('medit');document.querySelectorAll('#swatches .sw')[2].click()")
@@ -692,10 +692,68 @@ async def t_wup(b):
     check('widget upgrades: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_xw(b):
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'X',cfg:{layout:'board',limit:100,ramp:100,
+      ch:[{},{},{},{},{},{}],
+      board:[{k:'xy',c:0,d:1,w:1},{k:'xf',c:2,d:3,w:1},{k:'ro',c:0,w:1,n:5,bs:1}]}}],prefs:{seen:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML)
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.wait_for_timeout(300)
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};mk6Go('home');document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.wait_for_timeout(400)
+    r = await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw')].map(w=>w.dataset.k+':'+!!w.querySelector('svg.xwv'))")
+    check('XY pad, crossfader and rotor appear on the board', r == ['xy:true', 'xf:true', 'ro:true'], r)
+    def pe(sel, typ, fx, fy, pid=11):
+        return pg.evaluate("""(function(){var s=document.querySelector('%s'),rc=s.getBoundingClientRect(),sc=Math.min(rc.width/300,rc.height/260),ox=rc.left+(rc.width-300*sc)/2,oy=rc.top+(rc.height-260*sc)/2;
+          s.dispatchEvent(new PointerEvent('%s',{bubbles:true,clientX:ox+%f*sc,clientY:oy+%f*sc,pointerId:%d}))})()""" % (sel, typ, fx, fy, pid))
+    XY = "#boardGrid .bdw[data-k=xy] svg"
+    await pe(XY, 'pointerdown', 158, 112); await pe(XY, 'pointermove', 230, 50)
+    await pg.wait_for_timeout(2500)
+    r = await pg.evaluate("(window.__last||'').split(',').map(Number).slice(0,2)")
+    check('XY pad: dragging up-right drives X (A) and Y (B) forward', r[0] > 50 and r[1] > 50, r)
+    await pe(XY, 'pointerup', 230, 50)
+    await pg.wait_for_timeout(2500)
+    r = await pg.evaluate("(window.__last||'').split(',').map(Number).slice(0,2)")
+    check('XY pad: letting go returns both to 0', r == [0, 0], r)
+    XF = "#boardGrid .bdw[data-k=xf] svg"
+    await pe(XF, 'pointerdown', 150, 70, 12); await pe(XF, 'pointerup', 150, 70, 12)
+    await pg.wait_for_timeout(2500)
+    r = await pg.evaluate("[(window.__last||'').split(',').map(Number).slice(2,4),document.querySelector('#boardGrid .bdw[data-k=xf] .bdw-h output').textContent]")
+    check('Crossfader: tap the middle starts both channels at full power', r[0] == [100, 100] and r[1].startswith('100'), r)
+    await pe(XF, 'pointerdown', 150, 204, 13); await pe(XF, 'pointermove', 214, 204, 13); await pe(XF, 'pointerup', 214, 204, 13)
+    await pg.wait_for_timeout(2500)
+    r = await pg.evaluate("(window.__last||'').split(',').map(Number).slice(2,4)")
+    check('Crossfader: sliding right gives less to C, full to D', r[0] < 40 and r[1] == 100, r)
+    await pe(XF, 'pointerdown', 150, 70, 14); await pe(XF, 'pointerup', 150, 70, 14)
+    await pg.wait_for_timeout(4000)
+    r = await pg.evaluate("(window.__last||'').split(',').map(Number).slice(2,4)")
+    check('Crossfader: tap the middle again stops both', r == [0, 0], r)
+    # rotor follows A
+    await pe(XY, 'pointerdown', 158, 112, 15); await pe(XY, 'pointermove', 250, 112, 15)
+    await pg.wait_for_timeout(1500)
+    a1 = await pg.evaluate("document.querySelector('#boardGrid .bdw[data-k=ro] svg g[filter]').getAttribute('transform')")
+    await pg.wait_for_timeout(300)
+    a2 = await pg.evaluate("[document.querySelector('#boardGrid .bdw[data-k=ro] svg g[filter]').getAttribute('transform'),document.querySelectorAll('#boardGrid .bdw[data-k=ro] svg g[filter]>g').length]")
+    await pe(XY, 'pointerup', 250, 112, 15)
+    check('Rotor: 5 blades spin while A runs', a1 != a2[0] and a2[1] == 5, [a1, a2])
+    # settings dialogs + add from the gallery
+    await pg.evaluate("document.getElementById('bdEdit').click()")
+    for k, n in (('xy', 3), ('xf', 3), ('ro', 2)):
+        r = await pg.evaluate("(function(){document.querySelector('#boardGrid .bdw[data-k=%s] .bdw-ed button[aria-label=\"Widget settings\"]').click();var n=document.querySelectorAll('#gEdit .gbox > *').length;var c=[...document.querySelectorAll('#gEdit .gact button')].find(b=>b.textContent==='Cancel');c&&c.click();var g=document.getElementById('gEdit');g&&g.remove();return n})()" % k)
+        check('%s settings dialog opens' % k, r >= n + 1, r)
+    r = await pg.evaluate("(function(){var out=[];['bdTXY','bdTXF','bdTRO'].forEach(function(id){document.getElementById(id).click();document.getElementById('bdAdd').click()});return JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.board.map(x=>x.k).join(',')})()")
+    check('XY pad, crossfader and rotor can be added from the gallery', r.endswith('xy,xf,ro'), r)
+    check('new widgets: no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
