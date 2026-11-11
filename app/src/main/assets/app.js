@@ -184,10 +184,10 @@ try{
         if(ycn>=0&&ycn<NMAX) {out.push({k:'y',c:ycn,w:w,p:(yp>=5&&yp<=100)?yp:50,d:(yd>=1&&yd<=30)?yd:4});if(x.sc===1||x.sc===true) out[out.length-1].sc=1}
       }else if(x.k==='f'||x.k==='i'||x.k==='k'){
         var ocn=Math.round(+x.c);
-        if(ocn>=0&&ocn<NMAX){out.push({k:x.k,c:ocn,w:w});if((x.k==='f'||x.k==='i')&&(x.ow===1||x.ow===true)) out[out.length-1].ow=1;if(x.k==='f'&&(x.nd===1||x.nd===true)) out[out.length-1].nd=1;if(x.k==='f'&&x.nd&&+x.tv>=1&&+x.tv<=5&&Math.round(+x.tv)!==3) out[out.length-1].tv=Math.round(+x.tv);if(x.k==='i'&&(x.hz===1||x.hz===true)) out[out.length-1].hz=1;if(x.k==='k'&&(+x.ws===30||+x.ws===60)) out[out.length-1].ws=+x.ws;if(x.k==='k'&&Array.isArray(x.cs)){var kcs=[];x.cs.forEach(function(q){q=Math.round(+q);if(q>=0&&q<NMAX&&q!==ocn&&kcs.indexOf(q)<0&&kcs.length<3) kcs.push(q)});if(kcs.length) out[out.length-1].cs=kcs}if(x.k==='k'&&(x.tg===1||x.tg===true)){out[out.length-1].tg=1;var tvv=Math.round(+x.tv);out[out.length-1].tv=isFinite(tvv)?Math.max(-100,Math.min(100,tvv)):80}if((x.k==='f'||x.k==='i')&&(+x.th===1||+x.th===2)) out[out.length-1].th=+x.th;if((x.k==='f'||x.k==='i')&&(x.sh===1||x.sh===true)) out[out.length-1].sh=1}
+        if(ocn>=0&&ocn<NMAX){out.push({k:x.k,c:ocn,w:w});if((x.k==='f'||x.k==='i')&&(x.ow===1||x.ow===true)) out[out.length-1].ow=1;if(x.k==='f'&&(x.nd===1||x.nd===true)) out[out.length-1].nd=1;if(x.k==='f'&&x.nd&&+x.tv>=1&&+x.tv<=5&&Math.round(+x.tv)!==3) out[out.length-1].tv=Math.round(+x.tv);if(x.k==='i'&&(x.hz===1||x.hz===true)) out[out.length-1].hz=1;if(x.k==='i'&&(+x.ls===1||+x.ls===2)) out[out.length-1].ls=+x.ls;if(x.k==='k'&&(+x.ws===30||+x.ws===60)) out[out.length-1].ws=+x.ws;if(x.k==='k'&&Array.isArray(x.cs)){var kcs=[];x.cs.forEach(function(q){q=Math.round(+q);if(q>=0&&q<NMAX&&q!==ocn&&kcs.indexOf(q)<0&&kcs.length<3) kcs.push(q)});if(kcs.length) out[out.length-1].cs=kcs}if(x.k==='k'&&(x.tg===1||x.tg===true)){out[out.length-1].tg=1;var tvv=Math.round(+x.tv);out[out.length-1].tv=isFinite(tvv)?Math.max(-100,Math.min(100,tvv)):80}if((x.k==='f'||x.k==='i')&&(+x.th===1||+x.th===2)) out[out.length-1].th=+x.th;if((x.k==='f'||x.k==='i')&&(x.sh===1||x.sh===true)) out[out.length-1].sh=1}
       }else if(x.k==='n'){
         var kcn=Math.round(+x.c);
-        if(kcn>=0&&kcn<NMAX){out.push({k:x.k,c:kcn,w:w});var nrt=Math.round(+x.rt*2)/2;if(x.rt!==undefined&&nrt>=0&&nrt<=10&&nrt!==3) out[out.length-1].rt=nrt;if(+x.th===1||+x.th===2) out[out.length-1].th=+x.th;if(x.ow===1||x.ow===true) out[out.length-1].ow=1;if(x.sw===1||x.sw===true) out[out.length-1].sw=1}
+        if(kcn>=0&&kcn<NMAX){out.push({k:x.k,c:kcn,w:w});var nrt=Math.round(+x.rt*2)/2;if(x.rt!==undefined&&nrt>=0&&nrt<=10&&nrt!==3) out[out.length-1].rt=nrt;if(+x.th===1||+x.th===2) out[out.length-1].th=+x.th;if(x.ow===1||x.ow===true) out[out.length-1].ow=1;if(x.sw===1||x.sw===true) out[out.length-1].sw=1;if(+x.fn===1) out[out.length-1].fn=1;if(x.tz===0) out[out.length-1].tz=0}
       }else if(x.k==='g'||x.k==='lv'){
         var gcn=Math.round(+x.c);
         if(gcn>=0&&gcn<NMAX){
@@ -212,6 +212,7 @@ try{
         var ro={k:'rs',w:w,p:(rps>=5&&rps<=100)?rps:100,ns:rns,s:(rsl>=0&&rsl<rns)?rsl:0};
         if(x.rt!==undefined&&rrt>=0&&rrt<=10&&rrt!==3) ro.rt=rrt;
         if(rhb>=1&&rhb<=2&&rhb*PER+rns<=NMAX) ro.hb=rhb;
+        if(+x.sm===1){ro.sm=1;ro.sc=[];for(var rsi=0;rsi<6;rsi++){var rr0=Array.isArray(x.sc)&&Array.isArray(x.sc[rsi])?x.sc[rsi]:[];var rr1=[];for(var rsj=0;rsj<PER;rsj++){var rv0=Math.round(+rr0[rsj]);rr1.push(isFinite(rv0)?Math.max(-100,Math.min(100,rv0)):0)}ro.sc.push(rr1)}}
         out.push(ro);
       }else if(x.k==='lx'){
         var lxt=['mx','eq','ts','gi','lp','tk'].indexOf(x.t)>=0?x.t:null, lxc=Math.round(+x.c);
@@ -219,6 +220,8 @@ try{
           var lxo={k:'lx',t:lxt,w:w};if(lxt!=='tk') lxo.c=lxc;
           var lxd=Math.round(+x.d);if(lxt==='mx'&&lxd>=0&&lxd<NMAX&&lxd!==lxc) lxo.d=lxd;
           if((lxt==='eq'||lxt==='lp')&&Array.isArray(x.cs)){var lcs=[];x.cs.forEach(function(q){q=Math.round(+q);if(q>=0&&q<NMAX&&q!==lxc&&lcs.indexOf(q)<0&&lcs.length<3) lcs.push(q)});if(lcs.length) lxo.cs=lcs}
+          if(lxt==='mx'){if(+x.ic===1) lxo.ic=1;if(+x.an===1) lxo.an=1;if(Array.isArray(x.px)&&x.px.length===8&&x.px.every(function(r){return typeof r==='string'&&/^[01]{8}$/.test(r)})) lxo.px=x.px.slice()}
+          if(lxt==='eq'&&(x.ow===1||x.ow===true)) lxo.ow=1;
           if(lxt==='ts'){var lth=Math.round(+x.th);if([10,30].indexOf(lth)>=0) lxo.th=lth}
           if(lxt==='tk'){var lsp=Math.round(+x.sp);if(lsp===1||lsp===3) lxo.sp=lsp}
           if(lxt==='lp'){var lpr=Math.round(+x.pr);if(lpr>=1&&lpr<=7) lxo.pr=lpr;var lps=Math.round(+x.ps);if(lps===1||lps===3) lxo.ps=lps}
@@ -376,7 +379,7 @@ try{
     }catch(e){}
   }
 
-  var rt={t:[],o:[]};
+  var rt={t:[],o:[]}, MUTE={};
   for(var q=0;q<NMAX;q++){rt.t.push(0);rt.o.push(0)}
 
   function slotOn(s){return C.hubs[s]>=0}
@@ -427,6 +430,39 @@ try{
   }
   function cvName(cv){for(var q=0;q<CVPRE.length;q++){var p=CVPRE[q][1];if(p[0]===cv[0]&&p[1]===cv[1]&&p[2]===cv[2]) return CVPRE[q][0]}return 'Custom'}
   /* Curve editor: drag the three middle points, or pick a ready shape. get() returns the points, set(p) stores them. */
+  // 8x8 dot editor for the LED matrix's own icon
+  var PXPRE=[['\u2191',null],['\u00bb',['10010000','01001000','00100100','00010010','00100100','01001000','10010000','00000000']],['\u2665',['01100110','11111111','11111111','11111111','01111110','00111100','00011000','00000000']],['!',['00011000','00111100','00111100','00111100','00011000','00000000','00011000','00011000']],['\u2715',['00000000','00000000','00000000','00000000','00000000','00000000','00000000','00000000']]];
+  function pxEditor(get,set){
+    var wrap=document.createElement('div');wrap.className='pxed';
+    var gr=document.createElement('div');gr.className='pxed-g';wrap.appendChild(gr);
+    var cells=[];
+    function draw(){var p=get();cells.forEach(function(b,i){var on=p[i>>3].charAt(i&7)==='1';b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on))})}
+    for(var i=0;i<64;i++)(function(i){var b=document.createElement('button');b.type='button';b.setAttribute('aria-label','Dot '+(1+(i>>3))+'-'+(1+(i&7)));
+      b.addEventListener('click',function(){var p=get().slice(),r=p[i>>3],q=i&7;p[i>>3]=r.slice(0,q)+(r.charAt(q)==='1'?'0':'1')+r.slice(q+1);set(p);draw()});gr.appendChild(b);cells.push(b)})(i);
+    var pr=document.createElement('div');pr.className='pxed-p';wrap.appendChild(pr);
+    PXPRE.forEach(function(q){var b=document.createElement('button');b.type='button';b.className='btn';b.textContent=q[0];b.addEventListener('click',function(){set((q[1]||LXPAT.up).slice());draw()});pr.appendChild(b)});
+    draw();return wrap;
+  }
+  // Dial selector scenes: one row of channel powers (A-F) for each position
+  function rsScenes(it){var a=[];for(var i=0;i<6;i++){var r=(it.sc&&it.sc[i])||[];var b=[];for(var j=0;j<PER;j++) b.push(Math.max(-100,Math.min(100,Math.round(+r[j]||0))));a.push(b)}return a}
+  function sceneEditor(get,set){
+    var wrap=document.createElement('div');wrap.className='sced';
+    var tb=document.createElement('table');wrap.appendChild(tb);
+    var hr=document.createElement('tr');hr.appendChild(document.createElement('th'));
+    for(var j=0;j<PER;j++){var th=document.createElement('th');th.textContent=L.charAt(j);hr.appendChild(th)}
+    tb.appendChild(hr);
+    get().forEach(function(row,i){
+      var tr=document.createElement('tr'),th=document.createElement('th');th.textContent=String(i+1);tr.appendChild(th);
+      row.forEach(function(v,j){var td=document.createElement('td'),inp=document.createElement('input');inp.type='number';inp.min='-100';inp.max='100';inp.step='10';inp.inputMode='numeric';inp.className='txt';inp.value=String(v);
+        inp.setAttribute('aria-label','Position '+(i+1)+' channel '+L.charAt(j));
+        inp.addEventListener('input',function(){var a=get().map(function(r){return r.slice()}),n=Math.round(+inp.value);a[i][j]=isFinite(n)?Math.max(-100,Math.min(100,n)):0;set(a)});
+        inp.addEventListener('blur',function(){inp.value=String(get()[i][j])});
+        td.appendChild(inp);tr.appendChild(td)});
+      tb.appendChild(tr);
+    });
+    var nt=document.createElement('p');nt.className='sced-n';nt.textContent='Rows are positions (1 = first). Channels left at 0 in every row are not touched. With 4 positions, rows 5 and 6 are not used.';wrap.appendChild(nt);
+    return wrap;
+  }
   function cvEditor(get,set){
     var wrap=document.createElement('div');wrap.className='cved';
     var W=200,H=120,svg=sv('svg',{viewBox:'0 0 '+W+' '+H,'class':'cved-g',role:'img','aria-label':'Response curve'},wrap);
@@ -486,6 +522,7 @@ try{
     return now<st.until?1:0;
   }
   function goalOf(i){
+    if(MUTE[i]) return 0; // muted from an LED bars widget
     if(C.ch[i].kind==='light'){
       var lt=rt.t[i],mo=lt>0?Math.round(ledOut(lt*blinkF(C.ch[i].blink,performance.now()))):0;
       if(C.ch[i].la&&lightAuto(i)) mo=Math.max(mo,Math.round(ledOut(C.ch[i].bright||100)));
@@ -685,6 +722,15 @@ try{
       m.lb=T({'text-anchor':'end','font-size':11,fill:MUT},it.ow?'0':'-100');
       m.val=T({'class':'mv','text-anchor':'middle','font-size':15,'font-weight':700,fill:TXT});
       svg.removeChild(m.val); // the LED meter shows its value as small yellow text in the card header instead
+      // value tag that rides on the tip of the lit bar
+      m.vg=sv('g',{visibility:'hidden'},svg);m.vr=sv('rect',{rx:5,height:16,width:34,fill:'#0d1015','stroke-width':1.5},m.vg);
+      m.vt=sv('text',{'text-anchor':'middle','font-size':11,'font-weight':800,y:12},m.vg);
+      // LED shape: 0 square, 1 round, 2 thin line
+      var segShape=function(r,x,y,w,h){var ls=it.ls||0,d;
+        if(ls===1){d=Math.max(2,Math.min(w,h));x+=(w-d)/2;y+=(h-d)/2;w=h=d;r.setAttribute('rx',(d/2).toFixed(1))}
+        else if(ls===2){if(it.hz){var th2=Math.max(2,h*.3);y+=(h-th2)/2;h=th2;r.setAttribute('rx',(th2/2).toFixed(1))}else{var tw=Math.max(3,w*.3);x+=(w-tw)/2;w=tw;r.setAttribute('rx',(tw/2).toFixed(1))}}
+        else r.setAttribute('rx','1.5');
+        r.setAttribute('x',x.toFixed(1));r.setAttribute('y',y.toFixed(1));r.setAttribute('width',Math.max(1,w).toFixed(1));r.setAttribute('height',Math.max(1,h).toFixed(1))};
       m.lay=function(cw,ch){
         if(it.hz){
           // The bar fills the card. The scale goes underneath when there is room, otherwise it is left out.
@@ -693,7 +739,7 @@ try{
           else{hty=4;hly=avail-2;hbh=Math.max(10,hly-12-hty)}
           var hsw=hbw/20, hcx=hbL+hbw/2;
           m.hzOn=true;m.bx0=hbL;m.bw=hbw;m.by0=hty;m.bh=hbh;m.hk='';
-          m.seg.forEach(function(r,j){r.setAttribute('y',hty.toFixed(1));r.setAttribute('height',hbh.toFixed(1));r.setAttribute('x',(hbL+j*hsw).toFixed(1));r.setAttribute('width',Math.max(2,hsw-2).toFixed(1))});
+          m.seg.forEach(function(r,j){segShape(r,hbL+j*hsw,hty,Math.max(2,hsw-2),hbh)});m.vk='';
           m.mid.setAttribute('display',it.ow?'none':'inline');m.mid.setAttribute('x1',hcx);m.mid.setAttribute('x2',hcx);m.mid.setAttribute('y1',hty-2);m.mid.setAttribute('y2',hty+hbh+2);
           [m.lb,m.lm,m.lt].forEach(function(q){q.setAttribute('display',noLab?'none':'inline')});
           m.lb.setAttribute('text-anchor','start');m.lb.setAttribute('x',hbL);m.lb.setAttribute('y',hly);
@@ -704,7 +750,7 @@ try{
         m.hzOn=false;[m.lb,m.lm,m.lt].forEach(function(q){q.setAttribute('display','inline')});m.lt.setAttribute('text-anchor','end');m.lm.setAttribute('text-anchor','end');m.lb.setAttribute('text-anchor','end');
         var dh=m.nch>1?16:0, top=6, bot=Math.max(top+60,ch-dh-4), x0=36, colw=Math.max(24,cw-x0-12);
         var sh=(bot-top)/20, md=(top+bot)/2;m.md=md;m.half=(bot-top)/2;m.cx0=x0+colw+4;m.x0=x0;m.cw=colw;m.top=top;m.bot=bot;m.hk='';
-        m.seg.forEach(function(r,j){r.setAttribute('x',x0.toFixed(1));r.setAttribute('width',colw.toFixed(1));r.setAttribute('y',(top+j*sh).toFixed(1));r.setAttribute('height',Math.max(2,sh-2).toFixed(1))});
+        m.seg.forEach(function(r,j){segShape(r,x0,top+j*sh,colw,Math.max(2,sh-2))});m.vk='';
         m.mid.setAttribute('display',it.ow?'none':'inline');m.mid.setAttribute('x1',x0-5);m.mid.setAttribute('x2',x0+colw+5);m.mid.setAttribute('y1',md);m.mid.setAttribute('y2',md);
         m.lt.setAttribute('x',x0-8);m.lt.setAttribute('y',top+10);m.lm.setAttribute('x',x0-8);m.lm.setAttribute('y',md+4);m.lb.setAttribute('x',x0-8);m.lb.setAttribute('y',bot-2);
         m.rq.setAttribute('x',m.cx0);dots(cw,ch);
@@ -902,8 +948,18 @@ try{
       }else{
         if(it.ow){out=Math.max(0,out);oth=Math.max(0,oth)}
         var tx3=it.ow?String(Math.round(out)):mSgn(out);if(m.hd&&m.hd.textContent!==tx3) m.hd.textContent=tx3;
-        for(j=0;j<20;j++){var vv=it.hz?(it.ow?(j+.5)*5:-100+(j+.5)*10):(it.ow?100-(j+.5)*5:100-(j+.5)*10),on2=it.ow?(out>0&&vv<=out):((vv>0&&vv<=out)||(vv<0&&vv>=out));var cl=on2?mCol(vv,th):TRK;if(m.seg[j].getAttribute('fill')!==cl) m.seg[j].setAttribute('fill',cl)}
+        for(j=0;j<20;j++){var vv=it.hz?(it.ow?(j+.5)*5:-100+(j+.5)*10):(it.ow?100-(j+.5)*5:100-(j+.5)*10),on2=it.ow?(out>0&&vv<=out):((vv>0&&vv<=out)||(vv<0&&vv>=out));var cl=on2?(vv<0?th[3]:mCol(vv,th)):TRK;if(m.seg[j].getAttribute('fill')!==cl) m.seg[j].setAttribute('fill',cl)}
         m.rq.setAttribute('visibility','hidden');
+        var vo=Math.max(-100,Math.min(100,Math.round(out))),vk=vo+'|'+m.dim;
+        if(m.vk!==vk){m.vk=vk;
+          if(Math.abs(vo)<1){m.vg.setAttribute('visibility','hidden')}else{
+            var vcl=vo<0?th[3]:mCol(vo,th),vtx=it.ow?String(vo):mSgn(vo),vw=vtx.length*7+10,vx,vy;
+            if(m.hzOn){var tipx=it.ow?m.bx0+vo/100*m.bw:m.bx0+m.bw/2+vo/100*m.bw/2;vx=Math.max(m.bx0,Math.min(m.bx0+m.bw-vw,tipx-vw/2));vy=m.by0+m.bh/2-8}
+            else{var tipy=it.ow?m.bot-vo/100*(m.bot-m.top):m.md-vo/100*m.half;vx=m.x0+m.cw/2-vw/2;vy=Math.max(m.top,Math.min(m.bot-16,tipy-8))}
+            m.vr.setAttribute('width',vw);m.vr.setAttribute('stroke',vcl);m.vt.setAttribute('x',vw/2);m.vt.setAttribute('fill',vcl);m.vt.textContent=vtx;
+            m.vg.setAttribute('transform','translate('+vx.toFixed(1)+' '+vy.toFixed(1)+')');m.vg.setAttribute('visibility','visible');
+          }
+        }
       }
     };
     return m;
@@ -960,8 +1016,13 @@ try{
       if(v>=0&&hb+v!==it.c){var cl=C.ch[hb+v];cl.kind='light';cl.la=la;cl.ls=it.c;syncChannel(hb+v)}}}}
   var WSPEC={
     lx:{byT:{
-      mx:{t:'LED matrix settings',f:[F_CHN('c','Drive channel'),F_CHN('d','Steering channel (arrows left/right)',true)]},
-      eq:{t:'LED bars settings',f:[F_CHN('c','Bar 1'),F_CSN(0,'Bar 2'),F_CSN(1,'Bar 3'),F_CSN(2,'Bar 4')]},
+      mx:{t:'LED matrix settings',f:[F_CHN('c','Drive channel'),F_CHN('d','Steering channel (arrows left/right)',true),
+        {k:'ic',l:'Picture',ch:[0,1],lab:['Arrows (follow direction)','My icon'],only:true,def:0},
+        {k:'px',l:'My icon (tap the dots to draw)',ed:true,mk:pxEditor,ch:[],dep:{k:'ic',v:1},g:function(it){return (it.px||LXPAT.up).slice()},s:function(it,v){if(it.ic) it.px=v.slice(); else delete it.px}},
+        {k:'an',l:'Animation',ch:[0,1],lab:['Blink','Scroll (faster with more power)'],only:true,def:0}]},
+      eq:{t:'LED bars settings',f:[F_CHN('c','Bar 1'),F_CSN(0,'Bar 2'),F_CSN(1,'Bar 3'),F_CSN(2,'Bar 4'),
+        {k:'ow',l:'Direction',ch:[0,1],lab:['Both ways (reverse in blue)','Forward only'],only:true,def:0},
+        {k:'mi',l:'Tap a bar',info:function(){return 'Tap a bar to mute its channel (the hub gets 0). Tap again to unmute. Mute ends when the app closes.'}}]},
       ts:{t:'Turn signal settings',f:[F_CHN('c','Steering channel'),{k:'th',l:'Blinks from',ch:[10,20,30],lab:['10%','20%','30%'],only:true,def:20},F_IND(0,'Left indicator light'),F_IND(1,'Right indicator light')]},
       gi:{t:'Gear LED settings',f:[F_CHN('c','Gear channel')]},
       lp:{t:'Light panel settings',f:[F_CHN('c','Light 1'),F_CSN(0,'Light 2'),F_CSN(1,'Light 3'),F_CSN(2,'Light 4'),
@@ -970,12 +1031,16 @@ try{
       tk:{t:'Message strip settings',f:[{k:'sp',l:'Scroll speed',ch:[1,2,3],lab:['Slow','Normal','Fast'],only:true,def:2}]}}},
     s:{t:'Slider settings',f:[F_INV,F_CAP,F_PC,F_PI,{k:'snap',l:'Snap to',ch:[0,5,10,25],lab:['Off','5%','10%','25%'],only:true,def:0}]},
     m:{t:'Mix settings',f:[F_INV,F_CAP]},
-    rs:{t:'Selector settings',f:[{k:'p',l:'Output power',u:'%',min:5,max:100,st:5,ch:[25,50,75,100],def:100},
+    rs:{t:'Selector settings',f:[{k:'sm',l:'Mode',ch:[0,1],lab:['One channel per position','Scenes (several channels)'],only:true,def:0},
+      {k:'p',l:'Output power',u:'%',min:5,max:100,st:5,ch:[25,50,75,100],def:100,dep:{k:'sm',v:0}},
+      {k:'sc',l:'Scenes: power of each channel at each position',ed:true,mk:sceneEditor,ch:[],dep:{k:'sm',v:1},g:function(it){return rsScenes(it)},s:function(it,v){if(it.sm) it.sc=v.map(function(r){return r.slice()}); else delete it.sc}},
       {k:'ns',l:'Positions',ch:[4,6],only:true,def:6},
       {k:'hb',l:'Hub',ch:[0,1,2],lab:['Hub 1','Hub 2','Hub 3'],only:true,def:0,g:function(it){return it.hb||0},s:function(it,v){if(v) it.hb=v; else delete it.hb}},
       {k:'rt',l:'On/off ramp time (0 = instant)',u:'s',min:0,max:10,st:0.5,ch:[0,1,3,5],def:3}]},
     n:{t:'Dial settings',f:[F_INV,F_CAP,F_PC,F_PI,{k:'rt',l:'On/off ramp time (0 = instant)',u:'s',min:0,max:10,st:0.5,ch:[0,1,3,5],def:3},F_TH,{k:'ow',l:'Direction',ch:[0,1],lab:['Both ways','Forward only'],only:true,def:0},
-      {k:'sw',l:'Swipe to other channels',ch:[0,1],lab:['Off','On'],only:true,def:0,g:function(it){return it.sw?1:0},s:function(it,v){if(v) it.sw=1; else delete it.sw}}]},
+      {k:'sw',l:'Swipe to other channels',ch:[0,1],lab:['Off','On'],only:true,def:0,g:function(it){return it.sw?1:0},s:function(it,v){if(v) it.sw=1; else delete it.sw}},
+      {k:'fn',l:'Turning',ch:[0,1],lab:['Normal','Fine (1 turn = 50%)'],only:true,def:0},
+      {k:'tz',l:'Tap the centre to go to 0',ch:[1,0],lab:['On','Off'],only:true,def:1}]},
     g:{t:'Direction & limit',f:[F_INV,F_CAP]},
     lv:{t:'Direction & limit',f:[F_INV,F_CAP]},
     st:{t:'Steering wheel settings',f:[F_INV,F_CAP,F_PC,F_PI,{k:'ra',l:'Full lock at',ch:[90,180,270],lab:['90\u00b0','180\u00b0','270\u00b0'],only:true,def:180},
@@ -995,7 +1060,7 @@ try{
       {k:'ls',l:'Follows drive channel',ch:[0,1,2,3,4,5],lab:['A','B','C','D','E','F'],only:true,def:0,dep:{k:'la',not:0},g:function(it){return (C.ch[it.c].ls||0)%PER},s:function(it,v){C.ch[it.c].ls=Math.floor(it.c/PER)*PER+v}}]},
     t:{t:'Toggle settings',f:[{k:'p',l:'Power',u:'%',min:5,max:100,st:5,ch:[25,50,75,100]},F_INV,F_CAP]},
     f:{t:'Meter settings',f:[{k:'nd',l:'Style',ch:[0,1],lab:['LED ring','Needle (tachometer)'],only:true,def:0},{k:'tv',l:'Tachometer look',ch:[0,1,2,4,5],lab:['A Racing','B Twin ring','C Chrome','D Smooth arc','E Pro'],only:true,def:0,dep:{k:'nd',v:1}},F_SH,F_TH,{k:'ow',l:'Direction',ch:[0,1],lab:['Both ways','Forward only'],only:true,def:0}]},
-    i:{t:'Meter settings',f:[F_SH,F_TH,{k:'ow',l:'Direction',ch:[0,1],lab:['Both ways','Forward only'],only:true,def:0},{k:'hz',l:'Bar layout',ch:[0,1],lab:['Vertical','Horizontal'],only:true,def:0}]},
+    i:{t:'Meter settings',f:[F_SH,F_TH,{k:'ow',l:'Direction',ch:[0,1],lab:['Both ways','Forward only'],only:true,def:0},{k:'hz',l:'Bar layout',ch:[0,1],lab:['Vertical','Horizontal'],only:true,def:0},{k:'ls',l:'LED shape',ch:[0,1,2],lab:['Square','Round','Thin line'],only:true,def:0}]},
     k:{t:'Scope settings',f:[{k:'ws',l:'Time window',ch:[10,30,60],lab:['10 s','30 s','60 s'],only:true,def:10},F_KC(0),F_KC(1),F_KC(2),{k:'tg',l:'Target line',ch:[0,1],lab:['Off','On'],only:true,def:0},{k:'tv',l:'Target value',u:'%',min:-100,max:100,st:5,ch:[-80,-50,50,80,100],def:80}]},
     y:{t:'Ramp settings',f:[{k:'p',l:'Target power',u:'%',min:5,max:100,st:5,ch:[25,50,75,100]},{k:'d',l:'Ramp time',u:'s',min:1,max:30,st:1,ch:[2,4,6,10]},{k:'sc',l:'Show scope',ch:[0,1],lab:['Off','On'],only:true,def:0},F_INV,F_CAP]},
     w:{t:'Switch settings',f:[{k:'p',l:'Power',u:'%',min:5,max:100,st:5,ch:[25,50,75,100],def:100},
@@ -1039,7 +1104,7 @@ try{
       if(f.info){var ib=mk('div','','wsf wsinfo');ib.appendChild(mk('span',f.l,'wsl'));var it2=mk('div',f.info(it),'wsinfo-t');ib.appendChild(it2);bx.appendChild(ib);boxes[f.k]=ib;ib.refresh=function(){it2.textContent=f.info(it)};return}
       if(f.ed){
         vals[f.k]=f.g(it);var ebox=mk('div','','wsf');ebox.appendChild(mk('span',f.l,'wsl'));
-        ebox.appendChild(cvEditor(function(){return vals[f.k]},function(p){vals[f.k]=p}));
+        ebox.appendChild((f.mk||cvEditor)(function(){return vals[f.k]},function(p){vals[f.k]=p}));
         bx.appendChild(ebox);boxes[f.k]=ebox;return;
       }
       var cur0=f.g?f.g(it):it[f.k];
@@ -2234,6 +2299,18 @@ try{
   }
   var FB={estop:[[440,440],0.12,'estop'],release:[[600,800],0.1,'ok'],ok:[[700,900],0.09,'ok'],lost:[[500,300],0.2,'lost'],warn:[[880,880,880],0.16,'warn'],idle:[[700,500,350],0.14,'warn'],hold:[[700,900],0.09,'hold']};
   var FBLAST={};
+  // a short click, used by the dial selector for each position (follows the Sound setting)
+  function clickSnd(){
+    if(!store.prefs.sound) return;
+    try{
+      AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+      if(AC.state==='suspended'&&AC.resume) AC.resume();
+      var t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();
+      o.type='square';o.frequency.setValueAtTime(1900,t);o.frequency.exponentialRampToValueAtTime(700,t+.025);
+      g.gain.setValueAtTime(.06,t);g.gain.exponentialRampToValueAtTime(.0001,t+.03);
+      o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+.035);
+    }catch(e){}
+  }
   function feedback(kind){
     var f=FB[kind];if(!f) return;
     if(kind==='warn'||kind==='idle'){var nw=Date.now();if(nw-(FBLAST.w||0)<2500) return;FBLAST.w=nw}
@@ -3213,6 +3290,7 @@ try{
         nbx.appendChild(nsv);
         var nk=document.createElement('div');nk.className='dialk';nk.setAttribute('role','slider');nk.setAttribute('aria-valuemin',it.ow?'0':'-100');nk.setAttribute('aria-valuemax','100');
         var ni=document.createElement('i');nk.appendChild(ni);
+        var nvb=document.createElement('b');nvb.className='dialv';nk.appendChild(nvb);
         // The dial only turns relative to where it is now: touching it never jumps to another value,
         // and it stops at the ends (0 and 100) instead of wrapping round.
         var nAng=0,nLa=0;
@@ -3221,17 +3299,19 @@ try{
         var nset=function(e){
           var a=nPtr(e),d=a-nLa;nLa=a;
           if(d>180) d-=360;else if(d<-180) d+=360;
+          // fine turning: one full turn of the finger moves the value 50%
+          if(it.fn) d*=it.ow?.375:.1875;
           nAng=Math.max(-135,Math.min(135,nAng+d));
           noteInput();delete RAMP[nc];
-          var dstep=it.ow?Math.round((nAng+135)/270*20)*5:Math.round(nAng/135*20)*5;
-          if(dstep!==w.dlast){w.dlast=dstep;dialBuzz()}
-          setT(nc,wOut(it,dstep),false);
+          var nraw=it.ow?(nAng+135)/270*100:nAng/135*100,dstep=it.fn?Math.round(nraw):Math.round(nraw/5)*5;
+          if(Math.round(dstep/5)!==w.dbz){w.dbz=Math.round(dstep/5);dialBuzz()}
+          if(dstep!==w.dlast){w.dlast=dstep;setT(nc,wOut(it,dstep),false)}
         };
         var nT=0,nX=0,nY=0,nPend=false,nLong=false;
         nk.addEventListener('pointerdown',function(e){
           if(S.estop||S.play) return;
           e.preventDefault();try{nk.setPointerCapture(e.pointerId)}catch(_){}
-          nX=e.clientX;nY=e.clientY;nPend=true;nLong=false;w.dlast=wIn(it,rt.t[nc]);nAng=nCur();nLa=nPtr(e);clearTimeout(nT);nk.classList.add('holding');
+          nX=e.clientX;nY=e.clientY;nPend=true;nLong=false;w.dlast=wIn(it,rt.t[nc]);w.dbz=Math.round(w.dlast/5);nAng=nCur();nLa=nPtr(e);clearTimeout(nT);nk.classList.add('holding');
           nT=setTimeout(function(){
             if(!nPend) return;
             nPend=false;nLong=true;noteInput();nk.classList.remove('holding');nk.classList.add('pop');setTimeout(function(){nk.classList.remove('pop')},250);
@@ -3249,10 +3329,19 @@ try{
         });
         ['pointerup','pointercancel'].forEach(function(ev){nk.addEventListener(ev,function(e){
           clearTimeout(nT);nk.classList.remove('holding');
+          // a short tap on the middle of the knob sets the dial to 0 (a long press still switches on/off)
+          if(ev==='pointerup'&&nPend&&it.tz!==0&&!S.estop&&!S.play){
+            var zr=nk.getBoundingClientRect();
+            if(Math.hypot(nX-(zr.left+zr.width/2),nY-(zr.top+zr.height/2))<zr.width*.2){
+              var zc=wIn(it,rt.t[nc]);if(zc!==0) w.dlv=zc;
+              noteInput();delete RAMP[nc];setT(nc,0,false);dialBuzz();
+              nk.classList.add('pop');setTimeout(function(){nk.classList.remove('pop')},250);
+            }
+          }
           nPend=false;nLong=false;w.drag=false;
         })});
         nk.addEventListener('contextmenu',function(e){e.preventDefault()});
-        nbx.appendChild(nk);nw.appendChild(nbx);el.appendChild(nw);w.dial={c:nc,k:nk,i:ni,sg:nsg,lv:null};
+        nbx.appendChild(nk);nw.appendChild(nbx);el.appendChild(nw);w.dial={c:nc,k:nk,i:ni,v:nvb,sg:nsg,lv:null};
         var nchs=activeIdx();
         if(it.sw&&nchs.length>1){
           // Swipe sideways on the card (outside the knob) to move the dial to the next channel.
@@ -3286,8 +3375,19 @@ try{
         var rk=document.createElement('div');rk.className='dialk';rk.setAttribute('role','slider');rk.setAttribute('aria-valuemin','1');rk.setAttribute('aria-valuemax',String(rsn));
         var rik=document.createElement('i');rk.appendChild(rik);
         var rcur=function(){return Math.max(0,Math.min(rsn-1,it.s||0))};
-        var rison=function(){var c=rch(rcur()),rp=RAMP[c];return rp?rp.to!==0:rt.t[c]!==0};
-        var rmove=function(ni){
+        // Scene mode: each position sets several channels of the hub at once.
+        // Only channels that are non-zero in at least one scene are touched.
+        var rsc=it.sm?rsScenes(it):null, rused=[];
+        if(rsc) for(var rj=0;rj<PER;rj++){for(var rq=0;rq<rsn;rq++) if(rsc[rq][rj]){rused.push(rj);break}}
+        var rramp=function(c,tg){if(!C.ch[c]) return;var rd1=it.rt===undefined?3:it.rt;if(rt.t[c]===tg&&!RAMP[c]) return;if(rd1>0) RAMP[c]={t0:performance.now(),from:rt.t[c],to:tg,d:rd1};else{delete RAMP[c];setT(c,tg,false)}};
+        var rapply=function(i,off){rused.forEach(function(j){rramp(rsb+j,off?0:rsc[i][j])})};
+        // a scene whose channels are all 0 still counts as switched on (it._on is dropped when the board is loaded again)
+        var rison=rsc?function(){var nz=rused.some(function(j){var c=rsb+j,rp=RAMP[c];return rp?rp.to!==0:rt.t[c]!==0});return nz||(!!it._on&&!rused.some(function(j){return rsc[rcur()][j]}))}:function(){var c=rch(rcur()),rp=RAMP[c];return rp?rp.to!==0:rt.t[c]!==0};
+        var rmove=rsc?function(ni){
+          ni=Math.max(0,Math.min(rsn-1,ni));if(ni===rcur()) return;
+          noteInput();var wasOn=rison();it.s=ni;save();dialBuzz();clickSnd();
+          if(wasOn){it._on=true;rapply(ni)}
+        }:function(ni){
           // Positions are visited in order (A, B, C ...): a jump is walked through one position at a time.
           ni=Math.max(0,Math.min(rsn-1,ni));
           while(ni!==rcur()){
@@ -3296,10 +3396,10 @@ try{
             // The position being left fades out over the ramp time instead of cutting off.
             if(rd0>0&&rt.t[oc]!==0) RAMP[oc]={t0:performance.now(),from:rt.t[oc],to:0,d:rd0};
             else{delete RAMP[oc];setT(oc,0,false)}
-            it.s=rcur()+(ni>rcur()?1:-1);save();dialBuzz();
+            it.s=rcur()+(ni>rcur()?1:-1);save();dialBuzz();clickSnd();
           }
         };
-        var rtog=function(){
+        var rtog=rsc?function(){noteInput();var on=rison();it._on=!on;rapply(rcur(),on)}:function(){
           var c=rch(rcur()),on=rison(),rd=it.rt===undefined?3:it.rt,tg=on?0:(it.p||100);
           if(rd>0) RAMP[c]={t0:performance.now(),from:rt.t[c],to:tg,d:rd};
           else{delete RAMP[c];setT(c,tg,false)}
@@ -3335,7 +3435,7 @@ try{
         })});
         rk.addEventListener('contextmenu',function(e){e.preventDefault()});
         rbx.appendChild(rk);rw.appendChild(rbx);el.appendChild(rw);
-        w.rsd={k:rk,i:rik,dots:rdots,n:rsn,ang:rang,ch:rch,cur:rcur,on:rison,lt:'',mv:rmove,tog:rtog};
+        w.rsd={k:rk,i:rik,dots:rdots,n:rsn,ang:rang,ch:rch,cur:rcur,on:rison,lt:'',mv:rmove,tog:rtog,sc:rsc,used:rused,b:rsb};
       }else if(it.k==='g'){
         var gc=it.c;
         if(!isActive(gc)) return;
@@ -3737,21 +3837,56 @@ try{
       o.paint=function(){
         var a=S.estop?0:Math.round(crzT(c)||0),b=(it.d>=0&&it.d!==undefined)?Math.round(crzT(it.d)||0):0,now=performance.now();
         var dir=S.estop?'st':Math.abs(b)>30?(b>0?'rt':'lt'):a>5?'up':a<-5?'dn':'id';
-        var per=Math.max(220,900-Math.abs(a)*7),on=(dir==='st'||Math.abs(a)>5)?(now%per<per*.65):true;
-        var key=dir+(on?1:0);if(o.key===key) return;o.key=key;
-        var P=LXPAT[dir],cl=dir==='st'?'#E24B4A':'#ffd84a';
+        var my=it.ic===1&&dir!=='st',P=my?(it.px||LXPAT.up):LXPAT[dir],cl=dir==='st'?'#E24B4A':'#ffd84a';
         var dim=dir==='st'?'rgba(226,75,74,.35)':'rgba(255,216,74,.38)';
-        // the arrow pulses between bright and dim; it never goes dark, so it always reads
-        o.d.forEach(function(d,ix){d.setAttribute('fill',P[ix>>3][ix&7]==='1'?(on?cl:dim):LXOFF)});
+        var sp=dir==='lt'||dir==='rt'?Math.abs(b):Math.abs(a),moving=dir!=='st'&&dir!=='id'&&!(my&&Math.abs(a)<=5&&Math.abs(b)<=30);
+        var on=true,dx=0,dy=0;
+        if(it.an===1){
+          // scroll: the picture slides along, faster with more power (2 to 16 dots a second)
+          if(moving){o.sx=(o.sx||0)+(now-(o.st||now))/1000*(2+sp/100*14);}
+          o.st=now;var st8=Math.floor(o.sx||0)%8;
+          var sdir=my?(dir==='lt'||(dir!=='rt'&&a<0)?'lt':'rt'):dir;
+          if(moving){if(sdir==='rt') dx=st8;else if(sdir==='lt') dx=8-st8;else if(sdir==='up') dy=8-st8;else if(sdir==='dn') dy=st8}
+          if(my&&!moving) on=false;
+        }else{
+          var per=Math.max(220,900-sp*7);on=(dir==='st'||moving)?(now%per<per*.65):!my;
+        }
+        var key=dir+(on?1:0)+(my?'m':'')+dx+','+dy;if(o.key===key) return;o.key=key;
+        // the picture pulses between bright and dim; it never goes dark, so it always reads
+        o.d.forEach(function(d,ix){var r=((ix>>3)-dy+8)%8,q=((ix&7)-dx+8)%8;d.setAttribute('fill',P[r][q]==='1'?(on?cl:dim):LXOFF)});
         if(hd){var tx={up:'\u25B2 '+a,dn:'\u25BC '+(-a),rt:'\u25B6',lt:'\u25C0',st:'STOP',id:'0'}[dir];if(hd.textContent!==tx) hd.textContent=tx}
       };
     }else if(t==='eq'){
-      var chs=[c].concat(it.cs||[]),n=chs.length,W=n*30+10,g2=SVG0(W,124);sv('rect',{x:1,y:1,width:W-2,height:104,rx:9,'class':'lx-pan'},g2);
-      o.b=chs.map(function(ch,j){var a=[];for(var k=0;k<10;k++) a.push(sv('rect',{x:10+j*30,y:92-k*9,width:20,height:6.4,rx:1.6,fill:LXOFF},g2));
-        sv('text',{x:20+j*30,y:119,'text-anchor':'middle','font-size':11,'font-weight':800,fill:TXT},g2).textContent=tagOf(ch);return a});
+      // Both ways: forward lights up from the middle line, reverse lights down in blue.
+      // Each bar shows its value on top; tap a bar to mute its channel.
+      var chs=[c].concat(it.cs||[]),n=chs.length,W=n*30+10,g2=SVG0(W,138),EQ2=!it.ow,NS=EQ2?14:10,PT=EQ2?6.43:9,SH=EQ2?4.7:6.4;
+      sv('rect',{x:1,y:14,width:W-2,height:104,rx:9,'class':'lx-pan'},g2);
+      if(EQ2) sv('line',{x1:6,x2:W-6,y1:66,y2:66,stroke:'rgba(200,208,220,.35)','stroke-width':1},g2);
+      o.v=[];o.m=[];
+      o.b=chs.map(function(ch,j){var a=[];
+        for(var k=0;k<NS;k++){var y=EQ2?(k<7?62.5-k*PT-SH:69.5+(k-7)*PT):105-k*PT-SH;a.push(sv('rect',{x:10+j*30,y:y.toFixed(2),width:20,height:SH,rx:1.4,fill:LXOFF},g2))}
+        o.v.push(sv('text',{x:20+j*30,y:10,'text-anchor':'middle','font-size':9,'font-weight':800,fill:TXT},g2));
+        sv('text',{x:20+j*30,y:133,'text-anchor':'middle','font-size':11,'font-weight':800,fill:TXT},g2).textContent=tagOf(ch);
+        o.m.push(sv('rect',{x:6+j*30,y:15,width:28,height:102,rx:6,fill:'rgba(10,12,16,.6)',visibility:'hidden'},g2));
+        return a});
+      g2.style.pointerEvents='auto';g2.style.cursor='pointer';
+      g2.addEventListener('click',function(e){
+        if(bdEditing) return;
+        var rc=g2.getBoundingClientRect(),sc=Math.min(rc.width/W,rc.height/138),x0=rc.left+(rc.width-W*sc)/2,j=Math.floor(((e.clientX-x0)/sc-5)/30);
+        if(j<0||j>=n) return;var ch=chs[j];
+        if(MUTE[ch]) delete MUTE[ch]; else MUTE[ch]=1;
+        o.key='';feedback(MUTE[ch]?'hold':'ok');
+      });
       o.paint=function(){
-        var vs=chs.map(lxOut),key=vs.map(function(v){return Math.round(Math.abs(v)/10)}).join(',');
-        if(o.key!==key){o.key=key;o.b.forEach(function(arr,j){var v=Math.abs(vs[j]);arr.forEach(function(rc,k){var vv=(k+.5)*10;rc.setAttribute('fill',vv<=v?lxCol(vv):LXOFF)})})}
+        var vs=chs.map(lxOut),key=vs.map(function(v,j){return (MUTE[chs[j]]?'m':'')+(EQ2?Math.round(v/100*7):Math.round(Math.abs(v)/10))+'|'+Math.round(v)}).join(',');
+        if(o.key!==key){o.key=key;o.b.forEach(function(arr,j){var v=vs[j],mu=!!MUTE[chs[j]];
+          arr.forEach(function(rc,k){var on,cl;
+            if(EQ2){if(k<7){var vv=(k+.5)/7*100;on=v>0&&vv<=v;cl=lxCol(vv)}else{var vr=(k-7+.5)/7*100;on=v<0&&vr<=-v;cl='#378ADD'}}
+            else{var va=(k+.5)*10;on=va<=Math.abs(v);cl=lxCol(va)}
+            rc.setAttribute('fill',on&&!mu?cl:LXOFF)});
+          var tx=mu?'MUTE':(EQ2?mSgn(v):String(Math.abs(Math.round(v))));if(o.v[j].textContent!==tx) o.v[j].textContent=tx;
+          o.v[j].setAttribute('fill',mu?'#E24B4A':(EQ2&&v<0?'#6fb0ff':'var(--fg,#e8e8ea)'));
+          o.m[j].setAttribute('visibility',mu?'visible':'hidden')})}
         if(hd){var tx=mSgn(vs[0]);if(hd.textContent!==tx) hd.textContent=tx}
       };
     }else if(t==='ts'){
@@ -3868,13 +4003,14 @@ try{
         w.dial.i.style.transform='rotate('+(w.it.ow?-135+dv/100*270:dv/100*135)+'deg)';
         w.dial.k.setAttribute('aria-valuenow',String(dv));
         w.dial.k.classList.toggle('on',dv!==0);
+        var dvt=w.it.ow?String(Math.round(dv)):mSgn(dv);if(w.dial.v.textContent!==dvt) w.dial.v.textContent=dvt;
         if(w.dial.lv!==dv){w.dial.lv=dv;w.dial.sg.forEach(function(q){var on=w.it.ow?q.v<=dv&&dv>0:(q.v>0&&q.v<=dv)||(q.v<0&&q.v>=dv),col=on?mCol(q.v,MTH[(w.it.th===1||w.it.th===2)?w.it.th:0]):'rgba(150,160,175,.32)';if(q.f!==col){q.f=col;q.e.setAttribute('fill',col)}})}
       }else if(w.rsd){
         var rd0=w.rsd,rsel=rd0.cur(),ron=!S.estop&&rd0.on();
         w.rsd.i.style.transform='rotate('+rd0.ang(rsel)+'deg)';
         w.rsd.k.classList.toggle('on',ron);w.rsd.k.setAttribute('aria-valuenow',String(rsel+1));
-        var rtxt='ABCDEF'.charAt(rd0.ch(rsel)%PER)+(ron?' ON':'');if(w.out&&w.out.textContent!==rtxt) w.out.textContent=rtxt;
-        var rlv=ron?Math.min(1,Math.abs(rt.t[rd0.ch(rsel)])/100):0;
+        var rtxt=(rd0.sc?'P'+(rsel+1):'ABCDEF'.charAt(rd0.ch(rsel)%PER))+(ron?' ON':'');if(w.out&&w.out.textContent!==rtxt) w.out.textContent=rtxt;
+        var rlv=ron?Math.min(1,(rd0.sc?rd0.used.reduce(function(a,j){return Math.max(a,Math.abs(rt.t[rd0.b+j]||0))},0):Math.abs(rt.t[rd0.ch(rsel)]))/100):0;
         rd0.dots.forEach(function(q,qi){
           var sel=qi===rsel,lv=sel?Math.round(rlv*20)/20:0,sk=(sel?'s':'o')+lv;if(q.st===sk) return;q.st=sk;
           // like the arc meter: the current position is a bigger red dot, the others small grey dots
@@ -4701,6 +4837,12 @@ try{
     "Hazard":"Hazard","Light settings\u2026":"Tetapan lampu\u2026","Turns on by itself":"Menyala sendiri","Brake light":"Lampu brek","Reverse light":"Lampu undur","Follows drive channel":"Ikut saluran pemanduan",
     "Also show (yellow line)":"Turut tunjuk (garis kuning)","Also show (blue line)":"Turut tunjuk (garis biru)","Also show (grey line)":"Turut tunjuk (garis kelabu)"};
   for(var v2k5 in V2MS5) MS[v2k5]=V2MS5[v2k5];
+  var V2MS6={"Picture":"Gambar","Arrows (follow direction)":"Anak panah (ikut arah)","My icon":"Ikon saya","My icon (tap the dots to draw)":"Ikon saya (ketik titik untuk lukis)","Animation":"Animasi","Scroll (faster with more power)":"Tatal (laju ikut kuasa)",
+    "Both ways (reverse in blue)":"Dua arah (undur biru)","Tap a bar":"Ketik bar","Tap a bar to mute its channel (the hub gets 0). Tap again to unmute. Mute ends when the app closes.":"Ketik bar untuk bisukan salurannya (hub terima 0). Ketik sekali lagi untuk nyahbisu. Bisu tamat bila app ditutup.","MUTE":"BISU",
+    "Mode":"Mod","One channel per position":"Satu saluran setiap kedudukan","Scenes (several channels)":"Adegan (beberapa saluran)","Scenes: power of each channel at each position":"Adegan: kuasa setiap saluran pada setiap kedudukan",
+    "Rows are positions (1 = first). Channels left at 0 in every row are not touched. With 4 positions, rows 5 and 6 are not used.":"Baris ialah kedudukan (1 = pertama). Saluran yang 0 dalam semua baris tidak diusik. Dengan 4 kedudukan, baris 5 dan 6 tidak digunakan.",
+    "Turning":"Putaran","Normal":"Biasa","Fine (1 turn = 50%)":"Halus (1 pusingan = 50%)","Tap the centre to go to 0":"Ketik tengah untuk ke 0","LED shape":"Bentuk LED","Square":"Segi","Round":"Bulat","Thin line":"Garis nipis"};
+  for(var v2k6 in V2MS6) MS[v2k6]=V2MS6[v2k6];
   MS_RE.push([/^([A-F]\d?): (.+)\. Example: 75 \u2192 hub (-?\d+)\.$/,function(m){return m[1]+': '+m[2].replace(/curve /,'lengkung ').replace(/start power/,'kuasa mula').replace(/drive mode/,'mod pemanduan').replace(/max /,'maks ')+'. Contoh: 75 \u2192 hub '+m[3]+'.'}]);
   MS_RE.push([/^([\u25B6\u25A0]) (Chase|Bounce|Alternate|Police|All blink|Fill|Twinkle)$/,function(m){return m[1]+' '+MS[m[2]]}]);
   MS_RE.push([/^(Linear|Fine|Very fine|Fast|Custom) \u00b7 50% \u2192 (\d+)%$/,function(m){return MS[m[1]]+' \u00b7 50% \u2192 '+m[2]+'%'}]);

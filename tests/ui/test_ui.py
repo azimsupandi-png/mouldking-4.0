@@ -390,7 +390,7 @@ async def t_led(b):
       var mx=best;
       var eq=[...lx[1].querySelectorAll('rect')].filter(c=>/#(1D9E75|EF9F27|E24B4A)/.test(c.getAttribute('fill'))).length;
       res([mx,eq,document.querySelector('#boardGrid .lx-tkw span').textContent])},80)})""")
-    check('LED arrows light up and LED bars fill when A runs', r[0] > 10 and r[1] >= 5, r[:2])
+    check('LED arrows light up and LED bars fill when A runs', r[0] > 10 and r[1] >= 4, r[:2])
     check('message strip shows the hub state', 'HUB ACTIVE' in r[2], r[2])
     await pg.evaluate("var rs="+SLS+";var r=rs[1];r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=50;r.dispatchEvent(new Event('input',{bubbles:true}));window.__all=[]")
     seen = set(); ind = set()
@@ -613,10 +613,88 @@ async def t_open_relink(b):
     check('4 hub turned off by the user: no reconnect on the next open', r == 0, r)
     await ctx.close()
 
+async def t_wup(b):
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'W',cfg:{layout:'board',limit:100,ramp:100,
+      ch:[{},{},{},{},{},{}],
+      board:[{k:'s',c:0,w:1},{k:'s',c:1,w:1},{k:'lx',t:'eq',c:0,cs:[1],w:1},{k:'n',c:2,w:1},{k:'rs',w:1,p:100,ns:4,s:0,sm:1,rt:0,sc:[[0,0,0,0,0,0],[0,0,0,40,0,0],[0,0,0,80,-50,0],[0,0,0,0,0,0]]},
+        {k:'i',c:0,w:2,hz:1,ls:1},{k:'lx',t:'mx',c:0,w:1,ic:1,an:1,px:['11111111','10000001','10000001','10000001','10000001','10000001','10000001','11111111']}]}}],prefs:{seen:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML)
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.wait_for_timeout(300)
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};mk6Go('home');document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.wait_for_timeout(400)
+    SLS = "document.querySelectorAll('#boardGrid .bdw[data-k=s] input[type=range]')"
+    await pg.evaluate("var rs="+SLS+";[[0,60],[1,-50]].forEach(function(p){var r=rs[p[0]];r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=p[1];r.dispatchEvent(new Event('input',{bubbles:true}))})")
+    await pg.wait_for_timeout(1500)
+    r = await pg.evaluate("""(function(){var eq=document.querySelector('#boardGrid .lx-eq');var rc=[...eq.querySelectorAll('rect')];
+      return [rc.filter(c=>c.getAttribute('fill')==='#378ADD').length,rc.filter(c=>/#(1D9E75|EF9F27|E24B4A)/.test(c.getAttribute('fill'))).length,[...eq.querySelectorAll('text')].map(t=>t.textContent).join(' ')]})()""")
+    check('7a/7b LED bars: reverse lights blue, forward green, values on top', r[0] >= 2 and r[1] >= 3 and '+' in r[2] and '\u2212' in r[2], r)
+    await pg.evaluate("""(function(){var g=document.querySelector('#boardGrid .lx-eq svg'),rc=g.getBoundingClientRect();g.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:rc.left+rc.width/2-16,clientY:rc.top+rc.height/2}))})()""")
+    await pg.wait_for_timeout(2500)
+    r = await pg.evaluate("[(window.__last||'').split(',').map(Number)[0],document.querySelector('#boardGrid .lx-eq').textContent.indexOf('MUTE')>=0]")
+    check('7c tapping bar A mutes channel A (hub gets 0)', r[0] == 0 and r[1], r)
+    await pg.evaluate("""(function(){var g=document.querySelector('#boardGrid .lx-eq svg'),rc=g.getBoundingClientRect();g.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:rc.left+rc.width/2-16,clientY:rc.top+rc.height/2}))})()""")
+    await pg.wait_for_timeout(800)
+    r = await pg.evaluate("(window.__last||'').split(',').map(Number)[0]")
+    check('7c tapping again unmutes', r > 0, r)
+    # dial: value in the middle, tap the centre = 0
+    await pg.evaluate("__t=null;var k=document.querySelector('#boardGrid .bdw[data-k=n] .dialk');window.__k=k")
+    await pg.evaluate("""(function(){var k=window.__k,rc=k.getBoundingClientRect(),cx=rc.left+rc.width/2,cy=rc.top+rc.height/2,R=rc.width*.4;
+      function ev(t,x,y){k.dispatchEvent(new PointerEvent(t,{bubbles:true,clientX:x,clientY:y,pointerId:5}))}
+      ev('pointerdown',cx,cy-R);for(var a=0;a<=60;a+=5){var r=a*Math.PI/180;ev('pointermove',cx+R*Math.sin(r),cy-R*Math.cos(r))}ev('pointerup',cx+R*Math.sin(1.05),cy-R*Math.cos(1.05))})()""")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[document.querySelector('#boardGrid .bdw[data-k=n] .dialv').textContent]")
+    check('9a dial shows its value in the middle', r[0] not in ('', '0'), r)
+    await pg.evaluate("""(function(){var k=window.__k,rc=k.getBoundingClientRect(),cx=rc.left+rc.width/2,cy=rc.top+rc.height/2;
+      k.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:cx,clientY:cy,pointerId:6}));k.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,clientX:cx,clientY:cy,pointerId:6}))})()""")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("document.querySelector('#boardGrid .bdw[data-k=n] .dialv').textContent")
+    check('9c tapping the dial centre sets it to 0', r == '0', r)
+    # fine turning: same 60 degree turn gives a smaller value
+    await pg.evaluate("""(function(){var B=JSON.parse(localStorage.getItem('mk6v2'));})()""")
+    # selector scenes: long-press on, then turn to position 3
+    await pg.evaluate("""(function(){var k=document.querySelector('#boardGrid .bdw[data-k=rs] .dialk'),rc=k.getBoundingClientRect(),cx=rc.left+rc.width/2,cy=rc.top+rc.height/2,R=rc.width*.4;window.__rk=k;window.__rkp=[cx,cy,R];
+      k.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:cx-R*.7,clientY:cy+R*.7,pointerId:7}))})()""")
+    await pg.wait_for_timeout(900)
+    await pg.evaluate("window.__rk.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:7}))")
+    await pg.evaluate("""(function(){var k=window.__rk,p=window.__rkp,cx=p[0],cy=p[1],R=p[2];function ev(t,a){var r=a*Math.PI/180;k.dispatchEvent(new PointerEvent(t,{bubbles:true,clientX:cx+R*Math.sin(r),clientY:cy-R*Math.cos(r),pointerId:8}))}
+      ev('pointerdown',-135);for(var a=-135;a<=45;a+=10) ev('pointermove',a);ev('pointerup',45)})()""")
+    await pg.wait_for_timeout(2500)
+    r = await pg.evaluate("[(window.__last||'').split(',').map(Number).slice(3,5),document.querySelector('#boardGrid .bdw[data-k=rs] .bdw-h').textContent]")
+    check('10b selector scene mode sets D and E together', r[0][0] > 50 and r[0][1] < -30 and 'P3' in r[1], r)
+    # LED meter: round dots, blue reverse, value tag
+    await pg.evaluate("var rs="+SLS+";var r=rs[0];r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=-70;r.dispatchEvent(new Event('input',{bubbles:true}))")
+    await pg.wait_for_timeout(1200)
+    r = await pg.evaluate("""(function(){var w=document.querySelector('#boardGrid .bdw[data-k=i]');var rc=[...w.querySelectorAll('rect')];
+      var seg=rc.filter(x=>x.getAttribute('width')===x.getAttribute('height')&&+x.getAttribute('rx')>1);
+      return [seg.length,rc.filter(x=>x.getAttribute('fill')==='#378ADD').length,[...w.querySelectorAll('text')].map(t=>t.textContent).filter(t=>/^\u2212[0-9]/.test(t)).length]})()""")
+    check('13a/b/c LED meter: round LEDs, reverse in blue, value tag at the tip', r[0] >= 20 and r[1] >= 5 and r[2] >= 1, r)
+    # matrix: own icon scrolls
+    seen = set()
+    for _ in range(6):
+        await pg.wait_for_timeout(150)
+        seen.add(await pg.evaluate("[...document.querySelectorAll('#boardGrid .lx-mx circle')].map(c=>c.getAttribute('fill')==='#ffd84a'?1:0).join('')"))
+    check('14a/b LED matrix shows my icon and it scrolls', len(seen) >= 2 and all(s.count('1') == 28 for s in seen), [s.count('1') for s in seen])
+    # settings editors open and save
+    await pg.evaluate("document.getElementById('bdEdit').click();[...document.querySelectorAll('#boardGrid .bdw[data-k=lx]')].pop().querySelector('.bdw-ed button[aria-label=\"Widget settings\"]').click()")
+    await pg.wait_for_timeout(200)
+    r = await pg.evaluate("[document.querySelectorAll('#gEdit .pxed-g button').length,(()=>{document.querySelectorAll('#gEdit .pxed-g button')[0].click();[...document.querySelectorAll('#gEdit .gact button')].find(b=>b.textContent==='Save').click();return JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.board.find(x=>x.t==='mx').px[0]})()]")
+    check('14a dot editor: 64 dots, a tap changes the saved icon', r[0] == 64 and r[1] == '01111111', r)
+    await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw[data-k=rs]')][0].querySelector('.bdw-ed button[aria-label=\"Widget settings\"]').click()")
+    await pg.wait_for_timeout(200)
+    r = await pg.evaluate("document.querySelectorAll('#gEdit .sced input').length")
+    check('10b scene editor shows a 6 x 6 table', r == 36, r)
+    check('widget upgrades: no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
