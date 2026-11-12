@@ -3962,13 +3962,16 @@ try{
   }
   function lxpStart(it,chs){
     lxpStop();if(!chs.length){toast('This panel has no light channels to play.');return}
-    LXP={it:it,chs:chs,t0:performance.now(),iv:0};
-    var ms=[0,500,300,200][it.ps||2]*(it.pr===4?.7:1);
+    LXP={it:it,chs:chs,t0:performance.now(),iv:0,k:0,nx:0};
+    // The step time is read on every tick, so a new Program speed takes effect at once
+    // (it used to be fixed when the program started). Slow 800 ms, Normal 400 ms, Fast 180 ms per step.
     function tick(){
       if(!LXP.it) return;
       if(S.estop){lxpStop(true);return}
       if(S.play) return;
-      var k=Math.floor((performance.now()-LXP.t0)/Math.max(200,ms)),n=LXP.chs.length;
+      var now=performance.now(),ms=Math.max(120,[0,800,400,180][LXP.it.ps||2]*(LXP.it.pr===4?.7:1));
+      if(!LXP.nx) LXP.nx=now+ms; else if(now>=LXP.nx){LXP.k++;LXP.nx=Math.max(LXP.nx+ms,now+ms*.5)}
+      var k=LXP.k,n=LXP.chs.length;
       LXP.chs.forEach(function(c,i){if(!C.ch[c]||C.ch[c].kind!=='light') return;var want=lxpOn(it.pr,n,k,i)?(C.ch[c].bright||100):0;if(rt.t[c]!==want) setT(c,want,false)});
     }
     LXP.iv=setInterval(tick,50);tick();paintBoard();

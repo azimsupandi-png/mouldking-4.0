@@ -377,7 +377,7 @@ async def t_led(b):
       ch:[{off:4},{},{},{},{kind:'light'},{kind:'light',la:4,ls:1}],dash:true,
       board:[{k:'s',c:0,w:1},{k:'s',c:1,w:1},{k:'g',c:2,w:2},{k:'lx',t:'mx',c:0,d:1,w:1},{k:'lx',t:'eq',c:0,cs:[1],w:1},{k:'lx',t:'ts',c:1,w:1},{k:'lx',t:'gi',c:2,w:1},{k:'lx',t:'lp',c:4,cs:[5],w:2},{k:'lx',t:'tk',w:2}]}}],prefs:{seen:true}}))})();"""
     await pg.add_init_script(STUB + seed)
-    await pg.goto(HTML)
+    await pg.goto(HTML + '?mk6test')
     await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
     await pg.wait_for_timeout(300)
     await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f;(window.__all=window.__all||[]).push(f)};mk6Go('home');document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
@@ -465,6 +465,13 @@ async def t_led(b):
     await pg.wait_for_timeout(1500)
     r = await pg.evaluate("[[...new Set(window.__all.map(f=>String(f).split(',').map(Number).slice(4,6).map(v=>v>0?1:0).join('')))].sort(),document.querySelector('#boardGrid .lx-pg').getAttribute('aria-pressed')]")
     check('light program Chase alternates the panel lights', '10' in r[0] and '01' in r[0] and r[1] == 'true', r)
+    # Program speed: changing it while the program runs takes effect at once, and Slow < Normal < Fast
+    cnt = {}
+    for ps in (1, 2, 3):
+        await pg.evaluate("(function(v){var it=window.__t.C.board.find(x=>x.t==='lp');if(v===2) delete it.ps; else it.ps=v})(%d)" % ps)
+        await pg.wait_for_timeout(500)
+        cnt[ps] = await pg.evaluate("new Promise(function(res){var n=0,last=null,t0=performance.now();var iv=setInterval(function(){var v=window.__t.rt.t[4]>0?1:0;if(last!==null&&v!==last)n++;last=v;if(performance.now()-t0>3200){clearInterval(iv);res(n)}},20)})")
+    check('light program speed: Slow < Normal < Fast, changed while running', cnt[1] < cnt[2] < cnt[3] and cnt[1] >= 2, cnt); print('    speed counts', cnt)
     await pg.evaluate("document.querySelector('#boardGrid .lx-pg').click()")
     await pg.wait_for_timeout(500)
     r = await pg.evaluate("[(window.__last||'').split(',').map(Number)[4],document.querySelector('#boardGrid .lx-pg').getAttribute('aria-pressed')]")
