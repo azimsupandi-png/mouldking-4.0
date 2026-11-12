@@ -698,7 +698,7 @@ async def t_xw(b):
     pg.on('pageerror', lambda e: pg.errors.append(str(e)))
     seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'X',cfg:{layout:'board',limit:100,ramp:100,
       ch:[{},{},{},{},{},{}],
-      board:[{k:'xy',c:0,d:1,w:1},{k:'xf',c:2,d:3,w:1},{k:'ro',c:0,w:1,n:5,bs:1}]}}],prefs:{seen:true}}))})();"""
+      board:[{k:'xy',c:0,d:1,w:1},{k:'xf',c:2,d:3,w:1},{k:'ro',c:0,w:1,n:5,bs:1},{k:'ro',c:1,w:1,bs:0}]}}],prefs:{seen:true}}))})();"""
     await pg.add_init_script(STUB + seed)
     await pg.goto(HTML)
     await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
@@ -706,7 +706,7 @@ async def t_xw(b):
     await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};mk6Go('home');document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
     await pg.wait_for_timeout(400)
     r = await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw')].map(w=>w.dataset.k+':'+!!w.querySelector('svg.xwv'))")
-    check('XY pad, crossfader and rotor appear on the board', r == ['xy:true', 'xf:true', 'ro:true'], r)
+    check('XY pad, crossfader and rotor appear on the board', r == ['xy:true', 'xf:true', 'ro:true', 'ro:true'], r)
     def pe(sel, typ, fx, fy, pid=11):
         return pg.evaluate("""(function(){var s=document.querySelector('%s'),vb=s.viewBox.baseVal,rc=s.getBoundingClientRect(),sc=Math.min(rc.width/vb.width,rc.height/vb.height),ox=rc.left+(rc.width-vb.width*sc)/2,oy=rc.top+(rc.height-vb.height*sc)/2;
           s.dispatchEvent(new PointerEvent('%s',{bubbles:true,clientX:ox+%f*sc,clientY:oy+%f*sc,pointerId:%d}))})()""" % (sel, typ, fx, fy, pid))
@@ -720,10 +720,12 @@ async def t_xw(b):
     r = await pg.evaluate("(window.__last||'').split(',').map(Number).slice(0,2)")
     check('XY pad: letting go returns both to 0', r == [0, 0], r)
     XF = "#boardGrid .bdw[data-k=xf] svg"
-    await pe(XF, 'pointerdown', 175, 62, 12); await pe(XF, 'pointerup', 175, 62, 12)
+    r = await pg.evaluate("[(window.__last||'').split(',').map(Number).slice(2,4),document.querySelector('#boardGrid .bdw[data-k=xf] .bdw-h output').textContent]")
+    check('Crossfader: nothing runs until the fader is pushed up (no power button)', r[0] == [0, 0] and r[1] == 'OFF', r)
+    await pe(XF, 'pointerdown', 28, 205, 12); await pe(XF, 'pointermove', 28, 74, 12); await pe(XF, 'pointerup', 28, 74, 12)
     await pg.wait_for_timeout(2500)
     r = await pg.evaluate("[(window.__last||'').split(',').map(Number).slice(2,4),document.querySelector('#boardGrid .bdw[data-k=xf] .bdw-h output').textContent]")
-    check('Crossfader: the power button starts both channels at the master power (80)', r[0] == [80, 80] and r[1].startswith('+80'), r)
+    check('Crossfader: fader at 80% runs both channels at 80', r[0] == [80, 80] and r[1].startswith('+80'), r)
     await pe(XF, 'pointerdown', 175, 262, 13); await pe(XF, 'pointermove', 245, 262, 13); await pe(XF, 'pointerup', 245, 262, 13)
     await pg.wait_for_timeout(2500)
     r = await pg.evaluate("(window.__last||'').split(',').map(Number).slice(2,4)")
@@ -733,14 +735,10 @@ async def t_xw(b):
     await pg.wait_for_timeout(2500)
     r = await pg.evaluate("[(window.__last||'').split(',').map(Number).slice(2,4),JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.board[1].rd]")
     check('Crossfader: preset C sends all to C; reverse D is saved', r[0] == [80, 0] and r[1] == 1, r)
-    await pe(XF, 'pointerdown', 28, 125, 18); await pe(XF, 'pointermove', 28, 40, 18); await pe(XF, 'pointerup', 28, 40, 18)
-    await pg.wait_for_timeout(2500)
-    r = await pg.evaluate("[(window.__last||'').split(',').map(Number).slice(2,4),JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.board[1].p]")
-    check('Crossfader: the master fader sets the power and is saved', r[0] == [100, 0] and r[1] == 100, r)
-    await pe(XF, 'pointerdown', 175, 62, 14); await pe(XF, 'pointerup', 175, 62, 14)
+    await pe(XF, 'pointerdown', 28, 74, 18); await pe(XF, 'pointermove', 28, 230, 18); await pe(XF, 'pointerup', 28, 230, 18)
     await pg.wait_for_timeout(4000)
-    r = await pg.evaluate("(window.__last||'').split(',').map(Number).slice(2,4)")
-    check('Crossfader: the power button again stops both', r == [0, 0], r)
+    r = await pg.evaluate("[(window.__last||'').split(',').map(Number).slice(2,4),document.querySelector('#boardGrid .bdw[data-k=xf] .bdw-h output').textContent]")
+    check('Crossfader: pulling the fader down stops both', r[0] == [0, 0] and r[1] == 'OFF', r)
     # rotor follows A
     await pe(XY, 'pointerdown', 158, 112, 15); await pe(XY, 'pointermove', 250, 112, 15)
     await pg.wait_for_timeout(1500)
@@ -749,6 +747,8 @@ async def t_xw(b):
     a2 = await pg.evaluate("[document.querySelector('#boardGrid .bdw[data-k=ro] svg g.rb').getAttribute('transform'),document.querySelectorAll('#boardGrid .bdw[data-k=ro] svg g.rb')[0].children.length]")
     await pe(XY, 'pointerup', 250, 112, 15)
     check('Rotor: 5 blades spin while A runs', a1 != a2[0] and a2[1] == 5, [a1, a2])
+    r = await pg.evaluate("[document.querySelectorAll('#boardGrid .bdw[data-k=ro]')[1].querySelectorAll('svg g.rb')[0].children.length,JSON.stringify(JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.board[3])]")
+    check('Rotor: old metal style now shows the jet turbine (16 blades)', r[0] == 16 and 'bs' not in r[1], r)
     # settings dialogs + add from the gallery
     await pg.evaluate("document.getElementById('bdEdit').click()")
     for k, n in (('xy', 3), ('xf', 3), ('ro', 2)):
