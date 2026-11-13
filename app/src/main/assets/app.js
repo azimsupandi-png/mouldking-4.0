@@ -5075,7 +5075,7 @@ try{
     "Colour-blind colours on: blue, orange and vermillion.":"Warna buta warna dihidupkan: biru, oren dan merah jingga.","Normal colours.":"Warna biasa.",
     "About":"Perihal","What's new":"Apa yang baharu","Check for updates":"Semak kemas kini","Update available":"Kemas kini tersedia","Download":"Muat turun","Later":"Nanti",
     "NEW":"BAHARU","IMPROVED":"BAIK","FIXED":"BAIKI","Checking for updates…":"Menyemak kemas kini…","You have the newest build.":"Anda sudah ada binaan terbaharu.",
-    "Could not check for updates. Is the internet on?":"Tidak dapat menyemak kemas kini. Adakah internet dihidupkan?","Update check works in the Android app.":"Semakan kemas kini berfungsi dalam app Android.",
+    "Could not check for updates. Is the internet on?":"Tidak dapat menyemak kemas kini. Adakah internet dihidupkan?","Update check works in the Android app.":"Semakan kemas kini berfungsi dalam app Android.","No build has been published for updates yet.":"Belum ada binaan diterbitkan untuk kemas kini.","Could not check for updates. Try again later.":"Tidak dapat menyemak kemas kini. Cuba lagi nanti.",
     "Live link centre: send-rate graph, a ring for each hub and an early warning when sending slows down":"Pusat sambungan langsung: graf kadar hantar, cincin untuk setiap hub dan amaran awal bila penghantaran perlahan",
     "Edit mode: ⧉ duplicates a widget onto the next free channel; ⊞ selects several widgets to move together":"Mod edit: ⧉ menyalin widget ke saluran kosong seterusnya; ⊞ memilih beberapa widget untuk dialih bersama",
     "Colour-blind colours (blue / orange) and ▲/▼ direction arrows on values":"Warna buta warna (biru / oren) dan anak panah arah ▲/▼ pada nilai",
@@ -5733,7 +5733,7 @@ try{
     UPD.busy=false;var d={};try{d=JSON.parse(js)||{}}catch(_){d={error:'bad'}}
     var ai=appInfo(), m=/build (\d+)/i.exec(d.name||''), nb=m?+m[1]:0;
     store.prefs.upAt=Date.now();save();
-    if(d.error||!nb){if(!UPD.quiet) toast('Could not check for updates. Is the internet on?');verPaint();return}
+    if(d.error||!nb){if(!UPD.quiet) toast(d.error==='net'?'Could not check for updates. Is the internet on?':/^http 40[34]/.test(d.error||'')?'No build has been published for updates yet.':'Could not check for updates. Try again later.');verPaint();return}
     if(nb>ai.build){UPD.found={build:nb,apk:d.apk||'',page:d.page||'',notes:d.notes||''};verPaint();if(!UPD.quiet) wnShow(UPD.found)}
     else{UPD.found=null;verPaint();if(!UPD.quiet) toast('You have the newest build.')}
   };

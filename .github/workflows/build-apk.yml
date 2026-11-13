@@ -42,6 +42,8 @@ jobs:
   build:
     needs: test
     runs-on: ubuntu-latest
+    env:
+      RT: ${{ secrets.RELEASES_TOKEN }}
     steps:
       - uses: actions/checkout@v5
 
@@ -77,3 +79,21 @@ jobs:
             --title "MK6 Console (build ${{ github.run_number }})" \
             --notes "Automatic build from ${{ github.sha }}" \
             --target ${{ github.sha }}
+
+      # The code repo is private, so the app checks for updates in a public repo that only holds the APK.
+      # Needs the secret RELEASES_TOKEN (fine-grained token, Contents: read and write on mk6-console-releases).
+      - name: Publish to the public releases repo
+        if: env.RT != ''
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          R: azimsupandi-png/mk6-console-releases
+        run: |
+          # an empty repo has no commit to tag, so give it a README first
+          if ! gh api repos/$R/contents/README.md >/dev/null 2>&1; then
+            printf '# MK6 Console releases\n\nAPK builds of MK6 Console. Download the newest from Releases.\n' | base64 -w0 > readme.b64
+            gh api -X PUT repos/$R/contents/README.md -f message="Add README" -f content="$(cat readme.b64)"
+          fi
+          gh release delete latest -R $R --yes --cleanup-tag || true
+          gh release create latest out/MK6-Console.apk -R $R \
+            --title "MK6 Console (build ${{ github.run_number }})" \
+            --notes "Build ${{ github.run_number }}. Open MK6 Console → Settings → What's new to see the changes." 
