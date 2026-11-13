@@ -271,7 +271,7 @@ async def t_twelve(b):
     check('9 size: a widget can be made 2x1', 'w2' in r, r)
     # 10 gallery: picture cards and category tabs
     r = await pg.evaluate("var t=[...document.querySelectorAll('.v2-gtabs .btn')].find(b=>b.textContent==='Meters');t.click();[document.querySelectorAll('.bd-types .gt svg').length,[...document.querySelectorAll('.bd-types > .btn')].filter(b=>!b.hidden).length]")
-    check('10 gallery: 34 picture cards, Meters tab shows 6', r == [34, 6], r)
+    check('10 gallery: 33 picture cards, Meters tab shows 6', r == [33, 6], r)
     await pg.evaluate("document.getElementById('bdEdit').click()")
     # 8 model colour persists and tints the board
     await pg.evaluate("mk6Go('medit');document.querySelectorAll('#swatches .sw')[2].click()")
@@ -945,30 +945,32 @@ async def t_pro2(b):
     await ctx.close()
 
 async def t_drtl(b):
-    # S2 D/R rotary switch, S4 timeline player + editor
+    # D/R in Settings > Limits (an old D/R widget moves there), S4 timeline player + editor
     ctx = await b.new_context(viewport={'width': 390, 'height': 844})
     pg = await ctx.new_page(); pg.errors = []
     pg.on('pageerror', lambda e: pg.errors.append(str(e)))
     seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'X',cfg:{layout:'board',limit:100,ramp:100,
       ch:[{},{},{},{},{},{}],tl:[{id:'t1',name:'Dig',dur:2,rp:1,lanes:[{c:2,pts:[[0,0,0],[1,80,1],[2,0,0]]}]}],
-      board:[{k:'s',c:0,w:1},{k:'dr',w:1,p:2},{k:'tl',w:2,tl:'t1'}]}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
+      board:[{k:'s',c:0,w:1},{k:'dr',w:1,v:40},{k:'tl',w:2,tl:'t1'}]}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
     await pg.add_init_script(STUB + seed)
     await pg.goto(HTML + '?mk6test')
     await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
     await pg.wait_for_timeout(300)
     await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};mk6Go('home');document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
     await pg.wait_for_timeout(400)
-    r = await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw')].map(w=>w.dataset.k+':'+!!w.querySelector('svg.xwv'))")
-    check('S2/S4: D/R switch and timeline player appear', r == ['s:false', 'dr:true', 'tl:true'], r)
+    r = await pg.evaluate("[[...document.querySelectorAll('#boardGrid .bdw')].map(w=>w.dataset.k).join(),__t.C.dr.v,!!document.getElementById('bdTDR')]")
+    check('D/R: the old widget is gone and its setting moved to the model', r == ['s,tl', 40, False], r)
     await pg.evaluate("__t.rt.t[0]=100")
     await pg.wait_for_timeout(2500)
-    full = await pg.evaluate("+(window.__last||'').split(',')[0]")
-    # tap the knob: Full -> Fine
-    await pg.evaluate("""(function(){var g=document.querySelector('#boardGrid .bdw[data-k=dr] svg rect[role=slider]'),b=g.getBoundingClientRect(),o={bubbles:true,clientX:b.left+(125-10)/280*b.width,clientY:b.top+b.height/2,pointerId:3};g.dispatchEvent(new PointerEvent('pointerdown',o));g.dispatchEvent(new PointerEvent('pointerup',o))})()""")
+    fine = await pg.evaluate("+(window.__last||'').split(',')[0]")
+    await pg.evaluate("mk6Go('safety')")
+    await pg.wait_for_timeout(200)
+    await pg.evaluate("""(function(){var g=document.querySelector('#drSet svg rect[role=slider]'),b=g.getBoundingClientRect(),o={bubbles:true,clientX:b.right-2,clientY:b.top+b.height/2,pointerId:3};g.dispatchEvent(new PointerEvent('pointerdown',o));g.dispatchEvent(new PointerEvent('pointerup',o))})()""")
     await pg.wait_for_timeout(2500)
-    r = await pg.evaluate("[+(window.__last||'').split(',')[0],__t.C.board[1].v,document.querySelector('#boardGrid .bdw[data-k=dr] .bdw-h output').textContent]")
-    check('S2: sliding the D/R bar to Fine (snaps to 40%) limits the slider to about 40%', full >= 90 and r[1] == 40 and 25 <= r[0] <= 45 and r[2] == 'Fine 40%', [full, r])
-    await pg.evaluate("__t.rt.t[0]=0")
+    r = await pg.evaluate("[+(window.__last||'').split(',')[0],__t.C.dr.v,document.querySelectorAll('#drSet .drcs button').length,document.querySelectorAll('#drSet [data-s]').length]")
+    check('D/R: Settings slider goes from Fine (about 40%) to Full', 25 <= fine <= 45 and r[0] >= 90 and r[1] == 100 and r[2] == 6 and r[3] == 3, [fine, r])
+    await pg.evaluate("__t.rt.t[0]=0;mk6Go('drive')")
+    await pg.wait_for_timeout(200)
     # S4 play
     await pg.evaluate("document.querySelector('#boardGrid .bdw[data-k=tl] svg g[role=button]').dispatchEvent(new MouseEvent('click',{bubbles:true}))")
     await pg.wait_for_timeout(1000)
@@ -1009,9 +1011,7 @@ async def t_drtl(b):
     await pg.wait_for_timeout(600)
     r = await pg.evaluate("[__t.C.tl.length,!!document.getElementById('tlEd'),document.getElementById('bdNote').textContent]")
     check('S4: adding a Timeline from the gallery opens the editor', r[:2] == [3, True], r)
-    await pg.evaluate("document.querySelector('#tlEd [data-a=done]').click();document.getElementById('bdTDR').click();document.getElementById('bdAdd').click()")
-    r = await pg.evaluate("[__t.C.board.filter(o=>o.k==='dr').length,document.getElementById('bdNote').textContent]")
-    check('S2: only one D/R switch per board', r[0] == 1 and 'already' in r[1], r)
+    await pg.evaluate("document.querySelector('#tlEd [data-a=done]').click()")
     check('S2/S4: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
     ctx = await b.new_context(viewport={'width': 844, 'height': 390})

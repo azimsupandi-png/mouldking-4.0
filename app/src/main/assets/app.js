@@ -218,12 +218,7 @@ try{
           else{var xp=Math.round(+x.p);if(xp>=10&&xp<100) xo.p=xp;if(+x.md===1) xo.md=1;if(+x.rc===1) xo.rc=1;if(+x.rd===1) xo.rd=1}
           out.push(xo)}
       }else if(x.k==='dr'){
-        var dro={k:'dr',w:w},drv;
-        drv=pickOf(x.r0,[25,40,50,60],40);if(drv!==40) dro.r0=drv;drv=pickOf(x.r1,[60,70,80],70);if(drv!==70) dro.r1=drv;
-        drv=pickOf(x.e0,[0,30,60],60);if(drv!==60) dro.e0=drv;drv=pickOf(x.e1,[0,30,60],30);if(drv!==30) dro.e1=drv;
-        if(Array.isArray(x.cs)){var dcs=[];x.cs.forEach(function(q){q=Math.round(+q);if(q>=0&&q<NMAX&&dcs.indexOf(q)<0) dcs.push(q)});if(dcs.length) dro.cs=dcs}
-        var dvv=Math.round(+x.v);dro.v=(x.v!==undefined&&dvv>=20&&dvv<=100)?dvv:drRate({p:pickOf(x.p,[0,1,2],2),r0:dro.r0,r1:dro.r1});
-        out.push(dro);
+        // moved to Settings > Limits (see cfg.dr)
       }else if(x.k==='tl'){
         if(typeof x.tl==='string'&&/^[A-Za-z0-9_-]{1,40}$/.test(x.tl)) out.push({k:'tl',w:w,tl:x.tl});
       }else if(x.k==='ro'){
@@ -360,6 +355,11 @@ try{
     d.safety={idle:pickOf(sf.idle,[0,10,30,60,120],60),warn:pickOf(sf.warn,[0,15,30,60],30),run:pickOf(sf.run,[0,10,20,30,60],0)};
     d.seq=cleanSeqs(c.seq);
     d.tl=cleanTls(c.tl);
+    // D/R (dual rate) lives in the model settings; an old D/R widget on the board is moved here
+    var dr0=(c.dr&&typeof c.dr==='object')?c.dr:null;
+    if(!dr0&&Array.isArray(c.board)) c.board.forEach(function(x){if(!dr0&&x&&x.k==='dr') dr0={v:typeof x.v==='number'?x.v:(x.p===0?(x.r0||40):x.p===1?(x.r1||70):100),cs:x.cs}});
+    dr0=dr0||{};var drv0=Math.round(+dr0.v);d.dr={v:(drv0>=20&&drv0<=100)?drv0:100,sc:pickOf(dr0.sc,[0,1,2],2)};
+    if(Array.isArray(dr0.cs)){var dcs0=[];dr0.cs.forEach(function(q){q=Math.round(+q);if(q>=0&&q<NMAX&&dcs0.indexOf(q)<0) dcs0.push(q)});if(dcs0.length) d.dr.cs=dcs0}
     d.rec=cleanRecs(c.rec);
     return d;
   }
@@ -569,15 +569,12 @@ try{
     return now<st.until?1:0;
   }
   // D/R switch: channels it covers get a shorter range and a softer centre (Fine / Medium); Full changes nothing
+  // D/R (dual rate, Settings > Limits): shorter range and a softer centre for the channels it covers
   var DRC=null;
-  function drCh(it){return (it.cs||activeIdx().filter(function(c){return C.ch[c]&&C.ch[c].kind!=='light'})).filter(function(c){return isActive(c)})}
-  // current D/R rate (20-100 %) and the soft-centre amount that goes with it
-  function drRate(it){if(typeof it.v==='number') return it.v;var p=it.p===undefined?2:it.p;return p===0?(it.r0||40):p===1?(it.r1||70):100}
-  function drExpo(it,v){var r0=it.r0||40,r1=it.r1||70,e0=it.e0===undefined?60:it.e0,e1=it.e1===undefined?30:it.e1;
-    if(v<=r0) return e0;if(v<=r1) return e0+(e1-e0)*(v-r0)/(r1-r0);return e1*(100-v)/(100-r1)}
+  function drCh(d){return (d.cs||activeIdx().filter(function(c){return C.ch[c]&&C.ch[c].kind!=='light'})).filter(function(c){return isActive(c)})}
+  function drRate(d){return typeof d.v==='number'?d.v:100}
   function drFor(i){
-    if(!DRC){DRC={};(C.board||[]).forEach(function(it){if(it.k!=='dr') return;var rt=drRate(it);if(rt>=100) return;
-      var v={r:rt,e:drExpo(it,rt)};drCh(it).forEach(function(c){if(!DRC[c]||DRC[c].r>v.r) DRC[c]=v})})}
+    if(!DRC){DRC={};var d=C.dr;if(d&&drRate(d)<100){var v={r:drRate(d),e:(100-drRate(d))*[0,.5,1][d.sc===undefined?2:d.sc]};drCh(d).forEach(function(c){DRC[c]=v})}}
     return DRC[i]||null;
   }
   function goalOf(i){
@@ -712,8 +709,8 @@ try{
   }
   var DRN=['Fine','Medium','Full'];
   // ---- D/R rotary selector and timeline player, drawn in a 300 x 260 picture ----
-  function pxBuild(el,it,hd){
-    var k=it.k,id='px'+(++XWN),OFF='rgba(150,160,175,.32)';
+  function pxBuild(el,it,hd,kind){
+    var k=kind||it.k,id='px'+(++XWN),OFF='rgba(150,160,175,.32)';
     var box=document.createElement('div');box.className='mtr-box';
     var svg=sv('svg',{'class':'xwv','data-k':k,viewBox:'0 0 300 260','preserveAspectRatio':'xMidYMid meet'},box);el.appendChild(box);
     var df=sv('defs',{},svg);
@@ -739,14 +736,14 @@ try{
       var foot=txt({x:150,y:248,'text-anchor':'middle','font-size':15,fill:'#8a93a0'},'');
       var hit=sv('rect',{x:X0-20,y:BY-44,width:X1-X0+40,height:110,fill:'transparent',style:'cursor:pointer;touch-action:none'},svg);
       hit.setAttribute('role','slider');hit.setAttribute('tabindex','0');hit.setAttribute('aria-valuemin','20');hit.setAttribute('aria-valuemax','100');
-      function pre(){return [it.r0||40,it.r1||70,100]}
+      function pre(){return [40,70,100]}
       function cur(){return drRate(it)}
       function setV(v,snap){v=Math.round(Math.max(20,Math.min(100,v)));if(snap){pre().forEach(function(q){if(Math.abs(q-v)<=3) v=q})}
-        if(v===cur()) return;var was=cur();it.v=v;delete it.p;DRC=null;
+        if(v===cur()) return;var was=cur();it.v=v;DRC=null;
         if(pre().some(function(q){return (was<q&&v>=q)||(was>q&&v<=q)})) feedback('tick');
         clearTimeout(m._sv);m._sv=setTimeout(save,500);m.upd()}
       var dn=null;
-      hit.addEventListener('pointerdown',function(e){if(bdEditing) return;dn=e.pointerId;try{hit.setPointerCapture(e.pointerId)}catch(_){}setV((pt(e).x-X0)/(X1-X0)*100,true);e.preventDefault()});
+      hit.addEventListener('pointerdown',function(e){dn=e.pointerId;try{hit.setPointerCapture(e.pointerId)}catch(_){}setV((pt(e).x-X0)/(X1-X0)*100,true);e.preventDefault()});
       hit.addEventListener('pointermove',function(e){if(dn!==e.pointerId) return;setV((pt(e).x-X0)/(X1-X0)*100,true)});
       ['pointerup','pointercancel'].forEach(function(ev){hit.addEventListener(ev,function(){dn=null})});
       hit.addEventListener('keydown',function(e){var p=pre(),v=cur(),n=null;
@@ -816,7 +813,7 @@ try{
         if(hd) hd.textContent='0 / '+tl.dur+' s';
       }
       if(on!==was){was=on;
-        var ic=on?'M90 82h44v44h-44z':'M96 74 L142 104 L96 134 Z',cl=on?PAL.r:PAL.g;
+        var ic=on?'M99 91h26v26h-26z':'M103 88 L130 104 L103 120 Z',cl=on?PAL.r:PAL.g;
         ico.setAttribute('d',ic);icoG.setAttribute('d',ic);ico.setAttribute('fill',cl);icoG.setAttribute('fill',cl);
         if(on){ico.setAttribute('rx',6)}
         pb.setAttribute('aria-label',(on?'Stop ':'Play ')+tl.name)}
@@ -1527,9 +1524,6 @@ try{
       {k:'md',l:'In the centre',ch:[0,1],lab:['Both channels at full power','Half power each'],only:true,def:0},
       {k:'rc',l:'Reverse the left side',ch:[0,1],lab:['Off','On'],only:true,def:0},{k:'rd',l:'Reverse the right side',ch:[0,1],lab:['Off','On'],only:true,def:0},
       {k:'xi',l:'How to use',info:function(){return 'Push the fader on the left up to run, pull it down to stop. Slide the knob to share the power, or tap C, 50 or D. \u21c4 reverses a side. Double-tap the knob to go back to the centre.'}}]},
-    dr:{t:'D/R switch settings',f:[{k:'r0',l:'Fine: range',ch:[25,40,50,60],u:'%',only:true,def:40},{k:'e0',l:'Fine: soft centre',ch:[0,30,60],lab:['Off','Some','Strong'],only:true,def:60},
-      {k:'r1',l:'Medium: range',ch:[60,70,80],u:'%',only:true,def:70},{k:'e1',l:'Medium: soft centre',ch:[0,30,60],lab:['Off','Some','Strong'],only:true,def:30},
-      {k:'cs',l:'Channels it changes',ed:true,g:function(it){return it.cs?it.cs.slice():null},s:function(it,v){if(v&&v.length) it.cs=v;else delete it.cs},mk:function(get,set){return drChMk(get,set)}}]},
     ro:{t:'Rotor settings',f:[{k:'bs',l:'Style',ch:[2,1],lab:['Jet turbine','Boat propeller'],only:true,def:2},{k:'n',l:'Blades',ch:[2,3,5],lab:['2','3','5'],only:true,def:3,dep:{k:'bs',v:1}}]},
     a:{t:'Auto-stop settings',f:[{k:'s',l:'Stop after',u:'s',min:1,max:300,st:1,ch:[5,10,20,30,60]}]},
     z:{t:'Timer settings',f:[{k:'a',l:'Alert after (0 = off)',u:'min',min:0,max:240,st:1,ch:[0,5,10,15,20,30]}]}
@@ -2047,6 +2041,7 @@ try{
       var hn=$('#hubN'+s);hn.disabled=C.hubs[s]<0;hn.value=C.hubs[s]>=0?(C.hubNames[C.hubs[s]]||''):'';
     }
     $('#zoneSel').value=String(C.zone||100);
+    drSetPaint();
     $('#calPwr').value=C.testPwr;$('#calPwrOut').textContent=C.testPwr+'%';
     syncLimSeg();
   }
@@ -2069,6 +2064,19 @@ try{
   });
   $('#calPwr').addEventListener('input',function(){C.testPwr=+$('#calPwr').value;$('#calPwrOut').textContent=C.testPwr+'%'});
   $('#calPwr').addEventListener('change',save);
+  // ---- D/R in Settings > Limits ----
+  var DRS={k:null};
+  function drSetPaint(){
+    var box=$('#drSet');if(!box||!C.dr) return;
+    if(DRS.c!==C){DRS.c=C;box.innerHTML='';DRS.m=pxBuild(box,C.dr,null,'dr');
+      var sc=document.createElement('div');sc.className='set-row';sc.innerHTML='<span class="set-top"><span>Soft centre</span></span><div class="seg" role="group" aria-label="Soft centre"><button class="btn" type="button" data-s="0">Off</button><button class="btn" type="button" data-s="1">Gentle</button><button class="btn" type="button" data-s="2">Normal</button></div>';
+      box.appendChild(sc);[].forEach.call(sc.querySelectorAll('[data-s]'),function(b){b.addEventListener('click',function(){C.dr.sc=+b.dataset.s;DRC=null;save();feedback('tick');drSetPaint()})});
+      var ch=document.createElement('div');ch.className='set-row';ch.innerHTML='<span class="set-top"><span>Channels it changes</span></span>';
+      ch.appendChild(drChMk(function(){return C.dr.cs?C.dr.cs.slice():null},function(v){if(v&&v.length) C.dr.cs=v;else delete C.dr.cs;DRC=null;save();if(DRS.m) DRS.m.upd()}));box.appendChild(ch);
+    }
+    [].forEach.call(box.querySelectorAll('[data-s]'),function(b){b.setAttribute('aria-pressed',String(+b.dataset.s===(C.dr.sc===undefined?2:C.dr.sc)))});
+    if(DRS.m) DRS.m.upd();
+  }
   $('#zoneSel').addEventListener('change',function(){C.zone=pickOf($('#zoneSel').value,[25,50,75,100],100);save()});
   [0,1,2].forEach(function(s){
     var inp=$('#hubN'+s);
@@ -3115,7 +3123,7 @@ try{
   var bdSel=[$('#bdTarget'),$('#bdTarget2'),$('#bdTarget3'),$('#bdTarget4')];
   var bdFields=[$('#bdF1'),$('#bdF2'),$('#bdF3'),$('#bdF4')], bdLbl=[$('#bdL1'),$('#bdL2'),$('#bdL3'),$('#bdL4')];
   var bdModeF=$('#bdFM'), bdMode=$('#bdMode'), bdWideChk=$('#bdWideChk'), bdSpring=$('#bdSpring'), bdSpringL=$('#bdSpringL');
-  var bdTypes=[['dr',$('#bdTDR')],['tl',$('#bdTTL')],['s',$('#bdTS')],['j',$('#bdTJ')],['d',$('#bdTD')],['m',$('#bdTM')],['l',$('#bdTL')],['t',$('#bdTT')],['b',$('#bdTB')],['w',$('#bdTW')],['a',$('#bdTA')],['y',$('#bdTY')],['f',$('#bdTF')],['f',$('#bdTFN')],['lx',$('#bdTXmx')],['lx',$('#bdTXeq')],['lx',$('#bdTXts')],['lx',$('#bdTXgi')],['lx',$('#bdTXlp')],['lx',$('#bdTXtk')],['i',$('#bdTI')],['k',$('#bdTK')],['n',$('#bdTN')],['rs',$('#bdTRS')],['g',$('#bdTG')],['st',$('#bdTST')],['lv',$('#bdTLV')],['dp',$('#bdTDP')],['xy',$('#bdTXY')],['xf',$('#bdTXF')],['ro',$('#bdTRO')],['z',$('#bdTZ')],['e',$('#bdTE')],['ps',$('#bdTPS')]];
+  var bdTypes=[['tl',$('#bdTTL')],['s',$('#bdTS')],['j',$('#bdTJ')],['d',$('#bdTD')],['m',$('#bdTM')],['l',$('#bdTL')],['t',$('#bdTT')],['b',$('#bdTB')],['w',$('#bdTW')],['a',$('#bdTA')],['y',$('#bdTY')],['f',$('#bdTF')],['f',$('#bdTFN')],['lx',$('#bdTXmx')],['lx',$('#bdTXeq')],['lx',$('#bdTXts')],['lx',$('#bdTXgi')],['lx',$('#bdTXlp')],['lx',$('#bdTXtk')],['i',$('#bdTI')],['k',$('#bdTK')],['n',$('#bdTN')],['rs',$('#bdTRS')],['g',$('#bdTG')],['st',$('#bdTST')],['lv',$('#bdTLV')],['dp',$('#bdTDP')],['xy',$('#bdTXY')],['xf',$('#bdTXF')],['ro',$('#bdTRO')],['z',$('#bdTZ')],['e',$('#bdTE')],['ps',$('#bdTPS')]];
   var bdRat=(typeof document.querySelectorAll==='function')?[].slice.call(document.querySelectorAll('.bdRat')):[$('.bdRat'),$('.bdRat'),$('.bdRat'),$('.bdRat')], bdMixRow=$('#bdMixRow');
   bdRat.forEach(function(sel){[100,75,50,25,-25,-50,-75,-100].forEach(function(v){bdOpt(sel,String(v),(v>0?'+':'')+v+'%')});sel.value='100'});
   var BPRE={bdTFN:{nd:1},bdTXmx:{t:'mx'},bdTXeq:{t:'eq'},bdTXts:{t:'ts'},bdTXgi:{t:'gi'},bdTXlp:{t:'lp'},bdTXtk:{t:'tk'}}, bdBtn=null, bdK='s', bdEditing=false, bdPick=null, bdPickAt=0, bdW=[], dashAdd=false;
@@ -3127,7 +3135,7 @@ try{
   function bdFill(){
     if(!bdSel[0]) return;
     var chans=activeIdx(), tank=bdMode.value==='tank';
-    var n=(bdK==='e'||bdK==='z'||bdK==='rs'||bdK==='ps'||bdK==='dr'||bdK==='tl')?0:(bdK==='j'||bdK==='w'||bdK==='dp'||bdK==='xy'||bdK==='xf')?2:(bdK==='d'||bdK==='m'?4:1);
+    var n=(bdK==='e'||bdK==='z'||bdK==='rs'||bdK==='ps'||bdK==='tl')?0:(bdK==='j'||bdK==='w'||bdK==='dp'||bdK==='xy'||bdK==='xf')?2:(bdK==='d'||bdK==='m'?4:1);
     var L=bdK==='w'?['Output A','Output B']:bdK==='xy'?['X (left / right)','Y (up / down)']:bdK==='xf'?['Left side','Right side']:bdK==='ro'?['Channel']:(bdK==='l'||bdK==='t'||bdK==='b'||bdK==='g'||bdK==='st'||bdK==='lv'||bdK==='n'||bdK==='a'||bdK==='y'||bdK==='f'||bdK==='i'||bdK==='k')?[bdK==='l'?'Light channel':'Channel']:bdK==='m'?['Channel 1','Channel 2','Channel 3','Channel 4']:((bdK==='s')?['Channel']:
       (bdK==='dp'?(tank?['Left motor','Right motor']:['Drive','Steer']):
       (bdK==='j'?(tank?['Left motor','Right motor']:['Drive','Steer']):
@@ -3282,7 +3290,6 @@ try{
     if(k==='xy') return L?[12,14]:[16,16];
     if(k==='xf') return L?[16,12]:[20,12];
     if(k==='ro') return L?[10,12]:[14,12];
-    if(k==='dr') return L?[10,12]:[14,12];
     if(k==='tl') return L?[18,12]:[24,12];
     if(k==='lv') return L?[8,14]:[10,14];
     if(k==='dp') return L?[12,14]:[16,14];
@@ -3503,7 +3510,6 @@ try{
     var q=C.board.indexOf(it);if(q<0) return;
     var cp=JSON.parse(JSON.stringify(it));Object.keys(cp).forEach(function(k){if(k.charAt(0)==='_') delete cp[k]});
     delete cp.g;delete cp.gp;delete cp.lbl;
-    if(cp.k==='dr'){toast('There is already a D/R switch on this board.');return}
     if(cp.k==='tl'){var tsrc=tlOf(it);if(!tsrc||C.tl.length>=MAX_TL){toast('Up to 10 timelines. Remove one first.');return}var tnew=JSON.parse(JSON.stringify(tsrc));tnew.id=uid();tnew.name=(tsrc.name+' 2').slice(0,20);C.tl.push(tnew);cp.tl=tnew.id}
     var moved=false;
     if(typeof cp.c==='number'&&cp.c>=0&&!(typeof cp.d==='number'&&cp.d>=0)&&!cp.t){
@@ -3522,7 +3528,7 @@ try{
     else{BD_SEL=[it];toast('Tap other widgets to add them, then drag one to move them together.',4000)}
     syncBoard();
   }
-  var KNAME={dr:'D/R switch',tl:'Timeline',s:'Slider',j:'Joystick',d:'Dual joystick',b:'Button',t:'Toggle',m:'Meter',f:'Arc meter',g:'Gear',lv:'Lever',st:'Steering wheel',e:'Emergency stop',xy:'XY pad',xf:'Crossfader',ro:'Rotor',a:'Light'};
+  var KNAME={tl:'Timeline',s:'Slider',j:'Joystick',d:'Dual joystick',b:'Button',t:'Toggle',m:'Meter',f:'Arc meter',g:'Gear',lv:'Lever',st:'Steering wheel',e:'Emergency stop',xy:'XY pad',xf:'Crossfader',ro:'Rotor',a:'Light'};
   function bdA11y(el,it){
     var hs=el.querySelector('.bdw-h > span'), nm=(it.lbl)||(hs&&(hs.title||hs.textContent))||KNAME[it.k]||'Widget';
     if(it.lbl&&KNAME[it.k]) nm=it.lbl+', '+KNAME[it.k];
@@ -4131,8 +4137,6 @@ try{
       }else if(it.k==='lx'){
         if(it.t!=='tk'&&!isActive(it.c)) return;
         w.lx=lxBuild(el,it);
-      }else if(it.k==='dr'){
-        var drhd=bdHead(el,'D/R switch',it,true);el.classList.add('mtrw');w.mtr=pxBuild(el,it,drhd);
       }else if(it.k==='tl'){
         var tlo=tlOf(it);var tlhd=bdHead(el,'Timeline \u00b7 '+(tlo?tlo.name:'?'),it,true);el.classList.add('mtrw');w.mtr=pxBuild(el,it,tlhd);
       }else if(it.k==='xy'||it.k==='xf'||it.k==='ro'){
@@ -4904,7 +4908,7 @@ try{
   $('#bdAdd').addEventListener('click',function(){
     if(C.board.length>=16){bdNote.textContent='The board is full (16 controls).';return}
     var v=bdSel.map(function(s){return s.value});
-    if(!v[0]&&bdK!=='e'&&bdK!=='z'&&bdK!=='rs'&&bdK!=='ps'&&bdK!=='dr'&&bdK!=='tl'&&!(bdK==='lx'&&bdPre().t==='tk')){bdNote.textContent='Nothing to add.';return}
+    if(!v[0]&&bdK!=='e'&&bdK!=='z'&&bdK!=='rs'&&bdK!=='ps'&&bdK!=='tl'&&!(bdK==='lx'&&bdPre().t==='tk')){bdNote.textContent='Nothing to add.';return}
     var ww=bdWideChk.checked?2:1, m=bdMode.value==='tank'?'tank':'axis', n=v.map(function(x){return Math.round(+x)});
     var hd=!bdSpring.checked;
     if(bdK==='w'){
@@ -4934,7 +4938,6 @@ try{
       C.board.push({k:bdK,c:n[0],d:n[1],w:ww});
     }
     else if(bdK==='ro') C.board.push({k:'ro',c:n[0],w:ww});
-    else if(bdK==='dr'){if(C.board.some(function(o){return o.k==='dr'})){bdNote.textContent='There is already a D/R switch on this board.';return}C.board.push({k:'dr',w:ww,v:100})}
     else if(bdK==='tl'){var ntl=tlNew();if(!ntl){bdNote.textContent='Up to 10 timelines. Remove one first.';return}var ntw={k:'tl',w:ww,tl:ntl.id};C.board.push(ntw);setTimeout(function(){tlEdit(ntw)},350)}
     else if(bdK==='dp'){
       if(n[1]>=0&&n[0]===n[1]){bdNote.textContent='Pick different channels for each motor.';return}
@@ -5443,6 +5446,9 @@ try{
     "Timeline: draw smooth moves for several channels on lanes, then play them with one button":"Garis masa: lukis gerakan licin untuk beberapa saluran pada lorong, kemudian mainkan dengan satu butang",
     "D/R switch: Fine / Medium / Full rotary selector for precise work":"Suis D/R: pemilih putar Halus / Sederhana / Penuh untuk kerja tepat"};
   for(var v2k10 in V2MS10) MS[v2k10]=V2MS10[v2k10];
+  (function(){var x={"D/R (dual rate)":"D/R (kadar dwi)","Soft centre":"Tengah lembut","Gentle":"Ringan",
+    "Slide left for fine, precise moves: the chosen channels reach only this much, with a softer centre. Full = no change.":"Luncur ke kiri untuk gerakan halus dan tepat: saluran yang dipilih hanya mencapai setakat ini, dengan bahagian tengah lebih lembut. Penuh = tiada perubahan.",
+    "D/R (dual rate) moved to Settings \u203a Limits & auto-stop":"D/R (kadar dwi) dipindah ke Tetapan \u203a Had & henti automatik"};for(var k in x) if(!MS[k]) MS[k]=x[k]})();
   MS_RE.push([/^Timeline · (.+)$/,function(m){return 'Garis masa · '+m[1]}]);
   MS_RE.push([/^Timeline (\d+)$/,function(m){return 'Garis masa '+m[1]}]);
   MS_RE.push([/^(\d+) days ago$/,function(m){return m[1]+' hari lalu'}]);
@@ -6193,6 +6199,7 @@ try{
 
   // ---- What's new, version and update check ----
   var CHANGES=[
+    {b:55,items:[['better','D/R (dual rate) moved to Settings \u203a Limits & auto-stop'],['better','Timeline: smaller play and stop signs']]},
     {b:52,items:[['new','D/R switch: Fine / Medium / Full rotary selector for precise work'],
       ['new','Timeline: draw smooth moves for several channels on lanes, then play them with one button']]},
     {b:51,items:[['new','Search settings: type a word such as power or lock and jump straight to it'],
@@ -6389,8 +6396,8 @@ try{
   // ---- 10 · Widget gallery: picture cards with categories instead of a list of names ----
   (function(){
     var box=document.querySelector('#bdEditor .bd-types');if(!box) return;
-    var K={bdTS:'s',bdTJ:'j',bdTD:'d',bdTM:'m',bdTL:'l',bdTT:'t',bdTB:'b',bdTW:'w',bdTA:'a',bdTY:'y',bdTF:'f',bdTFN:'fn',bdTI:'i',bdTXmx:'xmx',bdTXeq:'xeq',bdTXts:'xts',bdTXgi:'xgi',bdTXlp:'xlp',bdTXtk:'xtk',bdTK:'k',bdTN:'n',bdTRS:'rs',bdTG:'g',bdTST:'st',bdTLV:'lv',bdTDP:'dp',bdTZ:'z',bdTE:'e',bdTPS:'ps',bdTXY:'xy',bdTXF:'xf',bdTRO:'ro',bdTDR:'dr',bdTTL:'tl'};
-    var CAT={drive:['s','j','d','m','st','dp','n','g','lv','rs','y','xy','xf','dr','tl'],light:['l','t','b','w'],meter:['f','fn','i','k','z','ro'],led:['xmx','xeq','xts','xgi','xlp','xtk'],safe:['e','ps','a']};
+    var K={bdTS:'s',bdTJ:'j',bdTD:'d',bdTM:'m',bdTL:'l',bdTT:'t',bdTB:'b',bdTW:'w',bdTA:'a',bdTY:'y',bdTF:'f',bdTFN:'fn',bdTI:'i',bdTXmx:'xmx',bdTXeq:'xeq',bdTXts:'xts',bdTXgi:'xgi',bdTXlp:'xlp',bdTXtk:'xtk',bdTK:'k',bdTN:'n',bdTRS:'rs',bdTG:'g',bdTST:'st',bdTLV:'lv',bdTDP:'dp',bdTZ:'z',bdTE:'e',bdTPS:'ps',bdTXY:'xy',bdTXF:'xf',bdTRO:'ro',bdTTL:'tl'};
+    var CAT={drive:['s','j','d','m','st','dp','n','g','lv','rs','y','xy','xf','tl'],light:['l','t','b','w'],meter:['f','fn','i','k','z','ro'],led:['xmx','xeq','xts','xgi','xlp','xtk'],safe:['e','ps','a']};
     box.classList.add('v2-gal2');
     Array.prototype.forEach.call(box.querySelectorAll('button'),function(b){
       var k=K[b.id];if(!k) return;b.setAttribute('data-cat',Object.keys(CAT).filter(function(c){return CAT[c].indexOf(k)>=0})[0]||'drive');
