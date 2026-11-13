@@ -734,6 +734,9 @@ public class MainActivity extends Activity {
             else if ("ok".equals(kind)) pattern = new long[]{0, 13};
             else if ("dial".equals(kind)) pattern = new long[]{0, 15};
             else if ("hold".equals(kind)) pattern = new long[]{0, 35};
+            else if ("tap".equals(kind)) pattern = new long[]{0, 8};
+            else if ("tick".equals(kind)) pattern = new long[]{0, 6, 40, 6};
+            else if ("success".equals(kind)) pattern = new long[]{0, 10, 30, 25};
             else pattern = new long[]{0, 13};
             runOnUiThread(() -> buzz(pattern));
         }

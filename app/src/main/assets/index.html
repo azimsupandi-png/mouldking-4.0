@@ -1704,6 +1704,50 @@ html[data-cb] .lk-msg.warn{color:#E69F00}
 .wn-t{flex:none;font:800 10px var(--f-body);letter-spacing:.04em;padding:3px 6px;border-radius:6px;margin-top:1px;min-width:52px;text-align:center}
 .wn-t.new{background:rgba(255,196,0,.18);color:#FFC400}.wn-t.better{background:rgba(55,138,221,.2);color:#6FB0F0}.wn-t.fix{background:rgba(29,158,117,.2);color:#3cc79a}
 .wn .rec-row{margin-top:10px}
+/* ---------- Settings search ---------- */
+.sr-box{margin:4px 0 8px}
+.sr-res{display:grid;gap:4px;margin:0 0 14px}
+.sr-it{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--fg);font:600 14.5px var(--f-body);cursor:pointer}
+.sr-it small{margin-left:auto;flex:none;color:var(--muted);font-size:11.5px;font-weight:600}
+.sr-it mark{background:rgba(255,196,0,.3);color:inherit;border-radius:3px}
+.sr-hit{animation:srHit 1.6s ease-out;border-radius:12px}
+@keyframes srHit{0%,30%{box-shadow:0 0 0 3px var(--acc,#FFC400);background:rgba(255,196,0,.14)}100%{box-shadow:0 0 0 3px transparent}}
+/* ---------- Model library ---------- */
+.v2-chips{display:flex;gap:6px;margin:-4px 0 12px;flex-wrap:wrap}
+.v2-chips .btn{min-height:34px;padding:0 12px;border-radius:17px;font-size:13px}
+.v2-chips .btn[aria-pressed=true]{background:var(--acc,#FFC400);color:#141414;border-color:var(--acc,#FFC400)}
+.v2-fav{position:absolute;right:4px;top:4px;width:40px;height:40px;font-size:20px;line-height:1;color:#c9ced6;background:rgba(0,0,0,.35)!important;border-radius:50%}
+.v2-fav.on{color:#FFC400}
+.v2-mst{display:block;font-size:11.5px;color:var(--muted);padding:2px 4px 0}
+/* ---------- Safety centre ---------- */
+.sf{margin:4px 0 16px;padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(0,0,0,.16)}
+.sf-top{display:flex;align-items:center;gap:14px}
+.sf-sh{width:84px;height:86px;flex:none}
+.sf-bg{fill:var(--well,#111);stroke:var(--line);stroke-width:5}
+.sf-fill{fill:none;stroke-width:7;stroke-linejoin:round;stroke-linecap:round;transition:stroke-dasharray .6s cubic-bezier(.3,1.2,.4,1)}
+.sf-fill.ok{stroke:var(--ok)}.sf-fill.warn{stroke:#EF9F27}.sf-fill.bad{stroke:var(--danger)}
+.sf-n{font:900 30px var(--f-mono);fill:var(--fg)}
+.sf-top b{font-size:15px}.sf-tip{margin:4px 0 0;font-size:13px;font-weight:700}.sf-tip.ok{color:var(--ok)}.sf-tip.warn{color:#EF9F27}.sf-tip.bad{color:var(--danger)}
+.sf-list{display:grid;gap:4px;margin-top:10px}
+.sf-it{display:flex;align-items:center;gap:10px;padding:8px 10px;border:0;border-radius:10px;background:transparent;color:var(--fg);text-align:left;font:600 13.5px var(--f-body);cursor:pointer}
+.sf-it i{font-style:normal;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;flex:none;border:1.5px solid var(--line);color:var(--muted)}
+.sf-it.on i{background:var(--ok);border-color:var(--ok);color:#0b0d11}
+.sf-it small{margin-left:auto;color:var(--muted)}.sf-it:disabled{cursor:default;opacity:1}
+.sf-it:not(.on):not(:disabled){background:rgba(255,255,255,.04)}
+html[data-cb] .sf-fill.warn,html[data-cb] .sf-tip.warn{stroke:#E69F00;color:#E69F00}
+.pinbox .pin-in{font:800 28px var(--f-mono);letter-spacing:.5em;text-align:center;padding:10px}
+.pin-in.shake{animation:pinShake .35s}
+@keyframes pinShake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+/* ---------- Motion polish ---------- */
+.v2-scr .btn,#cols .card .btn,.gbox .btn,.v2-li,.v2-mmain,.v2-ib,.sr-it,.sf-it,#tabbar button{transition:transform .24s cubic-bezier(.3,1.6,.5,1),background-color .18s,border-color .18s,color .18s}
+.v2-scr .btn:active,#cols .card .btn:active,.gbox .btn:active,.v2-ib:active,.sr-it:active,#tabbar button:active{transform:scale(.94)}
+.v2-li:active,.v2-mmain:active,.sf-it:active{transform:scale(.98)}
+.tg,.tg::after{transition:transform .26s cubic-bezier(.3,1.5,.5,1),background-color .2s}
+.toast:not([hidden]){animation:toastIn .34s cubic-bezier(.2,1.4,.4,1)}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,22px) scale(.96)}to{opacity:1;transform:translate(-50%,0)}}
+.gedit{animation:geIn .18s ease-out}.gedit .gbox{animation:gbIn .3s cubic-bezier(.2,1.3,.4,1)}
+@keyframes geIn{from{opacity:0}}@keyframes gbIn{from{opacity:0;transform:translateY(16px) scale(.97)}}
+@media (prefers-reduced-motion:reduce){.toast,.gedit,.gedit .gbox,.sr-hit,.pin-in.shake{animation:none!important}.v2-scr .btn,.v2-li,.tg,.tg::after,.sf-fill{transition:none!important}}
 /* ---------- Hub link diagnostics ---------- */
 .v2-diag{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;margin:6px 2px 4px;font-size:13.5px}
 .v2-diag dt{color:var(--muted)}
@@ -1852,6 +1896,7 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
   <section class="v2-scr" id="scrModels" aria-label="My models">
     <h2 class="v2-big">My models</h2>
     <label class="v2-search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="M15.6 15.6l4.6 4.6"/></svg><input id="mSearch" type="search" placeholder="Search models…" autocomplete="off" aria-label="Search models"></label>
+    <div class="v2-chips" id="mSort" role="group" aria-label="Sort models"><button class="btn" type="button" data-s="f" aria-pressed="true">★ Favourites</button><button class="btn" type="button" data-s="r" aria-pressed="false">Recent</button><button class="btn" type="button" data-s="a" aria-pressed="false">A–Z</button></div>
     <div class="v2-gal" id="mList"></div>
     <p class="note" id="mNone" hidden>No model matches your search.</p>
     <section class="card v2-bk">
@@ -1878,6 +1923,8 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
   <!-- 4 · Settings -->
   <section class="v2-scr" id="scrSet" aria-label="Settings">
     <h2 class="v2-big">Settings</h2>
+    <label class="v2-search sr-box"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="M15.6 15.6l4.6 4.6"/></svg><input id="setSearch" type="search" placeholder="Search settings… (power, lock, lights)" autocomplete="off" aria-label="Search settings"></label>
+    <div class="sr-res" id="setRes" hidden></div>
     <div class="v2-grp">Hub</div>
     <button class="v2-li" type="button" data-go="hub"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="6.5" width="11" height="11" rx="2.2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9.5 3.5v3M14.5 3.5v3M9.5 17.5v3M14.5 17.5v3M3.5 9.5h3M3.5 14.5h3M17.5 9.5h3M17.5 14.5h3"/></svg><span>Hub &amp; channel test</span><small id="sHubSt"></small><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
     <div class="v2-grp v2-lk">Safety</div>
@@ -1897,6 +1944,7 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
     <button class="v2-li v2-sw v2-lk" type="button" id="sPrac" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.8 9.2 12 4.5l9.2 4.7L12 13.9z"/><path d="M6.8 11.4v4.3c0 1.5 2.3 3 5.2 3s5.2-1.5 5.2-3v-4.3M21.2 9.2v5"/></svg><span>Practice mode (no hub)</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li" type="button" id="sLang"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M3.4 12h17.2M12 3.4c2.4 2.4 3.4 5.3 3.4 8.6s-1 6.2-3.4 8.6c-2.4-2.4-3.4-5.3-3.4-8.6s1-6.2 3.4-8.6z"/></svg><span>Language</span><small id="sLangV"></small><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
     <div class="v2-grp">About</div>
+    <button class="v2-li" type="button" id="sTour"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M14.8 9.2l-1.9 4.6-4.6 1.9 1.9-4.6z"/></svg><span>Guided tour</span><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
     <button class="v2-li" type="button" id="sNew"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.3 5.2 5.7.6-4.3 3.8 1.2 5.6L12 15.8l-4.9 2.9 1.2-5.6L4 9.3l5.7-.6z"/></svg><span>What's new</span><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
     <button class="v2-li" type="button" id="sUpd"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/></svg><span>Check for updates</span><small id="sUpdV"></small></button>
     <div class="v2-ver" id="sVer"></div>
@@ -2252,6 +2300,11 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
 
       <section class="card" id="setCard">
         <h2>Limits &amp; auto-stop</h2>
+        <div class="sf" id="sfScore" role="group">
+          <div class="sf-top"><svg class="sf-sh" viewBox="0 0 120 124" aria-hidden="true"><path class="sf-bg" d="M60 8 L104 24 V58 C104 86 84 104 60 114 C36 104 16 86 16 58 V24 Z"/><path class="sf-fill" pathLength="100" stroke-dasharray="0 100" d="M60 8 L104 24 V58 C104 86 84 104 60 114 C36 104 16 86 16 58 V24 Z"/><text class="sf-n" x="60" y="72" text-anchor="middle">0</text></svg>
+            <div><b>Safety score</b><p class="sf-tip"></p></div></div>
+          <div class="sf-list"></div>
+        </div>
         <div class="set">
           <div class="set-row"><label for="limit"><span class="set-top"><span>Power limit (all channels)</span><output id="limitOut">100%</output></span></label>
             <input id="limit" type="range" min="10" max="100" step="5" value="100"></div>
@@ -2320,6 +2373,7 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
         <div class="rec-row" style="margin-top:12px">
           <button class="btn" id="playerBtn" type="button">Player mode</button>
           <button class="btn" id="lockBtn" type="button">Lock settings</button>
+          <button class="btn" id="pinSet" type="button">Set PIN</button>
         </div>
         <p class="note" id="lockNote">Player mode shows only big sequence buttons and E-Stop. Lock settings hides everything that changes the model. Hold the button for 2 seconds to unlock or leave.</p>
       </section>

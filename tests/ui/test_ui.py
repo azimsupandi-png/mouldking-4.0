@@ -289,12 +289,12 @@ async def t_twelve(b):
     check('11 quick settings open by holding the status pill', r == [True, 6], r)
     await pg.evaluate("document.getElementById('v2QS').click()")
     await pg.wait_for_timeout(300)
-    # 12 interactive guide: spotlight on real controls, 5 steps
+    # 12 interactive guide: spotlight on real controls, 6 steps
     await pg.evaluate("mk6Go('m-app');document.getElementById('guideBtn').click();document.getElementById('gNext').click()")
     await pg.wait_for_timeout(500)
     r = await pg.evaluate("[document.documentElement.dataset.v,!document.querySelector('#guide .co-hole').hidden]")
     check('12 guide step 2 highlights START on Home', r == ['home', True], r)
-    for _ in range(4):
+    for _ in range(5):
         await pg.evaluate("document.getElementById('gNext').click()")
         await pg.wait_for_timeout(250)
     check('12 guide closes after the last step', await pg.evaluate("!document.getElementById('guide')"))
@@ -871,10 +871,83 @@ async def t_pro(b):
     check('P6: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_pro2(b):
+    # P2 settings search, P4 model library, P7 tour, P8 safety centre + PIN, P9 haptics
+    seed = "{active:'m1',profiles:[{id:'m1',name:'Zeta car',cfg:{layout:'board',limit:100,ramp:20,ch:[{},{},{},{},{},{}],board:[{k:'s',c:0}],st:{ms:5400000,last:%d}}},{id:'m2',name:'Alpha crane',cfg:{layout:'board',ch:[{},{},{},{},{},{}],board:[],fav:true,st:{ms:60000,last:%d}}}],prefs:{seen:true,wn:99,tour:true}}"
+    import time
+    now = int(time.time() * 1000)
+    seed = seed % (now - 3 * 86400000, now)
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    await pg.add_init_script(STUB + "(function(){localStorage.setItem('mk6v2',JSON.stringify(" + seed + "))})();")
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.wait_for_timeout(300)
+    # P2
+    await pg.evaluate("mk6Go('settings');var i=document.getElementById('setSearch');i.value='smothing';i.dispatchEvent(new Event('input'))")
+    r = await pg.evaluate("[...document.querySelectorAll('#setRes .sr-it')].map(b=>b.textContent)")
+    check('P2: search finds a setting even with a typo', any('Acceleration smoothing' in x and 'Limits' in x for x in r), r)
+    await pg.evaluate("[...document.querySelectorAll('#setRes .sr-it')].find(b=>b.textContent.indexOf('Acceleration smoothing')===0).click()")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[document.documentElement.getAttribute('data-v'),!!document.querySelector('#setCard .sr-hit')]")
+    check('P2: tapping a result opens that screen and highlights the setting', r == ['safety', True], r)
+    # P8
+    r = await pg.evaluate("[+document.querySelector('#sfScore .sf-n').textContent,document.querySelector('#sfScore .sf-tip').textContent,document.querySelectorAll('#sfScore .sf-it').length]")
+    check('P8: safety score with the next step', r[0] == 45 and r[1].startswith('Next: Settings lock with a PIN') and r[2] == 7, r)
+    await pg.evaluate("document.getElementById('pinSet').click()")
+    async def pin(v):
+        await pg.evaluate("var i=document.querySelector('#pinDlg .pin-in');i.value='%s';i.dispatchEvent(new Event('input'))" % v)
+        await pg.wait_for_timeout(350)
+    await pin('1234'); await pin('1234')
+    r = await pg.evaluate("[__t.store.prefs.pin,document.getElementById('pinSet').textContent]")
+    check('P8: a PIN can be set', r == ['1234', 'Change PIN'], r)
+    await pg.evaluate("mk6Go('safety')")
+    await pg.wait_for_timeout(200)
+    r = await pg.evaluate("+document.querySelector('#sfScore .sf-n').textContent")
+    check('P8: the PIN raises the score', r == 65, r)
+    await pg.evaluate("document.getElementById('lockBtn').click()")
+    await pg.evaluate("document.getElementById('lockBtn').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}))")
+    await pg.wait_for_timeout(2200)
+    await pin('0000')
+    r = await pg.evaluate("[__t.store.prefs.lock,!!document.getElementById('pinDlg')]")
+    check('P8: a wrong PIN keeps settings locked', r == [True, True], r)
+    await pin('1234')
+    r = await pg.evaluate("[__t.store.prefs.lock,!!document.getElementById('pinDlg')]")
+    check('P8: the right PIN unlocks', r == [False, False], r)
+    # P4
+    await pg.evaluate("mk6Go('models')")
+    r = await pg.evaluate("[...document.querySelectorAll('#mList .v2-mcard:not(.v2-madd) b')].map(x=>x.textContent)")
+    check('P4: favourites come first', r[:2] == ['Alpha crane', 'Zeta car'], r)
+    r = await pg.evaluate("[...document.querySelectorAll('#mList .v2-mst')].map(x=>x.textContent)")
+    check('P4: cards show driving time and last use', r == ['⏱ 1 min · Today', '⏱ 1.5 h · 3 days ago'], r)
+    await pg.evaluate("document.querySelector('#mSort [data-s=r]').click()")
+    r = await pg.evaluate("[...document.querySelectorAll('#mList .v2-mcard:not(.v2-madd) b')].map(x=>x.textContent)")
+    check('P4: sort by recent', r[:2] == ['Alpha crane', 'Zeta car'], r)
+    await pg.evaluate("document.querySelector('#mSort [data-s=a]').click();document.querySelectorAll('#mList .v2-fav')[1].click()")
+    r = await pg.evaluate("[__t.store.prefs.msort,__t.store.profiles.map(p=>p.cfg.fav)]")
+    check('P4: A-Z sort and star toggle are saved', r == ['a', [True, True]], r)
+    # P9
+    await pg.evaluate("window.__calls.length=0;mk6Go('settings');var e=document.getElementById('sNew');e.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));document.getElementById('sDir').click()")
+    await pg.wait_for_timeout(100)
+    await pg.evaluate("var w=document.getElementById('wnSheet');w&&w.remove()")
+    r = await pg.evaluate("__calls.filter(c=>c.indexOf('haptic:')===0)")
+    check('P9: taps and switches have their own vibration', 'haptic:tap' in r and 'haptic:tick' in r and 'haptic:ok' not in r, r)
+    # P7
+    await pg.evaluate("document.getElementById('sTour').click()")
+    await pg.wait_for_timeout(400)
+    for _ in range(4):
+        await pg.evaluate("document.getElementById('gNext').click()")
+        await pg.wait_for_timeout(250)
+    r = await pg.evaluate("[document.querySelector('#guide .co-t').textContent,document.querySelector('#guide .co-hole').hidden]")
+    check('P7: the tour can be replayed and shows the Edit step', r == ['Arrange the board', False], r)
+    check('P2/P4/P7/P8/P9: no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

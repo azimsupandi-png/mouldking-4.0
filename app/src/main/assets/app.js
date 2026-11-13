@@ -312,6 +312,8 @@ try{
     d.accent=c.accentV===3?Math.round(num(c.accent,0,5,0)):0;
     // model icon / photo (photo: small JPEG data URL)
     d.icon=['car','dig','crane','truck','tractor','boat'].indexOf(c.icon)>=0?c.icon:'';
+    d.fav=c.fav===true;
+    var st0=(c.st&&typeof c.st==='object')?c.st:{};d.st={ms:Math.max(0,Math.min(36e8*1e3,+st0.ms||0)),last:Math.max(0,+st0.last||0)};
     d.photo=(typeof c.photo==='string'&&c.photo.length<160000&&/^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(c.photo))?c.photo:'';
     // steering eases at speed: steering channel output shrinks as the throttle channel output grows
     var ss0=(c.ss&&typeof c.ss==='object')?c.ss:{};
@@ -357,7 +359,7 @@ try{
     });
     return out;
   }
-  function cleanPrefs(p){p=(p&&typeof p==='object')?p:{};return {practice:p.practice===true,sound:p.sound!==false,haptic:p.haptic!==false,lang:p.lang==='ms'?'ms':'en',seen:p.seen===true,lock:p.lock===true,kidLimit:pickOf(p.kidLimit,[100,70,50,30],50),lim:cleanLim(p.lim),autoBackup:p.autoBackup!==false,full:p.full!==false,relink:p.relink!==false,fx:(p.fx==='full'||p.fx==='lite')?p.fx:'auto',lastBackup:Math.max(0,+p.lastBackup||0),tpls:cleanTpls(p.tpls),ui:p.ui==='light'?'light':'dark',fs:pickOf(p.fs,[100,115,130],100),hc:p.hc===true,cb:p.cb===true,wn:(typeof p.wn==='number'&&p.wn>=0)?Math.floor(p.wn):0,upAt:(typeof p.upAt==='number'&&p.upAt>0)?p.upAt:0,dir:p.dir===true,linkOn:p.linkOn===true,focus:p.focus===true,playLim:pickOf(p.playLim,[0,10,20,30,45,60],0),lefty:p.lefty===true,meter:p.meter!==false}}
+  function cleanPrefs(p){p=(p&&typeof p==='object')?p:{};return {practice:p.practice===true,sound:p.sound!==false,haptic:p.haptic!==false,lang:p.lang==='ms'?'ms':'en',seen:p.seen===true,lock:p.lock===true,kidLimit:pickOf(p.kidLimit,[100,70,50,30],50),lim:cleanLim(p.lim),autoBackup:p.autoBackup!==false,full:p.full!==false,relink:p.relink!==false,fx:(p.fx==='full'||p.fx==='lite')?p.fx:'auto',lastBackup:Math.max(0,+p.lastBackup||0),tpls:cleanTpls(p.tpls),ui:p.ui==='light'?'light':'dark',fs:pickOf(p.fs,[100,115,130],100),hc:p.hc===true,cb:p.cb===true,wn:(typeof p.wn==='number'&&p.wn>=0)?Math.floor(p.wn):0,upAt:(typeof p.upAt==='number'&&p.upAt>0)?p.upAt:0,dir:p.dir===true,pin:(typeof p.pin==='string'&&/^\d{4}$/.test(p.pin))?p.pin:'',msort:['f','r','a'].indexOf(p.msort)>=0?p.msort:'f',tour:p.tour===true,linkOn:p.linkOn===true,focus:p.focus===true,playLim:pickOf(p.playLim,[0,10,20,30,45,60],0),lefty:p.lefty===true,meter:p.meter!==false}}
   var store={active:null,profiles:[],prefs:cleanPrefs()};
   try{
     var raw=localStorage.getItem('mk6v2');
@@ -1355,6 +1357,7 @@ try{
     var now=performance.now(), dt=now-(SESS.last||now);SESS.last=now;
     if(!S.connected) return;
     SESS.ms+=Math.min(dt,2000);
+    if(C.st){C.st.ms+=Math.min(dt,2000);C.st.last=Date.now();if(now-(SESS.sv||0)>20000){SESS.sv=now;save()}}
     var al=0;(C.board||[]).forEach(function(o){if(o.k==='z'&&o.a) al=al?Math.min(al,o.a):o.a});
     if(al&&!SESS.warned&&SESS.ms>=al*60000){SESS.warned=true;toast('Session '+al+' min. Check motors and battery.',6000);feedback('warn')}
     if(typeof paintBoard==='function'&&C.board&&C.board.some(function(o){return o.k==='z'})) paintBoard();
@@ -2446,7 +2449,7 @@ try{
       });
     }catch(e){}
   }
-  var FB={estop:[[440,440],0.12,'estop'],release:[[600,800],0.1,'ok'],ok:[[700,900],0.09,'ok'],lost:[[500,300],0.2,'lost'],warn:[[880,880,880],0.16,'warn'],idle:[[700,500,350],0.14,'warn'],hold:[[700,900],0.09,'hold']};
+  var FB={estop:[[440,440],0.12,'estop'],release:[[600,800],0.1,'ok'],ok:[[700,900],0.09,'ok'],lost:[[500,300],0.2,'lost'],warn:[[880,880,880],0.16,'warn'],idle:[[700,500,350],0.14,'warn'],hold:[[700,900],0.09,'hold'],tap:[[],0,'tap'],tick:[[],0,'tick'],success:[[660,990],0.08,'success']};
   var FBLAST={};
   // a short click, used by the dial selector for each position (follows the Sound setting)
   function clickSnd(){
@@ -2463,7 +2466,7 @@ try{
   function feedback(kind){
     var f=FB[kind];if(!f) return;
     if(kind==='warn'||kind==='idle'){var nw=Date.now();if(nw-(FBLAST.w||0)<2500) return;FBLAST.w=nw}
-    beep(f[0],f[1]);
+    if(f[0].length) beep(f[0],f[1]);
     if(store.prefs.haptic&&NB&&NB.haptic){try{NB.haptic(f[2])}catch(e){}}
   }
   function toast(msg,ms){
@@ -2652,7 +2655,7 @@ try{
     lockBtn.addEventListener('pointerdown',function(){
       if(!store.prefs.lock) return;
       up();lockBtn.classList.add('holding');
-      holdT=setTimeout(function(){holdT=0;lockBtn.classList.remove('holding');store.prefs.lock=false;save();applyLock();feedback('hold')},2000);
+      holdT=setTimeout(function(){holdT=0;lockBtn.classList.remove('holding');feedback('hold');pinGate(function(){store.prefs.lock=false;save();applyLock()})},2000);
     });
     ['pointerup','pointercancel','pointerleave','blur'].forEach(function(ev){lockBtn.addEventListener(ev,up)});
   })();
@@ -3195,7 +3198,7 @@ try{
     BD_UNDO.push({board:JSON.parse(JSON.stringify(C.board)),msg:'Copy undone.'});if(BD_UNDO.length>20) BD_UNDO.shift();
     C.board.splice(q+1,0,cp);
     if(dashOn()) dashAuto();
-    bdPick=cp;bdPickAt=Date.now();save();syncBoard();feedback('ok');
+    bdPick=cp;bdPickAt=Date.now();save();syncBoard();feedback('success');
     toast(moved?'Copied to channel '+tagOf(cp.c)+'.':'Copied. The copy uses the same channel.');
   }
   function bdGroupTog(it){
@@ -5087,6 +5090,28 @@ try{
     "LED bars work both ways; tap a bar to mute it":"Bar LED berfungsi dua arah; ketik bar untuk membisukannya","Dial: fine turning, tap the centre for 0, and scene selector":"Dail: putaran halus, ketik tengah untuk 0, dan pemilih babak",
     "LED matrix: draw your own icon and scroll it":"Matriks LED: lukis ikon sendiri dan tatalnya","Slider":"Peluncur","Joystick":"Joystik","Widget":"Widget"};
   for(var v2k8 in V2MS8) MS[v2k8]=V2MS8[v2k8];
+  var V2MS9={"Search settings… (power, lock, lights)":"Cari tetapan… (kuasa, kunci, lampu)","No setting matches.":"Tiada tetapan sepadan.","Search settings":"Cari tetapan",
+    "★ Favourites":"★ Kegemaran","Recent":"Terkini","A–Z":"A–Z","Sort models":"Susun model","Add to favourites":"Tambah ke kegemaran","Remove from favourites":"Buang dari kegemaran",
+    "Not used yet":"Belum digunakan","Today":"Hari ini","Yesterday":"Semalam",
+    "Safety score":"Skor keselamatan","High protection":"Perlindungan tinggi","Stops sending if the app freezes (built in)":"Berhenti menghantar jika app tergantung (terbina)",
+    "Auto-stop when idle":"Henti automatik bila tidak digunakan","Settings lock with a PIN":"Kunci tetapan dengan PIN","Daily play time limit":"Had masa bermain harian",
+    "Stop a channel after a long run":"Henti saluran selepas berjalan lama","Warn after long full power":"Amaran selepas kuasa penuh lama","Acceleration smoothing at 30 or more":"Pelicinan pecutan 30 atau lebih",
+    "Set PIN":"Tetapkan PIN","Change PIN":"Tukar PIN","Remove PIN":"Buang PIN","Enter PIN":"Masukkan PIN","Choose a 4-digit PIN":"Pilih PIN 4 digit","Type the PIN again":"Taip PIN sekali lagi",
+    "Wrong PIN.":"PIN salah.","The PINs did not match. Try again.":"PIN tidak sama. Cuba lagi.","PIN removed.":"PIN dibuang.",
+    "PIN saved. It is needed to unlock settings and change the play time limit.":"PIN disimpan. Ia diperlukan untuk membuka kunci tetapan dan menukar had masa bermain.",
+    "Guided tour":"Panduan berpandu","Arrange the board":"Susun papan","Tap Edit to add, move or resize widgets. ⧉ copies a widget, ⊞ moves several together.":"Ketik Edit untuk tambah, alih atau ubah saiz widget. ⧉ menyalin widget, ⊞ mengalih beberapa sekali gus.",
+    "Search settings: type a word such as power or lock and jump straight to it":"Cari tetapan: taip perkataan seperti kuasa atau kunci dan terus ke situ",
+    "My models: ★ favourites, sort by Favourites, Recent or A–Z, and driving time on each card":"Model saya: ★ kegemaran, susun ikut Kegemaran, Terkini atau A–Z, dan masa memandu pada setiap kad",
+    "Safety score in Limits & auto-stop, with the next best step to turn on":"Skor keselamatan dalam Had & henti automatik, dengan langkah seterusnya yang patut dihidupkan",
+    "PIN for the settings lock and the play time limit":"PIN untuk kunci tetapan dan had masa bermain",
+    "Guided tour shows how to arrange the board, and can be replayed from Settings":"Panduan berpandu menunjukkan cara menyusun papan, dan boleh diulang dari Tetapan",
+    "Softer button and switch movement, and a light vibration for taps, switches and success":"Gerakan butang dan suis lebih lembut, serta getaran ringan untuk ketikan, suis dan kejayaan"};
+  for(var v2k9 in V2MS9) MS[v2k9]=V2MS9[v2k9];
+  MS_RE.push([/^(\d+) days ago$/,function(m){return m[1]+' hari lalu'}]);
+  MS_RE.push([/^(\d+) weeks? ago$/,function(m){return m[1]+' minggu lalu'}]);
+  MS_RE.push([/^(\d+) months? ago$/,function(m){return m[1]+' bulan lalu'}]);
+  MS_RE.push([/^⏱ (.+?) · (.+)$/,function(m){var t=msLookup(m[2]);return '⏱ '+m[1].replace(' min',' min').replace(/ h$/,' j')+' · '+(t===null?m[2]:t)}]);
+  MS_RE.push([/^Next: (.+) \(\+(\d+)\)$/,function(m){var t=msLookup(m[1]);return 'Seterusnya: '+(t===null?m[1]:t)+' (+'+m[2]+')'}]);
   MS_RE.push([/^Copied to channel (.+)\.$/,function(m){return 'Disalin ke saluran '+m[1]+'.'}]);
   MS_RE.push([/^(\d+) selected$/,function(m){return m[1]+' dipilih'}]);
   MS_RE.push([/^Build (\d+)$/,function(m){return 'Binaan '+m[1]}]);
@@ -5160,6 +5185,7 @@ try{
     $('#subDone').hidden=v!=='medit';
     try{window.scrollTo(0,0)}catch(_){}
     if(v==='models') v2Models();
+    if(v==='safety') sfPaint(true);
     if(v==='home') v2Preview();
     if(v==='drive') v2Pick();
     if(v==='hub'){v2ChTest(true);v2Slots()}
@@ -5313,6 +5339,11 @@ try{
   v2Click('#hubName',function(){var d=$('#hubAdv');if(d) d.open=true;var n=$('#hubN0');if(n){try{n.scrollIntoView({block:'center'});n.focus()}catch(_){}}});
 
   // ---- 3 · Models: gallery cards with a sketch of each board ----
+  function v2Ago(t){if(!t) return 'Not used yet';var d=Date.now()-t,day=864e5,a=new Date(t),b=new Date();
+    if(a.toDateString()===b.toDateString()) return 'Today';var y=new Date(b.getTime()-day);if(a.toDateString()===y.toDateString()) return 'Yesterday';
+    var n=Math.floor(d/day);if(n<7) return n+' days ago';if(n<30) return Math.floor(n/7)+(n<14?' week ago':' weeks ago');return Math.floor(n/30)+(n<60?' month ago':' months ago')}
+  function v2Hrs(ms){var m=Math.round((ms||0)/60000);return m<60?m+' min':(m/60).toFixed(m<600?1:0)+' h'}
+  function v2Stat(p){var st=(p.cfg&&p.cfg.st)||{};return '\u23F1 '+v2Hrs(st.ms)+' \u00b7 '+v2Ago(st.last)}
   function v2Sub(p){
     var c=p.cfg||{},h=(c.hubs||[]).filter(function(x){return x>=0}).length||1,w=(c.board||[]).length;
     return h+(h===1?' hub':' hubs')+' · '+w+(w===1?' widget':' widgets');
@@ -5346,7 +5377,12 @@ try{
   function v2Models(){
     var box=$('#mList');if(!box) return;
     var q=($('#mSearch').value||'').trim().toLowerCase();box.innerHTML='';var n=0;
-    store.profiles.forEach(function(p){
+    var ms0=store.prefs.msort||'f', list=store.profiles.slice();
+    if(ms0==='f') list.sort(function(a,b){return ((b.cfg&&b.cfg.fav)?1:0)-((a.cfg&&a.cfg.fav)?1:0)||store.profiles.indexOf(a)-store.profiles.indexOf(b)});
+    else if(ms0==='r') list.sort(function(a,b){return ((b.cfg&&b.cfg.st&&b.cfg.st.last)||0)-((a.cfg&&a.cfg.st&&a.cfg.st.last)||0)});
+    else list.sort(function(a,b){return profLbl(a).localeCompare(profLbl(b))});
+    var sb=$('#mSort');if(sb) Array.prototype.forEach.call(sb.children,function(b){b.setAttribute('aria-pressed',String(b.dataset.s===ms0))});
+    list.forEach(function(p){
       var name=profLbl(p);if(q&&name.toLowerCase().indexOf(q)<0) return;n++;
       var card=document.createElement('div');card.className='v2-mcard'+(p.id===store.active?' v2on':'');card.style.setProperty('--mc',ACC[(p.cfg&&p.cfg.accent)||0]);
       var main=document.createElement('button');main.type='button';main.className='v2-mmain';
@@ -5359,7 +5395,12 @@ try{
       main.addEventListener('click',function(){if(lpFired){lpFired=false;return}if(p.id!==store.active) switchProfile(p.id);v2Go('drive')});
       var more=document.createElement('button');more.type='button';more.className='v2-ib v2-more';more.innerHTML=v2Ic('more');more.setAttribute('aria-label','Model settings');
       more.addEventListener('click',function(){if(p.id!==store.active) switchProfile(p.id);v2Go('medit')});
-      card.appendChild(main);card.appendChild(more);box.appendChild(card);
+      var fav=document.createElement('button');fav.type='button';fav.className='v2-ib v2-fav'+(p.cfg&&p.cfg.fav?' on':'');fav.textContent=p.cfg&&p.cfg.fav?'\u2605':'\u2606';
+      fav.setAttribute('aria-label',p.cfg&&p.cfg.fav?'Remove from favourites':'Add to favourites');fav.setAttribute('aria-pressed',String(!!(p.cfg&&p.cfg.fav)));
+      fav.addEventListener('click',function(e){e.stopPropagation();if(!p.cfg) return;p.cfg.fav=!p.cfg.fav;save();feedback('tick');v2Models()});
+      var stl=document.createElement('span');stl.className='v2-mst';stl.textContent=v2Stat(p);
+      main.appendChild(stl);
+      card.appendChild(main);card.appendChild(fav);card.appendChild(more);box.appendChild(card);
     });
     var add=document.createElement('button');add.type='button';add.className='v2-mcard v2-madd';
     add.innerHTML=v2Ic('plus','ic big')+'<b></b><small></small>';add.querySelector('b').textContent='New model';add.querySelector('small').textContent='Template or empty';
@@ -5367,7 +5408,8 @@ try{
     if(!q) box.appendChild(add);
     $('#mNone').hidden=n>0;
   }
-  (function(){var s=$('#mSearch');if(s) s.addEventListener('input',v2Models)})();
+  (function(){var s=$('#mSearch');if(s) s.addEventListener('input',v2Models);
+    var sb=$('#mSort');if(sb) sb.addEventListener('click',function(e){var b=e.target.closest('button[data-s]');if(!b) return;store.prefs.msort=b.dataset.s;save();feedback('tick');v2Models()})})();
   var V2TPL={
     car:{name:'Car / Truck',ch:['Drive','Steering','Lights','Winch','Rear lights','Channel F'],light:[2,4]},
     exc:{name:'Excavator / crane',ch:['Left track','Right track','Boom','Bucket','Swing','Arm'],light:[]},
@@ -5539,7 +5581,7 @@ try{
     if(store.prefs.lock&&['safety','m-tilt','m-pad','tpl','medit','models'].indexOf(V2.v)>=0) v2Go(V2PARENT[V2.v]||'home');
     v2Alerts();
     v2Gfx(st);
-    v2Diag(false);lkSample(false);
+    v2Diag(false);lkSample(false);if(V2.v==='safety') sfPaint(false);
     // drive mode, play time, meter, left-handed
     v2Mode();v2CrzPaint();v2Focus();v2SimKick();
     if(V2.v==='medit'){v2SsPaint();}
@@ -5685,14 +5727,138 @@ try{
     var fs=store.prefs.fs||100;if(R2._fs!==fs){R2._fs=fs;try{if(NB&&NB.textZoom) NB.textZoom(fs)}catch(_){}}
     v2T($('#sTextV'),fs>=130?'Largest':fs>=115?'Large':'Normal');
   }
-  v2Click('#sHC',function(){store.prefs.hc=!store.prefs.hc;save();v2Theme();feedback('ok')});
-  v2Click('#sCB',function(){store.prefs.cb=!store.prefs.cb;save();v2Theme();feedback('ok');toast(store.prefs.cb?'Colour-blind colours on: blue, orange and vermillion.':'Normal colours.')});
-  v2Click('#sDir',function(){store.prefs.dir=!store.prefs.dir;save();v2Theme();feedback('ok')});
+  v2Click('#sHC',function(){store.prefs.hc=!store.prefs.hc;save();v2Theme();});
+  v2Click('#sCB',function(){store.prefs.cb=!store.prefs.cb;save();v2Theme();toast(store.prefs.cb?'Colour-blind colours on: blue, orange and vermillion.':'Normal colours.')});
+  v2Click('#sDir',function(){store.prefs.dir=!store.prefs.dir;save();v2Theme();});
   v2Click('#sText',function(){var f=store.prefs.fs||100;store.prefs.fs=f>=130?100:f>=115?130:115;save();v2Theme();feedback('ok');
     if(!(NB&&NB.textZoom)) toast('Text size works in the Android app.')});
 
+  // ---- Safety centre: one score for every protection, with the next best step ----
+  var SFI=[
+    {k:'built',t:'Stops sending if the app freezes (built in)',p:15,on:function(){return true}},
+    {k:'idle',t:'Auto-stop when idle',p:20,on:function(){return !!(C.safety&&C.safety.idle)},go:'#sfIdle'},
+    {k:'pin',t:'Settings lock with a PIN',p:20,on:function(){return !!store.prefs.pin},go:'pin'},
+    {k:'play',t:'Daily play time limit',p:15,on:function(){return !!store.prefs.playLim},go:'#sPlay'},
+    {k:'run',t:'Stop a channel after a long run',p:10,on:function(){return !!(C.safety&&C.safety.run)},go:'#sfRun'},
+    {k:'warn',t:'Warn after long full power',p:10,on:function(){return !!(C.safety&&C.safety.warn)},go:'#sfWarn'},
+    {k:'ramp',t:'Acceleration smoothing at 30 or more',p:10,on:function(){return (C.ramp||0)>=30},go:'#ramp'}
+  ];
+  function sfScore(){var sc=0;SFI.forEach(function(x){if(x.on()) sc+=x.p});return sc}
+  function sfPaint(force){
+    var box=$('#sfScore');if(!box) return;
+    var key=SFI.map(function(x){return x.on()?1:0}).join('')+store.prefs.lang;if(!force&&box._k===key) return;box._k=key;
+    var sc=sfScore(), cl=sc>=80?'ok':sc>=55?'warn':'bad', miss=SFI.filter(function(x){return !x.on()}).sort(function(a,b){return b.p-a.p})[0];
+    var sh=box.querySelector('.sf-fill');sh.setAttribute('stroke-dasharray',sc+' 100');sh.setAttribute('class','sf-fill '+cl);
+    box.querySelector('.sf-n').textContent=String(sc);
+    var tip=box.querySelector('.sf-tip');tip.textContent=sc>=80?'High protection':'Next: '+(miss?miss.t:'')+' (+'+(miss?miss.p:0)+')';tip.className='sf-tip '+cl;
+    var ul=box.querySelector('.sf-list');ul.innerHTML='';
+    SFI.forEach(function(x){var on=x.on(),b=document.createElement('button');b.type='button';b.className='sf-it'+(on?' on':'');b.disabled=!x.go;
+      b.innerHTML='<i aria-hidden="true">'+(on?'✓':'○')+'</i><span></span><small>+'+x.p+'</small>';b.querySelector('span').textContent=x.t;
+      b.setAttribute('aria-label',x.t+(on?', on':', off')+', '+x.p+' points');
+      if(x.go) b.addEventListener('click',function(){
+        if(x.go==='pin'){pinSetup();return}
+        if(x.go==='#sPlay'){v2Go('settings');setTimeout(function(){var e=$('#sPlay');if(e){try{e.scrollIntoView({block:'center'})}catch(_){}srHit(e)}toast('Hold for 2 seconds to change (parents).',3000)},60);return}
+        var e=$(x.go);if(e){try{e.scrollIntoView({block:'center'})}catch(_){}srHit(e.closest('.set-row,label')||e);try{e.focus()}catch(_){}}});
+      ul.appendChild(b)});
+    box.setAttribute('aria-label','Safety score '+sc+' of 100');
+  }
+  // ---- PIN for the settings lock and the play time limit ----
+  function pinAsk(title,cb,cancel){
+    var old=document.getElementById('pinDlg');if(old) old.remove();
+    var ov=document.createElement('div');ov.id='pinDlg';ov.className='gedit';
+    var bx=document.createElement('div');bx.className='gbox pinbox';bx.setAttribute('role','dialog');bx.setAttribute('aria-modal','true');ov.appendChild(bx);
+    var h=document.createElement('h3');h.textContent=title;bx.appendChild(h);
+    var inp=document.createElement('input');inp.type='password';inp.inputMode='numeric';inp.maxLength=4;inp.className='txt pin-in';inp.autocomplete='off';inp.setAttribute('aria-label','PIN');inp.placeholder='••••';bx.appendChild(inp);
+    var row=document.createElement('div');row.className='rec-row';
+    var c=document.createElement('button');c.type='button';c.className='btn';c.textContent='Cancel';
+    var o=document.createElement('button');o.type='button';o.className='btn pri';o.textContent='OK';
+    row.appendChild(c);row.appendChild(o);bx.appendChild(row);
+    function done(){var v=inp.value.replace(/\D/g,'');if(v.length!==4){inp.classList.remove('shake');void inp.offsetWidth;inp.classList.add('shake');feedback('warn');return}
+      if(cb(v)!==false) ov.remove();else{inp.value='';inp.classList.remove('shake');void inp.offsetWidth;inp.classList.add('shake')}}
+    o.addEventListener('click',done);c.addEventListener('click',function(){ov.remove();if(cancel) cancel()});
+    inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();done()}});
+    inp.addEventListener('input',function(){inp.value=inp.value.replace(/\D/g,'').slice(0,4);if(inp.value.length===4) setTimeout(done,120)});
+    document.body.appendChild(ov);setTimeout(function(){try{inp.focus()}catch(_){}},50);
+  }
+  // run fn only after the right PIN (or straight away when no PIN is set)
+  function pinGate(fn){if(!store.prefs.pin){fn();return}
+    pinAsk('Enter PIN',function(v){if(v!==store.prefs.pin){toast('Wrong PIN.');feedback('warn');return false}feedback('success');fn()})}
+  function pinSetup(){
+    function choose(){
+      pinAsk('Choose a 4-digit PIN',function(v){
+        setTimeout(function(){pinAsk('Type the PIN again',function(v2){if(v2!==v){toast('The PINs did not match. Try again.');feedback('warn');return}
+          store.prefs.pin=v;save();feedback('success');toast('PIN saved. It is needed to unlock settings and change the play time limit.',5000);sfPaint(true);pinPaint()})},60)});
+    }
+    if(!store.prefs.pin){choose();return}
+    pinGate(function(){setTimeout(function(){
+      var ov=document.createElement('div');ov.id='pinDlg';ov.className='gedit';
+      var bx=document.createElement('div');bx.className='gbox pinbox';ov.appendChild(bx);
+      var h=document.createElement('h3');h.textContent='PIN';bx.appendChild(h);
+      [['Change PIN',function(){choose()}],['Remove PIN',function(){store.prefs.pin='';save();toast('PIN removed.');sfPaint(true);pinPaint()}],['Cancel',function(){}]].forEach(function(x,i){
+        var b=document.createElement('button');b.type='button';b.className='btn'+(i===0?' pri':'');b.textContent=x[0];b.addEventListener('click',function(){ov.remove();x[1]()});bx.appendChild(b)});
+      document.body.appendChild(ov)},60)});
+  }
+  function pinPaint(){var b=$('#pinSet');if(b) v2T(b,store.prefs.pin?'Change PIN':'Set PIN')}
+  v2Click('#pinSet',pinSetup);pinPaint();
+  // ---- Search every setting by name ----
+  var SR_SCR=[['#scrSet','settings'],['#scrHub','hub'],['#calCard','hub'],['#setCard','safety'],['#ioCard','backup'],['#tiltCard','m-tilt'],['#padCard','m-pad'],['#appCard','m-app'],['main > section.model','medit']];
+  var SR_WHERE={settings:'Settings',hub:'Hub',safety:'Limits & auto-stop',backup:'Backup & restore','m-tilt':'Tilt steering','m-pad':'Gamepad','m-app':'App',medit:'Model settings'};
+  function srNorm(x){return String(x||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim()}
+  function srIndex(){
+    var out=[],seen={};
+    SR_SCR.forEach(function(sv){var root=document.querySelector(sv[0]);if(!root) return;
+      var nodes=root.querySelectorAll('.v2-li > span, .set-top > span:first-child, label, summary > span, h2, .v2-grp, button.btn');
+      for(var i=0;i<nodes.length;i++){var n=nodes[i],t='';
+        if(n.tagName==='LABEL'){for(var c=n.firstChild;c;c=c.nextSibling){if(c.nodeType===3) t+=c.data}if(!t.trim()){var sp=n.querySelector('.set-top > span:first-child');if(sp) continue}}
+        else t=n.textContent;
+        t=t.replace(/\s+/g,' ').trim();if(t.length<3||t.length>70) continue;
+        var tg=n.closest('.v2-li, .set-row, label, details, .rec-row, .card')||n;
+        var k=sv[1]+'|'+t;if(seen[k]) continue;seen[k]=1;
+        out.push({t:t,v:sv[1],el:tg,n:srNorm(t)});
+      }});
+    return out;
+  }
+  function srScore(q,n){if(!q) return 0;var p=n.indexOf(q);if(p===0) return 4;if(p>0) return n.charAt(p-1)===' '?3.5:3;
+    var j=0;for(var k=0;k<n.length&&j<q.length;k++) if(n[k]===q[j]) j++;if(j===q.length) return 1.5;
+    // one typo: every word of the query must almost match a word
+    var ws=n.split(' '),ok=q.split(' ').every(function(w){return w.length>3&&ws.some(function(x){return srNear(w,x.slice(0,w.length+1))})});return ok?1:0}
+  function srNear(a,b){if(Math.abs(a.length-b.length)>1) return false;var i=0,j=0,e=0;while(i<a.length&&j<b.length){if(a[i]===b[j]){i++;j++;continue}if(++e>1) return false;if(a.length>b.length) i++;else if(b.length>a.length) j++;else{i++;j++}}return e+(a.length-i)+(b.length-j)<=1}
+  function srHit(el){if(!el) return;el.classList.remove('sr-hit');void el.offsetWidth;el.classList.add('sr-hit');setTimeout(function(){el.classList.remove('sr-hit')},1800)}
+  function srGo(r){
+    var inp=$('#setSearch');if(inp){inp.value='';srDraw()}
+    if(store.prefs.lock&&['safety','m-tilt','m-pad','medit'].indexOf(r.v)>=0){toast('Settings are locked.');return}
+    v2Go(r.v);feedback('tap');
+    setTimeout(function(){var d=r.el.closest('details');while(d){d.open=true;d=d.parentElement&&d.parentElement.closest('details')}
+      try{r.el.scrollIntoView({block:'center'})}catch(_){}srHit(r.el)},80);
+  }
+  function srDraw(){
+    var inp=$('#setSearch'),box=$('#setRes');if(!inp||!box) return;
+    var q=srNorm(inp.value);box.innerHTML='';box.hidden=!q;if(!q) return;
+    var L=srIndex().map(function(r){return [srScore(q,r.n),r]}).filter(function(x){return x[0]>0}).sort(function(a,b){return b[0]-a[0]||a[1].t.length-b[1].t.length}).slice(0,8);
+    if(!L.length){var e=document.createElement('p');e.className='note';e.textContent='No setting matches.';box.appendChild(e);return}
+    L.forEach(function(x){var r=x[1],b=document.createElement('button');b.type='button';b.className='sr-it';
+      var nm=document.createElement('span'),p=srNorm(r.t).indexOf(q);
+      if(p>=0&&r.t.length===srNorm(r.t).length){nm.appendChild(document.createTextNode(r.t.slice(0,p)));var m=document.createElement('mark');m.textContent=r.t.slice(p,p+q.length);nm.appendChild(m);nm.appendChild(document.createTextNode(r.t.slice(p+q.length)))}else nm.textContent=r.t;
+      var w=document.createElement('small');w.textContent=SR_WHERE[r.v]||'';b.appendChild(nm);b.appendChild(w);
+      b.addEventListener('click',function(){srGo(r)});box.appendChild(b)});
+  }
+  (function(){var i=$('#setSearch');if(i){i.addEventListener('input',srDraw);i.addEventListener('keydown',function(e){if(e.key==='Enter'){var f=$('#setRes .sr-it');if(f){e.preventDefault();f.click()}}})}})();
+  v2Click('#sTour',function(){v2Go('home');setTimeout(guideOpen,120)});
+  // ---- Motion & haptics: a light tap on app buttons (not on the driving widgets) ----
+  document.addEventListener('pointerdown',function(e){
+    var b=e.target&&e.target.closest&&e.target.closest('.v2-li:not(.v2-sw), .v2-scr .btn, #cols .card .btn, .gbox .btn, .v2-mmain, .v2-ib, #tabbar button');
+    if(!b||b.disabled||b.closest('#boardGrid')) return;feedback('tap');
+  },true);
+  document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('.v2-sw');if(b) setTimeout(function(){feedback('tick')},0)},true);
+
   // ---- What's new, version and update check ----
   var CHANGES=[
+    {b:51,items:[['new','Search settings: type a word such as power or lock and jump straight to it'],
+      ['new','My models: \u2605 favourites, sort by Favourites, Recent or A\u2013Z, and driving time on each card'],
+      ['new','Safety score in Limits & auto-stop, with the next best step to turn on'],
+      ['new','PIN for the settings lock and the play time limit'],
+      ['better','Guided tour shows how to arrange the board, and can be replayed from Settings'],
+      ['better','Softer button and switch movement, and a light vibration for taps, switches and success']]},
     {b:49,items:[['new','Live link centre: send-rate graph, a ring for each hub and an early warning when sending slows down'],
       ['new','Edit mode: ⧉ duplicates a widget onto the next free channel; ⊞ selects several widgets to move together'],
       ['new','Colour-blind colours (blue / orange) and ▲/▼ direction arrows on values'],
@@ -5774,7 +5940,7 @@ try{
     v2Inbox={text:text,name:String(list[0].name||'Model').slice(0,24),n:list.length};
     v2AlKey='';if(V2.v!=='home') v2Go('home');else v2Alerts();
   };
-  v2Click('#sLight',function(){store.prefs.ui=store.prefs.ui==='light'?'dark':'light';save();v2Theme();feedback('ok')});
+  v2Click('#sLight',function(){store.prefs.ui=store.prefs.ui==='light'?'dark':'light';save();v2Theme();});
   function v2Gfx(st){
     // 4 · no hub: dim the board widgets (not E-Stop / START-STOP) and tag them "No hub"
     v2Tog(R2,'v2-nohub',st!=='on');v2Tog(R2,'v2-editing',!!bdEditing);
@@ -5844,14 +6010,14 @@ try{
     ['pointerup','pointercancel','pointerleave'].forEach(function(ev){el.addEventListener(ev,function(){if(t) toast('Hold for 2 seconds to change (parents).',2500);up()})});
     el.addEventListener('click',function(e){e.preventDefault()});
   }
-  (function(){var r=$('#sPlay');if(r) v2PlayHold(r,function(){
+  (function(){var r=$('#sPlay');if(r) v2PlayHold(r,function(){pinGate(function(){
     var L=[0,10,20,30,45,60],i=L.indexOf(store.prefs.playLim||0);store.prefs.playLim=L[(i+1)%L.length];
     PLAY.used=0;PLAY.extra=false;PLAY.warned=false;PLAY.end=0;PLAY.f=1;v2PlaySave();save();v2Paint();
-    toast(store.prefs.playLim?('Play time limit: '+store.prefs.playLim+' min a day.'):'Play time limit off.')})})();
+    toast(store.prefs.playLim?('Play time limit: '+store.prefs.playLim+' min a day.'):'Play time limit off.')})})})();
   function v2PlayExtra(){if(PLAY.extra) return;PLAY.extra=true;PLAY.warned=false;PLAY.end=0;PLAY.f=1;v2PlaySave();v2AlKey='';toast('5 more minutes.')}
 
   // ---- 6 · Left-handed: the landscape dashboard is mirrored (widgets swap sides) ----
-  v2Click('#sLefty',function(){store.prefs.lefty=!store.prefs.lefty;save();try{syncBoard()}catch(_){}v2Paint();feedback('ok')});
+  v2Click('#sLefty',function(){store.prefs.lefty=!store.prefs.lefty;save();try{syncBoard()}catch(_){}v2Paint();});
 
   // ---- 7 · Live output meter on the Drive screen (thin; tap for the big view) ----
   var v2MCols=[],v2MKey='';
@@ -5876,7 +6042,7 @@ try{
     });
   }
   setInterval(v2MeterPaint,100);
-  v2Click('#sMeter',function(){store.prefs.meter=!store.prefs.meter;save();v2Paint();feedback('ok')});
+  v2Click('#sMeter',function(){store.prefs.meter=!store.prefs.meter;save();v2Paint();});
 
   // ---- 10 · Widget gallery: picture cards with categories instead of a list of names ----
   (function(){
@@ -5981,7 +6147,7 @@ try{
     tile('cap','Practice',!!store.prefs.practice,function(){v2Practice(!store.prefs.practice)});
     tile('globe',store.prefs.lang==='ms'?'English':'Bahasa Melayu',false,function(){$('#sLang').click()});
     tile('sync',S.connected?'Disconnect':'Connect hub',!!S.connected,function(){v2Conn()});
-    tile('shield',store.prefs.lock?'Unlock':'Lock settings',!!store.prefs.lock,function(){if(store.prefs.lock){store.prefs.lock=false;save();applyLock()}else lockBtn.click()},!!store.prefs.lock);
+    tile('shield',store.prefs.lock?'Unlock':'Lock settings',!!store.prefs.lock,function(){if(store.prefs.lock){pinGate(function(){store.prefs.lock=false;save();applyLock();v2QuickClose()})}else lockBtn.click()},!!store.prefs.lock);
     tile('vibe',store.prefs.ui==='light'?'Dark theme':'Light theme',false,function(){$('#sLight').click()});
     var es=ov.querySelector('.qs-es');
     if(S.estop){es.textContent='Release E-Stop (hold 1 s)';var t=0;es.addEventListener('pointerdown',function(){t=setTimeout(function(){setEstop(false);feedback('ok');v2QuickClose()},1000)});['pointerup','pointercancel','pointerleave'].forEach(function(ev){es.addEventListener(ev,function(){clearTimeout(t)})})}
@@ -6007,12 +6173,14 @@ try{
     {v:'home',q:'#hPS',t:'Start',b:'Turn the hub on, then hold START for half a second. The ring turns yellow when the hub answers.'},
     {v:'drive',q:'#boardGrid > .bdw:not(.v2-es):not([data-k=ps])',t:'Drive',b:'Move the controls to drive. Lift your finger and they go back to 0.'},
     {v:'drive',q:'#estop',t:'E-Stop',b:'E-Stop stops every motor at once. Tap it again to release.'},
+    {v:'drive',q:'#bdEdit, #dbEdit',t:'Arrange the board',b:'Tap Edit to add, move or resize widgets. \u29C9 copies a widget, \u229E moves several together.'},
     {v:'drive',q:'#tabbar [data-tab=models]',t:'Your models',b:'Make your own board, start from a template, or share a model with a friend.'}
   ];
   var v2Co={i:0,el:null};
   function guideOpen(){v2Co.i=0;v2CoShow()}
   function guideClose(){
     if(v2Co.el){v2Co.el.remove();v2Co.el=null}
+    if(!store.prefs.tour){store.prefs.tour=true;save()}
     if(!store.prefs.seen){store.prefs.seen=true;save()}
   }
   function guideRender(){if(v2Co.el) v2CoShow()}
@@ -6038,7 +6206,7 @@ try{
   }
   function v2CoPlace(){
     var ov=v2Co.el;if(!ov) return;var st=V2CO[v2Co.i],hole=ov.querySelector('.co-hole'),hand=ov.querySelector('.co-hand'),card=ov.querySelector('.co-card');
-    var tg=st.q?document.querySelector(st.q):null;
+    var tg=null;if(st.q){var all=document.querySelectorAll(st.q);for(var ti=0;ti<all.length;ti++){if(all[ti].getClientRects().length){tg=all[ti];break}}}
     if(tg&&tg.getClientRects().length){
       try{tg.scrollIntoView({block:'center'})}catch(_){}
       var r=tg.getBoundingClientRect(),pad=8;
