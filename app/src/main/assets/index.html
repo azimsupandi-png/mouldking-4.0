@@ -1760,10 +1760,15 @@ html[data-cb] .sf-fill.warn,html[data-cb] .sf-tip.warn{stroke:#E69F00;color:#E69
 .tle-ph{display:flex;align-items:center;gap:8px}.tle-ph b{flex:1}
 .tle-f{display:grid;grid-template-columns:70px 52px 1fr;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
 .tle-f b{color:var(--fg);font-family:var(--f-mono);text-align:right}
-.tle-f .seg{grid-column:2/4;display:flex;gap:6px}.tle-f .seg .btn{flex:1;min-height:36px}
+.tle-f .seg{grid-column:2/4;display:flex;gap:6px;min-width:0}.tle-f .seg .btn{flex:1;min-width:0;min-height:36px;padding:0 6px;font-size:13px}
 .tle-sh .btn[aria-pressed=true]{background:var(--acc,#FFC400);color:#141414;border-color:var(--acc,#FFC400)}
 .drcs .btn{font-size:12.5px}
 .tle-add{flex-wrap:nowrap}.tle-add select{flex:1;min-width:0}
+.tle-body{display:flex;flex-direction:column;gap:10px;flex:1}.tle-main{min-width:0}.tle-side{display:flex;flex-direction:column;gap:10px}
+.tle-svg{overflow:visible}
+@media (orientation:landscape){.tled{padding-left:calc(env(safe-area-inset-left,0px) + 12px);padding-right:calc(env(safe-area-inset-right,0px) + 12px)}
+  .tle-body{flex-direction:row;align-items:flex-start}.tle-main{flex:1}.tle-side{width:300px;flex:none;max-height:calc(100vh - 120px);overflow:auto;padding-bottom:8px}
+  .tle-end{margin-top:0}.tle-hint{font-size:12px}}
 /* ---------- Hub link diagnostics ---------- */
 .v2-diag{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;margin:6px 2px 4px;font-size:13.5px}
 .v2-diag dt{color:var(--muted)}

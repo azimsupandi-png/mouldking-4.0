@@ -804,11 +804,11 @@ try{
     var ov=document.createElement('div');ov.id='tlEd';ov.className='tled';ov.setAttribute('role','dialog');ov.setAttribute('aria-modal','true');
     ov.innerHTML='<div class="tle-top"><button class="btn v2-ib" type="button" data-a="x" aria-label="Close">✕</button><input class="txt tle-nm" maxlength="20" aria-label="Timeline name"><button class="btn pri tle-play" type="button" data-a="play"></button></div>'+
       '<div class="tle-row"><label>Length<select data-f="dur"></select></label><label>Repeat<select data-f="rp"></select></label></div>'+
-      '<div class="tle-svgw"><svg class="tle-svg" preserveAspectRatio="none"></svg></div>'+
-      '<p class="note tle-hint">Drag a point. Tap an empty spot in a lane to add a point. Tap a point to change it exactly.</p>'+
-      '<div class="tle-pt" hidden></div>'+
+      '<div class="tle-body"><div class="tle-main"><div class="tle-svgw"><svg class="tle-svg"></svg></div>'+
+      '<p class="note tle-hint">Drag a point. Tap an empty spot in a lane to add a point. Tap a point to change it exactly.</p></div>'+
+      '<div class="tle-side"><div class="tle-pt" hidden></div>'+
       '<div class="tle-row tle-add"><select data-f="ch" aria-label="Channel for the new lane"></select><button class="btn" type="button" data-a="lane">+ Lane</button></div>'+
-      '<div class="tle-row tle-end"><button class="btn" type="button" data-a="undo">Undo changes</button><button class="btn pri" type="button" data-a="done">Done</button></div>';
+      '<div class="tle-row tle-end"><button class="btn" type="button" data-a="undo">Undo changes</button><button class="btn pri" type="button" data-a="done">Done</button></div></div></div>';
     document.body.appendChild(ov);
     var svg=ov.querySelector('svg'),W=360,RH=22,LH=78,sel=null,COL=['#ffd84a',PAL.b,PAL.g,'#B57EDC','#EF9F27','#e8e8ea'];
     TLE={ov:ov,it:it,tl:tl,raf:0};
@@ -826,7 +826,12 @@ try{
     function pt(e){var p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;var m=svg.getScreenCTM();return m?p.matrixTransform(m.inverse()):{x:0,y:0}}
     var head=null;
     function draw(){
-      var H=RH+tl.lanes.length*LH+6;svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.style.height=(H*svg.clientWidth/W||H)+'px';
+      // draw 1:1 in screen pixels and fit all lanes on the screen, so nothing needs scrolling
+      W=Math.max(240,svg.clientWidth||360);
+      var top0=svg.getBoundingClientRect().top+(window.scrollY||0)-ov.getBoundingClientRect().top+ov.scrollTop, land=window.innerWidth>window.innerHeight;
+      var avail=window.innerHeight-top0-(land?34:150), nl=Math.max(1,tl.lanes.length);
+      LH=Math.round(Math.max(46,Math.min(84,(avail-RH-6)/nl)));
+      var H=RH+tl.lanes.length*LH+6;svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.style.height=H+'px';
       while(svg.firstChild) svg.removeChild(svg.firstChild);
       var step=tl.dur<=6?1:tl.dur<=15?2:tl.dur<=30?5:10;
       for(var s0=0;s0<=tl.dur+1e-6;s0+=step){sv('text',{x:X(s0),y:14,'text-anchor':'middle','font-size':10,fill:'#8a93a0'},svg).textContent=s0+'s';sv('line',{x1:X(s0),y1:RH,x2:X(s0),y2:H,stroke:'rgba(255,255,255,.05)'},svg)}
@@ -839,7 +844,13 @@ try{
         del.addEventListener('click',function(){tl.lanes.splice(i,1);sel=null;fillCh();draw();ptPanel()});
         var d='';for(var q=0;q<=120;q++){var tt=q/120*tl.dur;d+=(q?'L':'M')+X(tt).toFixed(1)+' '+(mid-tlVal(l.pts,tt)/100*a).toFixed(1)}
         sv('path',{d:d,fill:'none',stroke:col,'stroke-width':2.6,'stroke-linejoin':'round','pointer-events':'none'},svg);
-        bg.addEventListener('pointerdown',function(e){
+        // add a point only on a clear tap (no slide, short press), so a touch that was meant to scroll adds nothing
+        var tap0=null;
+        bg.addEventListener('pointerdown',function(e){tap0={x:e.clientX,y:e.clientY,t:Date.now()}});
+        bg.addEventListener('pointermove',function(e){if(tap0&&Math.hypot(e.clientX-tap0.x,e.clientY-tap0.y)>8) tap0=null});
+        bg.addEventListener('pointerup',function(e){
+          var ok=tap0&&Date.now()-tap0.t<450&&Math.hypot(e.clientX-tap0.x,e.clientY-tap0.y)<=8;tap0=null;if(!ok) return;
+          if(sel){sel=null;draw();ptPanel();return}
           if(l.pts.length>=MAX_TLPTS){toast('Up to 16 points in a lane.');return}
           var q=pt(e),t=Math.round(T(q.x)*10)/10,v=Math.round(Math.max(-100,Math.min(100,(mid-q.y)/a*100))/5)*5;
           if(t<=0||t>=tl.dur) return;if(l.pts.some(function(z){return Math.abs(z[0]-t)<.1})) return;
@@ -3505,7 +3516,7 @@ try{
       save();syncBoard();
     },!it.hold]);
     if(it.k==='j'||it.k==='d') defs.push(['\u2699','Joystick settings',function(){jcShow(it)}]);
-    if(it.k==='tl') defs.push(['\u270E','Edit timeline',function(){tlEdit(it)}]);
+    if(it.k==='tl') defs.push(['\u223F','Edit timeline',function(){tlEdit(it)}]);
     if(it.k==='g'||it.k==='lv') defs.push(['\u2699','Gear settings',function(){gearEdit(it)}]);
     else if(WSPEC[it.k]) defs.push(['\u2699','Widget settings',function(){wsEdit(it)}]);
     if(it.k!=='e') defs.push(['\u270E','Rename widget',function(e){bdRename(it,e.target.closest('.bdw-h'))}]);

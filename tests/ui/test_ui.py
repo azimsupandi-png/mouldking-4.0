@@ -982,13 +982,20 @@ async def t_drtl(b):
     await pg.wait_for_timeout(300)
     r = await pg.evaluate("[!!document.getElementById('tlEd'),document.querySelectorAll('#tlEd svg circle[role=button]').length]")
     check('S4: the editor opens with the points of each lane', r == [True, 3], r)
-    await pg.evaluate("""(function(){var r=document.querySelector('#tlEd svg rect');var b=r.getBoundingClientRect();r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:b.left+b.width*0.3,clientY:b.top+b.height*0.25,pointerId:4}))})()""")
+    await pg.evaluate("""(function(){var r=document.querySelector('#tlEd svg rect');var b=r.getBoundingClientRect();var o={bubbles:true,clientX:b.left+b.width*0.3,clientY:b.top+b.height*0.25,pointerId:4};r.dispatchEvent(new PointerEvent('pointerdown',o));r.dispatchEvent(new PointerEvent('pointerup',o))})()""")
     await pg.wait_for_timeout(150)
     r = await pg.evaluate("[__t.C.tl[0].lanes[0].pts.length,!document.querySelector('#tlEd .tle-pt').hidden]")
     check('S4: tapping an empty spot adds a point and opens its panel', r == [4, True], r)
     await pg.evaluate("document.querySelector('#tlEd .tle-pt [data-s=\"2\"]').click();document.querySelector('#tlEd [data-a=lane]').click()")
     r = await pg.evaluate("[__t.C.tl[0].lanes[0].pts.filter(p=>p[2]===2).length,__t.C.tl[0].lanes.length]")
     check('S4: point shape and a new lane are set', r == [1, 2], r)
+    r = await pg.evaluate("""(function(){var r=document.querySelectorAll('#tlEd svg rect')[0],b=r.getBoundingClientRect(),n=__t.C.tl[0].lanes[0].pts.length;
+      r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:b.left+b.width*0.6,clientY:b.top+10,pointerId:5}));
+      r.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,clientX:b.left+b.width*0.6,clientY:b.top+60,pointerId:5}));
+      r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,clientX:b.left+b.width*0.6,clientY:b.top+60,pointerId:5}));return __t.C.tl[0].lanes[0].pts.length-n})()""")
+    check('S4: a sliding touch on a lane does not add a point', r == 0, r)
+    r = await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw[data-k=tl] .bdw-ed button')].filter(b=>b.textContent==='\u270E').length")
+    check('S4: only one pencil (Rename) on the timeline toolbar', r == 1, r)
     await pg.evaluate("document.querySelector('#tlEd [data-a=done]').click()")
     r = await pg.evaluate("[!document.getElementById('tlEd'),JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.tl[0].lanes.length]")
     check('S4: Done closes the editor and saves', r == [True, 2], r)
@@ -1004,6 +1011,20 @@ async def t_drtl(b):
     r = await pg.evaluate("[__t.C.board.filter(o=>o.k==='dr').length,document.getElementById('bdNote').textContent]")
     check('S2: only one D/R switch per board', r[0] == 1 and 'already' in r[1], r)
     check('S2/S4: no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+    ctx = await b.new_context(viewport={'width': 844, 'height': 390})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("__t.C.tl[0].lanes.push({c:3,pts:[[0,0,0],[2,0,0]]});mk6Go('drive');document.getElementById('dbEdit')?document.getElementById('dbEdit').click():document.getElementById('bdEdit').click()")
+    await pg.wait_for_timeout(300)
+    await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw[data-k=tl] .bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Edit timeline').click()")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("(function(){var s=document.querySelector('#tlEd svg').getBoundingClientRect(),d=document.querySelector('#tlEd [data-a=done]').getBoundingClientRect();return [Math.round(s.bottom),Math.round(d.bottom),innerHeight,Math.round(s.height)]})()")
+    check('S4: in landscape the lanes and Done fit on the screen', r[0] <= r[2] and r[1] <= r[2] and r[3] < 300, r)
+    check('S4: no JS errors (landscape)', not pg.errors, pg.errors[:3])
     await ctx.close()
 
 async def main():
