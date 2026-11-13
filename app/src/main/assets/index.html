@@ -1064,8 +1064,9 @@ html,body{overflow-anchor:none}
 @container (max-width:150px){:root[data-skin="studs"] .dw .qbtn.lbtn:not(#z){padding-right:6px!important}}
 #dbModel{height:38px;min-height:38px;max-width:150px;border-radius:19px;padding:0 28px 0 12px;font-size:12.5px;flex:0 1 auto;min-width:70px}
 #dbModel[hidden]{display:none}
-:root.dash #boardGrid .dguide{position:absolute;z-index:4;pointer-events:none;background:repeating-linear-gradient(90deg,#f4b800 0 6px,transparent 6px 10px)}
-:root.dash #boardGrid .dguide.v{top:0;bottom:0;width:2px;margin-left:-1px;background:repeating-linear-gradient(180deg,#f4b800 0 6px,transparent 6px 10px)}
+:root.dash #boardGrid .dguide{position:absolute;z-index:4;pointer-events:none;background:repeating-linear-gradient(90deg,#ff4fa3 0 6px,transparent 6px 10px)}
+:root.dash #boardGrid .dguide.v{top:0;bottom:0;width:2px;margin-left:-1px;background:repeating-linear-gradient(180deg,#ff4fa3 0 6px,transparent 6px 10px)}
+:root.dash #boardGrid .dw.gsel{outline:2px dashed #ff4fa3;outline-offset:2px}
 :root.dash #boardGrid .dguide.h{left:0;right:0;height:2px;margin-top:-1px}
 :root.dash-l .dashbar .btn{flex:0 0 auto!important;overflow:visible!important;text-overflow:clip!important}
 :root.dash-l #dbModel{flex:0 1 auto;min-width:64px;max-width:170px;width:auto;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
@@ -1664,6 +1665,45 @@ html[data-hc] .card,html[data-hc] .v2-li,html[data-hc] .v2-pill{border-color:var
 .v2-share{margin-top:12px}.v2-sharen{font-size:12.5px;margin:6px 2px 0}
 .v2-recq{margin:6px 0 4px}
 #recCard.v2-none .v2-recq{display:none!important}
+/* ---------- Colour-blind palette & outdoor high contrast ---------- */
+html[data-cb],html[data-cb] .bdw,html[data-cb] .v2-knob{--ok:#56B4E9!important;--danger:#D55E00!important;--rev:#CC79A7!important}
+html[data-cb] .v2-leds i.g{background:#56B4E9;box-shadow:0 0 6px rgba(86,180,233,.6)}html[data-cb] .v2-leds i.o{background:#E69F00;box-shadow:0 0 6px rgba(230,159,0,.6)}html[data-cb] .v2-leds i.r{background:#D55E00;box-shadow:0 0 6px rgba(213,94,0,.6)}
+html[data-cb] .v2-meter .g{background:#56B4E9}html[data-cb] .v2-meter .o{background:#E69F00}html[data-cb] .v2-meter .r{background:#D55E00}
+html[data-cb] .v2-pill .pdot{background:#D55E00}html[data-cb] .v2-pill[data-st=on] .pdot{background:#56B4E9;box-shadow:0 0 0 3px rgba(86,180,233,.22)}
+html[data-cb] .axb .abf{background:#56B4E9}html[data-cb] .v2-recb[aria-pressed=true],html[data-cb] .v2-pill[data-bt=off] .pbt,html[data-cb] .v2-pill .pbat.low{color:#D55E00}
+html[data-hc]:not([data-ui=light]){--fg:#FFFFFF}
+html[data-hc] .bdw{outline:1.5px solid rgba(255,255,255,.55);outline-offset:-1.5px}
+html[data-hc] .bdw-h,html[data-hc] .bdw-h output{color:#fff!important;font-weight:800}
+html[data-hc] .v2-li span,html[data-hc] .card h2,html[data-hc] summary span{color:var(--fg)}
+html[data-hc] .btn{border-width:2px}
+/* ---------- Live link centre ---------- */
+.lk{margin:4px 2px 12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.18)}
+.lk-top{display:flex;align-items:baseline;gap:6px}.lk-top b{font:800 26px var(--f-mono);color:var(--fg)}.lk-top small{color:var(--muted);font-size:12px}
+.lk-mode{margin-left:auto;font-size:12px;font-weight:700;color:var(--muted)}
+.lk-spark{display:block;width:100%;height:52px;margin:6px 0 2px}
+.lk-spark path{fill:none;stroke-width:1.6;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.lk-spark .lk-a{stroke:var(--acc,#FFC400)}.lk-spark .lk-b{stroke:var(--ok);opacity:.85;stroke-dasharray:3 2}
+.lk-leg{display:flex;gap:12px;font-size:11px;color:var(--muted)}.lk-leg span::before{content:"";display:inline-block;width:10px;height:2px;margin:0 5px 3px 0;background:var(--acc,#FFC400)}
+.lk-leg .b::before{background:var(--ok)}.lk-leg .t{margin-left:auto}.lk-leg .t::before{display:none}
+.lk-hubs{display:flex;gap:14px;margin:10px 0 4px}
+.lk-hub{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.lk-hub b{display:block;color:var(--fg);font-size:13px}
+.lk-hub svg{width:34px;height:34px}.lk-hub circle{fill:none;stroke-width:3.5}.lk-hub .bg{stroke:var(--line)}
+.lk-hub .ok{stroke:var(--ok)}.lk-hub .warn{stroke:#EF9F27}.lk-hub .bad{stroke:var(--danger)}
+html[data-cb] .lk-hub .warn{stroke:#E69F00}
+.lk-msg{margin:6px 0 0;font-size:13px;font-weight:700}.lk-msg.ok{color:var(--ok)}.lk-msg.warn{color:#EF9F27}.lk-msg.bad{color:var(--danger)}
+html[data-cb] .lk-msg.warn{color:#E69F00}
+.lk-chip{font-style:normal;font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;margin-left:8px;vertical-align:1px;background:rgba(29,158,117,.18);color:var(--ok)}
+.lk-chip.warn{background:rgba(239,159,39,.18);color:#EF9F27}.lk-chip.bad{background:rgba(226,75,74,.18);color:var(--danger)}
+/* ---------- What's new & version ---------- */
+.v2-ver{margin:6px 4px 2px;font:600 12px var(--f-mono);color:var(--muted)}
+#sUpdV.on{color:var(--acc,#FFC400);font-weight:800}
+.wn h3{margin:0 0 2px}.wn .wn-sub{margin:0 0 6px;font-size:12.5px;color:var(--muted)}
+.wn-b{margin:6px 0 2px;font:800 12.5px var(--f-mono);color:var(--muted)}
+.wn ul{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.wn li{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;line-height:1.35}
+.wn-t{flex:none;font:800 10px var(--f-body);letter-spacing:.04em;padding:3px 6px;border-radius:6px;margin-top:1px;min-width:52px;text-align:center}
+.wn-t.new{background:rgba(255,196,0,.18);color:#FFC400}.wn-t.better{background:rgba(55,138,221,.2);color:#6FB0F0}.wn-t.fix{background:rgba(29,158,117,.2);color:#3cc79a}
+.wn .rec-row{margin-top:10px}
 /* ---------- Hub link diagnostics ---------- */
 .v2-diag{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;margin:6px 2px 4px;font-size:13.5px}
 .v2-diag dt{color:var(--muted)}
@@ -1849,11 +1889,17 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
     <button class="v2-li v2-sw " type="button" id="sFb" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="4" width="8" height="16" rx="2"/><path d="M11 17h2M4.5 9v6M19.5 9v6M2 11v2M22 11v2"/></svg><span>Vibration &amp; sound</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li v2-sw" type="button" id="sLight" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.8"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg><span>Light theme (outdoors)</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li" type="button" id="sText"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 18.5 8 6.5l4.5 12M5.2 14h5.6M14 18.5l3.2-8.5 3.3 8.5M15.1 15.8h4.2"/></svg><span>Text size</span><small id="sTextV">Normal</small><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
-    <button class="v2-li v2-sw" type="button" id="sHC" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M12 3.4v17.2A8.6 8.6 0 0 0 12 3.4z" fill="currentColor"/></svg><span>High contrast</span><i class="tg" aria-hidden="true"></i></button>
+    <button class="v2-li v2-sw" type="button" id="sHC" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M12 3.4v17.2A8.6 8.6 0 0 0 12 3.4z" fill="currentColor"/></svg><span>High contrast (outdoor)</span><i class="tg" aria-hidden="true"></i></button>
+    <button class="v2-li v2-sw" type="button" id="sCB" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/></svg><span>Colour-blind colours</span><i class="tg" aria-hidden="true"></i></button>
+    <button class="v2-li v2-sw" type="button" id="sDir" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10.5 12 5l5 5.5M7 13.5 12 19l5-5.5"/></svg><span>Direction arrows on values (▲/▼)</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li v2-sw" type="button" id="sMeter" role="switch" aria-checked="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V13M9.5 19V7M14 19v-9M18.5 19V4"/></svg><span>Live output meter</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li v2-sw" type="button" id="sLefty" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l-3.5 3.5L7 14M3.5 10.5H14a6 6 0 0 1 6 6v1"/></svg><span>Left-handed (landscape)</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li v2-sw v2-lk" type="button" id="sPrac" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.8 9.2 12 4.5l9.2 4.7L12 13.9z"/><path d="M6.8 11.4v4.3c0 1.5 2.3 3 5.2 3s5.2-1.5 5.2-3v-4.3M21.2 9.2v5"/></svg><span>Practice mode (no hub)</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li" type="button" id="sLang"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M3.4 12h17.2M12 3.4c2.4 2.4 3.4 5.3 3.4 8.6s-1 6.2-3.4 8.6c-2.4-2.4-3.4-5.3-3.4-8.6s1-6.2 3.4-8.6z"/></svg><span>Language</span><small id="sLangV"></small><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
+    <div class="v2-grp">About</div>
+    <button class="v2-li" type="button" id="sNew"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.3 5.2 5.7.6-4.3 3.8 1.2 5.6L12 15.8l-4.9 2.9 1.2-5.6L4 9.3l5.7-.6z"/></svg><span>What's new</span><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
+    <button class="v2-li" type="button" id="sUpd"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/></svg><span>Check for updates</span><small id="sUpdV"></small></button>
+    <div class="v2-ver" id="sVer"></div>
     <button class="v2-li" type="button" data-go="m-app"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg><span>App, guide &amp; player mode</span><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
     <details class="v2-adv v2-lk"><summary><span>Advanced</span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></summary>
       <button class="v2-li" type="button" data-go="m-tilt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3.5" width="10" height="17" rx="2" transform="rotate(-18 12 12)"/><path d="M3 18.5c1.5 1.3 3.2 2 5 2.2M21 5.5c-1.5-1.3-3.2-2-5-2.2"/></svg><span>Tilt steering</span><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
@@ -1886,7 +1932,14 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
       <div class="v2-knobs" id="chTest"></div>
     </section>
     <div id="hubSlots"></div>
-    <details class="card v2-adv v2-diagc" id="hubDiag"><summary><span>Link diagnostics</span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></summary>
+    <details class="card v2-adv v2-diagc" id="hubDiag"><summary><span>Link diagnostics</span><i class="lk-chip" id="lkChip" hidden></i><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></summary>
+      <div class="lk" id="diagLive">
+        <div class="lk-top"><b id="lkRate">0</b><small>frames / s</small><span class="lk-mode" id="lkMode"></span></div>
+        <svg class="lk-spark" id="lkSpark" viewBox="0 0 120 32" preserveAspectRatio="none" role="img" aria-label="Send rate, last 60 seconds"><path class="lk-a" d=""/><path class="lk-b" d=""/></svg>
+        <div class="lk-leg"><span class="a">From the app</span><span class="b">Sent by Bluetooth</span><span class="t">60 s</span></div>
+        <div class="lk-hubs" id="lkHubs"></div>
+        <p class="lk-msg" id="lkMsg" role="status"></p>
+      </div>
       <dl class="v2-diag" id="diagList"></dl>
       <p class="note v2-diagn">The hub only listens and never answers, so the phone cannot measure signal strength. If a model stutters, hold the phone closer and watch Bluetooth errors.</p>
       <div class="rec-row"><button class="btn v2-icbtn" id="diagCopy" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11.5" height="11.5" rx="2"/><path d="M15.5 8V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2"/></svg><span>Copy report</span></button></div>

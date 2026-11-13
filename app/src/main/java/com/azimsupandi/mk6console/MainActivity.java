@@ -23,6 +23,11 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.media.ExifInterface;
 import android.net.Uri;
+import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -71,6 +76,8 @@ public class MainActivity extends Activity {
 
     private static final String PAGE = "file:///android_asset/index.html";
     private static final String ASSET_PREFIX = "file:///android_asset/";
+    private static final String REPO_URL = "https://github.com/azimsupandi-png/Mouldking-6.0.1/";
+    private static final String RELEASE_API = "https://api.github.com/repos/azimsupandi-png/Mouldking-6.0.1/releases/tags/latest";
     private static final String MODEL_ID = "[A-Za-z0-9_-]{1,40}";
     private static final String BACKUP_NAME = "MK6-Console-backup.json";
     private static final int MAX_IMPORT_BYTES = 1024 * 1024;
@@ -899,6 +906,82 @@ public class MainActivity extends Activity {
                     notifyApp("nopin");
                 } catch (RuntimeException e) {
                     notifyApp("nopin");
+                }
+            });
+        }
+
+        /** Version info for Settings: {"code":346,"name":"1.2","build":46,"date":"2026-11-13"} */
+        @JavascriptInterface
+        public String appInfo() {
+            try {
+                JSONObject o = new JSONObject();
+                o.put("code", BuildConfig.VERSION_CODE);
+                o.put("name", BuildConfig.VERSION_NAME);
+                o.put("build", BuildConfig.VERSION_CODE - 300);
+                o.put("date", BuildConfig.BUILD_DATE);
+                return o.toString();
+            } catch (Exception e) {
+                return "{}";
+            }
+        }
+
+        /** Asks GitHub for the latest release on a background thread; answers through window.onUpdate(json). */
+        @JavascriptInterface
+        public void checkUpdate() {
+            new Thread(() -> {
+                String res;
+                HttpURLConnection c = null;
+                try {
+                    c = (HttpURLConnection) new URL(RELEASE_API).openConnection();
+                    c.setConnectTimeout(8000);
+                    c.setReadTimeout(8000);
+                    c.setRequestProperty("Accept", "application/vnd.github+json");
+                    c.setRequestProperty("User-Agent", "MK6Console");
+                    int code = c.getResponseCode();
+                    if (code != 200) {
+                        res = "{\"error\":\"http " + code + "\"}";
+                    } else {
+                        ByteArrayOutputStream bo = new ByteArrayOutputStream();
+                        try (InputStream in = c.getInputStream()) {
+                            byte[] buf = new byte[8192];
+                            int n;
+                            while ((n = in.read(buf)) > 0 && bo.size() < 400_000) bo.write(buf, 0, n);
+                        }
+                        JSONObject j = new JSONObject(new String(bo.toByteArray(), StandardCharsets.UTF_8));
+                        JSONObject o = new JSONObject();
+                        o.put("name", j.optString("name", ""));
+                        o.put("date", j.optString("published_at", ""));
+                        o.put("page", j.optString("html_url", ""));
+                        String body = j.optString("body", "");
+                        o.put("notes", body.length() > 3000 ? body.substring(0, 3000) : body);
+                        JSONArray as = j.optJSONArray("assets");
+                        if (as != null) for (int i = 0; i < as.length(); i++) {
+                            JSONObject a = as.getJSONObject(i);
+                            if (a.optString("name", "").endsWith(".apk")) {
+                                o.put("apk", a.optString("browser_download_url", ""));
+                                break;
+                            }
+                        }
+                        res = o.toString();
+                    }
+                } catch (Exception e) {
+                    res = "{\"error\":\"net\"}";
+                } finally {
+                    if (c != null) c.disconnect();
+                }
+                String js = "window.onUpdate&&window.onUpdate(" + JSONObject.quote(res) + ")";
+                web.post(() -> web.evaluateJavascript(js, null));
+            }).start();
+        }
+
+        /** Opens the app's own GitHub page (release page or APK download) in the browser. */
+        @JavascriptInterface
+        public void openUrl(String url) {
+            if (url == null || !url.startsWith(REPO_URL)) return;
+            runOnUiThread(() -> {
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                } catch (RuntimeException ignored) {
                 }
             });
         }

@@ -303,8 +303,19 @@ final class Mk6Advertiser {
                 .append(",\"lastFrameAgo\":").append(lastFrameAt > 0 ? (now - lastFrameAt) : -1)
                 .append(",\"tx\":").append(statTxPower == Integer.MIN_VALUE ? "null" : String.valueOf(statTxPower))
                 .append(",\"err\":").append(statLastError)
-                .append(",\"errAgo\":").append(statLastErrorAt > 0 ? (now - statLastErrorAt) : -1)
-                .append('}');
+                .append(",\"errAgo\":").append(statLastErrorAt > 0 ? (now - statLastErrorAt) : -1);
+        // Per hub: module number and whether its radio set is on air right now
+        b.append(",\"mods\":[");
+        for (int i = 0; i < modules.length; i++) { if (i > 0) b.append(','); b.append(modules[i]); }
+        b.append("],\"alive\":[");
+        for (int i = 0; i < modules.length; i++) {
+            if (i > 0) b.append(',');
+            boolean on = running && !connecting && set != null
+                    && (i == 0 || !parallel || extra[i] != null);
+            b.append(on ? 1 : 0);
+        }
+        long lat = !running ? 0 : (modules.length > 1 && !parallel) ? modules.length * ROTATE_MS : MIN_GAP_MS;
+        b.append("],\"lat\":").append(lat).append('}');
         return b.toString();
     }
 

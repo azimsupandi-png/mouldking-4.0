@@ -18,6 +18,7 @@ android {
         targetSdk 35
         versionCode((System.getenv('GITHUB_RUN_NUMBER') ?: '0').toInteger() + 300)
         versionName '1.2'
+        buildConfigField 'String', 'BUILD_DATE', "\"${java.time.LocalDate.now()}\""
     }
 
     signingConfigs {
@@ -39,6 +40,10 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     lint {

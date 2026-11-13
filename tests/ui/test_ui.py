@@ -766,10 +766,115 @@ async def t_xw(b):
     check('new widgets: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_pro(b):
+    # P1 live link centre, P3 duplicate + group move, P5 accessibility, P6 what's new + update check
+    def mk(seed, w=390, h=844, extra=''):
+        async def go():
+            ctx = await b.new_context(viewport={'width': w, 'height': h})
+            pg = await ctx.new_page(); pg.errors = []
+            pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+            await pg.add_init_script(STUB + extra + "(function(){localStorage.setItem('mk6v2',JSON.stringify(" + seed + "))})();")
+            await pg.route('**/*', lambda r: r.abort() if r.request.url.startswith('http') else r.continue_())
+            await pg.goto(HTML + '?mk6test')
+            await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+            await pg.wait_for_timeout(300)
+            return ctx, pg
+        return go()
+    seed = "{active:'m1',profiles:[{id:'m1',name:'P',cfg:{layout:'board',limit:100,ramp:100,ch:[{},{},{},{},{},{}],board:[{k:'s',c:0},{k:'s',c:1},{k:'f',c:0}]}}],prefs:{seen:true,wn:46}}"
+    ctx, pg = await mk(seed)
+    # P5: TalkBack labels
+    r = await pg.evaluate("mk6Go('drive');[...document.querySelectorAll('#boardGrid .bdw')].map(w=>w.getAttribute('role')+'|'+(w.getAttribute('aria-label')||''))")
+    check('P5: every widget has a TalkBack label', len(r) == 3 and all(x.startswith('group|') and len(x) > 8 for x in r), r)
+    # P5: direction arrows + colour-blind palette
+    await pg.evaluate("document.getElementById('sDir').click();document.getElementById('sCB').click()")
+    await pg.wait_for_timeout(200)
+    r = await pg.evaluate("[document.documentElement.hasAttribute('data-cb'),getComputedStyle(document.documentElement).getPropertyValue('--ok').trim(),__t.store.prefs.cb,__t.store.prefs.dir]")
+    check('P5: colour-blind palette switches the colours', r[0] and r[1].upper() == '#56B4E9' and r[2] and r[3], r)
+    await pg.evaluate("document.getElementById('hConn').click();onHubState('ready');mk6Go('drive');__t.rt.t[0]=40;__t.rt.t[1]=-30")
+    await pg.wait_for_timeout(800)
+    r = await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw[data-k=s] .bdw-h output')].map(o=>o.textContent)")
+    check('P5: values show direction arrows', len(r) == 2 and r[0].startswith('▲') and r[1].startswith('▼'), r)
+    await pg.evaluate("document.getElementById('sHC').click()")
+    r = await pg.evaluate("document.documentElement.hasAttribute('data-hc')")
+    check('P5: outdoor high contrast turns on', r, r)
+    # P3: duplicate onto the next free channel, undo
+    await pg.evaluate("__t.rt.t[0]=0;__t.rt.t[1]=0;document.getElementById('bdEdit').click()")
+    r = await pg.evaluate("(function(){var b=document.querySelector('#boardGrid .bdw[data-k=s] .bdw-ed button[aria-label=Duplicate]');b.click();return __t.C.board.map(x=>x.k+x.c).join(',')})()")
+    check('P3: duplicate copies a slider onto the next free channel', r == 's0,s2,s1,f0', r)
+    r = await pg.evaluate("document.getElementById('dbBack').hidden")
+    check('P3: duplicate can be undone', r is False, r)
+    check('P1/P3/P5: no JS errors (portrait)', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
+    # P3 group move in the landscape dashboard
+    seed2 = "{active:'m1',profiles:[{id:'m1',name:'P',cfg:{layout:'board',dash:true,limit:100,ramp:100,ch:[{},{},{},{},{},{}],board:[{k:'s',c:0,g:[0,0,6,10]},{k:'s',c:1,g:[8,0,6,10]},{k:'s',c:2,g:[30,12,6,10]}]}}],prefs:{seen:true,wn:46}}"
+    ctx, pg = await mk(seed2, 844, 390)
+    await pg.evaluate("mk6Go('drive');document.getElementById('dbEdit').click()")
+    await pg.wait_for_timeout(300)
+    def ptr(i, typ, dx=0, dy=0, pid=21):
+        return pg.evaluate("""(function(){var e=document.querySelectorAll('#boardGrid .bdw')[%d],r=e.getBoundingClientRect(),x=r.left+r.width/2+%f,y=r.top+r.height/2+%f;
+          var t=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);if(!e.contains(t)) t=e;
+          (%s?t:e).dispatchEvent(new PointerEvent('%s',{bubbles:true,clientX:x,clientY:y,pointerId:%d}))})()""" % (i, dx, dy, 'true' if typ == 'pointerdown' else 'false', typ, pid))
+    await ptr(0, 'pointerdown'); await ptr(0, 'pointerup')
+    await pg.wait_for_timeout(250)
+    r = await pg.evaluate("(function(){var b=document.querySelector('#boardGrid .bdw.sel .bdw-ed button[aria-label=\"Select several\"]');if(!b) return 'nobtn';b.click();return document.querySelectorAll('#boardGrid .gsel').length})()")
+    check('P3: Select several starts a group', r == 1, r)
+    await ptr(1, 'pointerdown', pid=22); await ptr(1, 'pointerup', pid=22)
+    await pg.wait_for_timeout(250)
+    r = await pg.evaluate("document.querySelectorAll('#boardGrid .gsel').length")
+    check('P3: tapping another widget adds it to the group', r == 2, r)
+    g0 = await pg.evaluate("__t.C.board.map(x=>x.g.slice())")
+    ch = await pg.evaluate("document.querySelector('#boardGrid').getBoundingClientRect().height/24")
+    await ptr(0, 'pointerdown', pid=23); await ptr(0, 'pointermove', 0, ch * 4, pid=23); await ptr(0, 'pointermove', 0, ch * 4, pid=23)
+    await pg.wait_for_timeout(100)
+    r0 = await pg.evaluate("document.querySelectorAll('#boardGrid .dguide').length")
+    await ptr(0, 'pointerup', 0, ch * 4, pid=23)
+    await pg.wait_for_timeout(250)
+    r = await pg.evaluate("__t.C.board.map(x=>x.g.slice())")
+    dy0, dy1 = r[0][1] - g0[0][1], r[1][1] - g0[1][1]
+    check('P3: the group moves together, others stay', dy0 > 0 and dy0 == dy1 and r[2] == g0[2] and r[0][0] == g0[0][0], [g0, r, r0])
+    check('P3: no JS errors (dashboard)', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
+    # P1 live link centre
+    stats = """window.__alive=[1,1];window.__n=0;window.MK6Bridge.stats=function(){__n++;return JSON.stringify({mode:'parallel',hubs:2,ok:__n*20,fail:0,frames:__n*22,watchdog:0,up:9000,lastFrameAgo:30,tx:1,err:0,errAgo:-1,mods:[0,1],alive:__alive,lat:60})};"""
+    ctx, pg = await mk(seed, extra=stats)
+    await pg.evaluate("document.getElementById('hConn').click();onHubState('ready');mk6Go('hub');document.getElementById('hubDiag').open=true")
+    await pg.wait_for_timeout(3500)
+    r = await pg.evaluate("[+document.getElementById('lkRate').textContent,document.querySelectorAll('#lkHubs .lk-hub').length,document.getElementById('lkChip').textContent,document.querySelector('#lkSpark .lk-a').getAttribute('d').length,document.getElementById('lkMsg').textContent]")
+    check('P1: live rate, hub rings, steady chip and graph', r[0] > 5 and r[1] == 2 and r[2] == 'Steady' and r[3] > 20, r)
+    await pg.evaluate("window.__alive=[1,0]")
+    await pg.wait_for_timeout(1500)
+    r = await pg.evaluate("[document.getElementById('lkChip').textContent,document.getElementById('lkMsg').textContent,document.querySelectorAll('#lkHubs circle.bad').length]")
+    check('P1: a hub off air raises a warning', r[0] == 'Problem' and 'M2' in r[1] and r[2] == 1, r)
+    check('P1: no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
+    # P6 what's new after an update + update check
+    upd = """window.MK6Bridge.appInfo=function(){return JSON.stringify({name:'1.2',build:50,date:'2026-11-13'})};
+      window.MK6Bridge.checkUpdate=function(){__calls.push('check');setTimeout(function(){onUpdate(JSON.stringify({name:'MK6 Console (build 51)',apk:'https://github.com/azimsupandi-png/Mouldking-6.0.1/releases/download/latest/a.apk',page:'',notes:''}))},50)};
+      window.MK6Bridge.openUrl=function(u){__calls.push('open:'+u)};"""
+    seed3 = seed.replace("wn:46", "wn:45,lang:'ms'")
+    ctx, pg = await mk(seed3, extra=upd)
+    await pg.wait_for_timeout(1800)
+    r = await pg.evaluate("(function(){var s=document.getElementById('wnSheet');return s?[s.querySelector('h3').textContent,[...s.querySelectorAll('.wn-t')].map(x=>x.textContent).slice(0,2).join(),s.querySelectorAll('.wn-b').length]:null})()")
+    check('P6: What\'s new opens once after an update (Malay labels)', r and r[0] == 'Apa yang baharu' and r[1].startswith('BAHARU') and r[2] >= 3, r)
+    await pg.evaluate("document.querySelector('#wnSheet .btn.pri').click()")
+    r = await pg.evaluate("[__t.store.prefs.wn,document.getElementById('sVer').textContent]")
+    check('P6: version and build date in Settings', r[0] == 50 and 'build 50' in r[1] and '2026-11-13' in r[1], r)
+    await pg.wait_for_timeout(3500)
+    r = await pg.evaluate("[__calls.filter(c=>c==='check').length,document.getElementById('sUpdV').textContent]")
+    check('P6: quiet daily check finds a newer build', r[0] == 1 and '51' in r[1], r)
+    await pg.evaluate("document.getElementById('sUpd').click()")
+    r = await pg.evaluate("(function(){var s=document.getElementById('wnSheet');if(!s) return null;var h=s.querySelector('h3').textContent;s.querySelector('.btn.pri').click();return [h,__calls.filter(c=>c.indexOf('open:')===0)]})()")
+    check('P6: update sheet downloads the APK from GitHub', r and r[0] == 'Kemas kini tersedia' and len(r[1]) == 1 and r[1][0].endswith('a.apk'), r)
+    check('P6: no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
