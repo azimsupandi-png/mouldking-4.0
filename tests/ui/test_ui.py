@@ -271,7 +271,7 @@ async def t_twelve(b):
     check('9 size: a widget can be made 2x1', 'w2' in r, r)
     # 10 gallery: picture cards and category tabs
     r = await pg.evaluate("var t=[...document.querySelectorAll('.v2-gtabs .btn')].find(b=>b.textContent==='Meters');t.click();[document.querySelectorAll('.bd-types .gt svg').length,[...document.querySelectorAll('.bd-types > .btn')].filter(b=>!b.hidden).length]")
-    check('10 gallery: 32 picture cards, Meters tab shows 6', r == [32, 6], r)
+    check('10 gallery: 34 picture cards, Meters tab shows 6', r == [34, 6], r)
     await pg.evaluate("document.getElementById('bdEdit').click()")
     # 8 model colour persists and tints the board
     await pg.evaluate("mk6Go('medit');document.querySelectorAll('#swatches .sw')[2].click()")
@@ -944,10 +944,72 @@ async def t_pro2(b):
     check('P2/P4/P7/P8/P9: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_drtl(b):
+    # S2 D/R rotary switch, S4 timeline player + editor
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'X',cfg:{layout:'board',limit:100,ramp:100,
+      ch:[{},{},{},{},{},{}],tl:[{id:'t1',name:'Dig',dur:2,rp:1,lanes:[{c:2,pts:[[0,0,0],[1,80,1],[2,0,0]]}]}],
+      board:[{k:'s',c:0,w:1},{k:'dr',w:1,p:2},{k:'tl',w:2,tl:'t1'}]}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.wait_for_timeout(300)
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};mk6Go('home');document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.wait_for_timeout(400)
+    r = await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw')].map(w=>w.dataset.k+':'+!!w.querySelector('svg.xwv'))")
+    check('S2/S4: D/R switch and timeline player appear', r == ['s:false', 'dr:true', 'tl:true'], r)
+    await pg.evaluate("__t.rt.t[0]=100")
+    await pg.wait_for_timeout(2500)
+    full = await pg.evaluate("+(window.__last||'').split(',')[0]")
+    # tap the knob: Full -> Fine
+    await pg.evaluate("""(function(){var g=document.querySelector('#boardGrid .bdw[data-k=dr] svg g[role=slider]');g.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:10,clientY:10,pointerId:3}));g.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,clientX:10,clientY:10,pointerId:3}))})()""")
+    await pg.wait_for_timeout(2500)
+    r = await pg.evaluate("[+(window.__last||'').split(',')[0],__t.C.board[1].p,document.querySelector('#boardGrid .bdw[data-k=dr] .bdw-h output').textContent]")
+    check('S2: tapping the knob goes to Fine and the slider only reaches about 40%', full >= 90 and r[1] == 0 and 25 <= r[0] <= 45 and r[2] == 'Fine 40%', [full, r])
+    await pg.evaluate("__t.rt.t[0]=0")
+    # S4 play
+    await pg.evaluate("document.querySelector('#boardGrid .bdw[data-k=tl] svg g[role=button]').dispatchEvent(new MouseEvent('click',{bubbles:true}))")
+    await pg.wait_for_timeout(1000)
+    r = await pg.evaluate("[__t.rt.t[2],document.querySelector('#boardGrid .bdw[data-k=tl] .bdw-h output').textContent]")
+    check('S4: the timeline drives channel C (about +80 at 1 s)', r[0] >= 60 and '/ 2 s' in r[1], r)
+    await pg.wait_for_timeout(2500)
+    r = await pg.evaluate("[+(window.__last||'').split(',')[2],!!__t.S.play]")
+    check('S4: it stops at the end and returns to 0', r == [0, False], r)
+    # editor: open from edit mode, add a point, change shape, add a lane
+    await pg.evaluate("document.getElementById('bdEdit').click();document.querySelector('#boardGrid .bdw[data-k=tl] .bdw-ed button[aria-label=\"Edit timeline\"]').click()")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[!!document.getElementById('tlEd'),document.querySelectorAll('#tlEd svg circle[role=button]').length]")
+    check('S4: the editor opens with the points of each lane', r == [True, 3], r)
+    await pg.evaluate("""(function(){var r=document.querySelector('#tlEd svg rect');var b=r.getBoundingClientRect();r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:b.left+b.width*0.3,clientY:b.top+b.height*0.25,pointerId:4}))})()""")
+    await pg.wait_for_timeout(150)
+    r = await pg.evaluate("[__t.C.tl[0].lanes[0].pts.length,!document.querySelector('#tlEd .tle-pt').hidden]")
+    check('S4: tapping an empty spot adds a point and opens its panel', r == [4, True], r)
+    await pg.evaluate("document.querySelector('#tlEd .tle-pt [data-s=\"2\"]').click();document.querySelector('#tlEd [data-a=lane]').click()")
+    r = await pg.evaluate("[__t.C.tl[0].lanes[0].pts.filter(p=>p[2]===2).length,__t.C.tl[0].lanes.length]")
+    check('S4: point shape and a new lane are set', r == [1, 2], r)
+    await pg.evaluate("document.querySelector('#tlEd [data-a=done]').click()")
+    r = await pg.evaluate("[!document.getElementById('tlEd'),JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.tl[0].lanes.length]")
+    check('S4: Done closes the editor and saves', r == [True, 2], r)
+    # duplicate keeps its own timeline; gallery adds a new one
+    await pg.evaluate("document.querySelector('#boardGrid .bdw[data-k=tl] .bdw-ed button[aria-label=Duplicate]').click()")
+    r = await pg.evaluate("[__t.C.tl.length,__t.C.board.filter(o=>o.k==='tl').map(o=>o.tl).filter((v,i,a)=>a.indexOf(v)===i).length]")
+    check('S4: duplicating a player copies its timeline', r == [2, 2], r)
+    await pg.evaluate("document.getElementById('bdTTL').click();document.getElementById('bdAdd').click()")
+    await pg.wait_for_timeout(600)
+    r = await pg.evaluate("[__t.C.tl.length,!!document.getElementById('tlEd'),document.getElementById('bdNote').textContent]")
+    check('S4: adding a Timeline from the gallery opens the editor', r[:2] == [3, True], r)
+    await pg.evaluate("document.querySelector('#tlEd [data-a=done]').click();document.getElementById('bdTDR').click();document.getElementById('bdAdd').click()")
+    r = await pg.evaluate("[__t.C.board.filter(o=>o.k==='dr').length,document.getElementById('bdNote').textContent]")
+    check('S2: only one D/R switch per board', r[0] == 1 and 'already' in r[1], r)
+    check('S2/S4: no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
