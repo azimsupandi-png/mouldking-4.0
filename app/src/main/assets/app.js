@@ -5886,7 +5886,7 @@ try{
       bx.appendChild(mk('div','Build '+c.b,'wn-b'));
       var ul=mk('ul');c.items.forEach(function(x){var li=mk('li');li.appendChild(mk('span',WN_TAG[x[0]],'wn-t '+x[0]));li.appendChild(mk('span',x[1]));ul.appendChild(li)});bx.appendChild(ul);
     });
-    if(upd&&upd.notes){var nt=mk('p',upd.notes.slice(0,600),'note');nt.style.whiteSpace='pre-line';bx.appendChild(nt)}
+    if(upd&&upd.notes&&!/^Build \d+\. Open MK6 Console/.test(upd.notes)){var nt=mk('p',upd.notes.slice(0,600),'note');nt.style.whiteSpace='pre-line';bx.appendChild(nt)}
     var row=mk('div',null,'rec-row');
     if(upd){var dl=mk('button','Download','btn pri');dl.type='button';dl.addEventListener('click',function(){try{NB.openUrl(upd.apk||upd.page)}catch(_){}ov.remove()});row.appendChild(dl)}
     var ok=mk('button',upd?'Later':'OK',upd?'btn':'btn pri');ok.type='button';ok.addEventListener('click',function(){ov.remove()});row.appendChild(ok);

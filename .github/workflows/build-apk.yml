@@ -93,7 +93,9 @@ jobs:
             printf '# MK6 Console releases\n\nAPK builds of MK6 Console. Download the newest from Releases.\n' | base64 -w0 > readme.b64
             gh api -X PUT repos/$R/contents/README.md -f message="Add README" -f content="$(cat readme.b64)"
           fi
+          # release notes = this commit's message without the attribution lines
+          git log -1 --format=%B | grep -v -E '^(Co-Authored-By|Claude-Session):' > notes.txt
           gh release delete latest -R $R --yes --cleanup-tag || true
           gh release create latest out/MK6-Console.apk -R $R \
             --title "MK6 Console (build ${{ github.run_number }})" \
-            --notes "Build ${{ github.run_number }}. Open MK6 Console → Settings → What's new to see the changes." 
+            --notes-file notes.txt
