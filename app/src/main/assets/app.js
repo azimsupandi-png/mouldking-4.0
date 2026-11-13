@@ -5693,7 +5693,7 @@ try{
 
   // ---- What's new, version and update check ----
   var CHANGES=[
-    {b:46,items:[['new','Live link centre: send-rate graph, a ring for each hub and an early warning when sending slows down'],
+    {b:49,items:[['new','Live link centre: send-rate graph, a ring for each hub and an early warning when sending slows down'],
       ['new','Edit mode: ⧉ duplicates a widget onto the next free channel; ⊞ selects several widgets to move together'],
       ['new','Colour-blind colours (blue / orange) and ▲/▼ direction arrows on values'],
       ['better','High contrast is stronger for outdoor use; TalkBack reads each widget\'s name'],
