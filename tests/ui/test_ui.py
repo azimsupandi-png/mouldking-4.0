@@ -858,7 +858,7 @@ async def t_pro(b):
     ctx, pg = await mk(seed3, extra=upd)
     await pg.wait_for_timeout(1800)
     r = await pg.evaluate("(function(){var s=document.getElementById('wnSheet');return s?[s.querySelector('h3').textContent,[...s.querySelectorAll('.wn-t')].map(x=>x.textContent).slice(0,2).join(),s.querySelectorAll('.wn-b').length]:null})()")
-    check('P6: What\'s new opens once after an update (Malay labels)', r and r[0] == 'Apa yang baharu' and r[1].startswith('BAHARU') and r[2] >= 3, r)
+    check('P6: What\'s new opens once after an update (Malay labels)', r and r[0] == 'Apa yang baharu' and all(x in ('BAHARU', 'BAIK', 'BAIKI') for x in r[1].split(',')) and r[2] >= 3, r)
     await pg.evaluate("document.querySelector('#wnSheet .btn.pri').click()")
     r = await pg.evaluate("[__t.store.prefs.wn,document.getElementById('sVer').textContent]")
     check('P6: version and build date in Settings', r[0] == 50 and 'build 50' in r[1] and '2026-11-13' in r[1], r)
@@ -945,7 +945,7 @@ async def t_pro2(b):
     await ctx.close()
 
 async def t_drtl(b):
-    # D/R in Settings > Limits (an old D/R widget moves there), S4 timeline player + editor
+    # D/R removed; S4 timeline player + editor
     ctx = await b.new_context(viewport={'width': 390, 'height': 844})
     pg = await ctx.new_page(); pg.errors = []
     pg.on('pageerror', lambda e: pg.errors.append(str(e)))
@@ -958,25 +958,14 @@ async def t_drtl(b):
     await pg.wait_for_timeout(300)
     await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};mk6Go('home');document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
     await pg.wait_for_timeout(400)
-    r = await pg.evaluate("[[...document.querySelectorAll('#boardGrid .bdw')].map(w=>w.dataset.k).join(),__t.C.dr.v,!!document.getElementById('bdTDR')]")
-    check('D/R: the old widget is gone and its setting moved to the model', r == ['s,tl', 40, False], r)
-    await pg.evaluate("__t.rt.t[0]=100")
-    await pg.wait_for_timeout(2500)
-    fine = await pg.evaluate("+(window.__last||'').split(',')[0]")
-    await pg.evaluate("mk6Go('safety')")
-    await pg.wait_for_timeout(200)
-    await pg.evaluate("""(function(){var g=document.querySelector('#drSet svg rect[role=slider]'),b=g.getBoundingClientRect(),o={bubbles:true,clientX:b.right-2,clientY:b.top+b.height/2,pointerId:3};g.dispatchEvent(new PointerEvent('pointerdown',o));g.dispatchEvent(new PointerEvent('pointerup',o))})()""")
-    await pg.wait_for_timeout(2500)
-    r = await pg.evaluate("[+(window.__last||'').split(',')[0],__t.C.dr.v,document.querySelectorAll('#drSet .drcs button').length,document.querySelectorAll('#drSet [data-s]').length]")
-    check('D/R: Settings slider goes from Fine (about 40%) to Full', 25 <= fine <= 45 and r[0] >= 90 and r[1] == 100 and r[2] == 6 and r[3] == 3, [fine, r])
-    await pg.evaluate("__t.rt.t[0]=0;mk6Go('drive')")
-    await pg.wait_for_timeout(200)
+    r = await pg.evaluate("[[...document.querySelectorAll('#boardGrid .bdw')].map(w=>w.dataset.k).join(),!!document.getElementById('bdTDR'),'dr' in __t.C]")
+    check('D/R is gone: an old D/R widget is dropped and there is no D/R setting', r == ['s,tl', False, False], r)
     # S4 play
     await pg.evaluate("document.querySelector('#boardGrid .bdw[data-k=tl] svg g[role=button]').dispatchEvent(new MouseEvent('click',{bubbles:true}))")
     await pg.wait_for_timeout(1000)
     r = await pg.evaluate("[__t.rt.t[2],document.querySelector('#boardGrid .bdw[data-k=tl] .bdw-h output').textContent]")
-    rr = await pg.evaluate("(function(){var w=document.querySelector('#boardGrid .bdw[data-k=tl] svg');var lit=[...w.querySelectorAll('line')].filter(l=>l.getAttribute('stroke')==='#ffd84a'&&+l.getAttribute('opacity')>0.9).length;return [w.querySelector('g[role=button] path:not([filter])').getAttribute('fill'),lit]})()")
-    check('S4: playing shows a red stop sign and a running LED', rr[0].upper() in ('#E24B4A', '#D55E00') and rr[1] >= 1, rr)
+    rr = await pg.evaluate("(function(){var w=document.querySelector('#boardGrid .bdw[data-k=tl] svg');var lit=[...w.querySelectorAll('line')].filter(l=>l.getAttribute('stroke')==='#ffd84a'&&+l.getAttribute('opacity')>0.9).length;var st=w.querySelector('g[role=button] rect:not([filter])');return [st.getAttribute('fill'),getComputedStyle(st.parentNode).display,+st.getAttribute('width'),lit,w.querySelectorAll('circle[opacity=\"1\"]').length]})()")
+    check('S4: playing shows a small red stop sign, a running LED and a live dot on the curve', rr[0].upper() in ('#E24B4A', '#D55E00') and rr[1] != 'none' and rr[2] <= 24 and rr[3] >= 1 and rr[4] >= 1, rr)
     check('S4: the timeline drives channel C (about +80 at 1 s)', r[0] >= 60 and '/ 2 s' in r[1], r)
     await pg.wait_for_timeout(2500)
     r = await pg.evaluate("[+(window.__last||'').split(',')[2],!!__t.S.play]")
