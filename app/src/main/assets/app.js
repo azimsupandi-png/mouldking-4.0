@@ -804,7 +804,7 @@ try{
     var id='sw'+(++XWN),OFF='rgba(150,160,175,.32)',cx=150,cy=150;
     var box=document.createElement('div');box.className='mtr-box';
     var svg=sv('svg',{'class':'xwv','data-k':'sw',viewBox:'0 0 300 300','preserveAspectRatio':'xMidYMid meet'},box);el.appendChild(box);
-    var df=sv('defs',{},svg),gl=sv('filter',{id:id+'g',x:'-50%',y:'-50%',width:'200%',height:'200%'},df);sv('feGaussianBlur',{stdDeviation:2.6},gl);
+    var df=sv('defs',{},svg),gl=sv('filter',{id:id+'g',filterUnits:'userSpaceOnUse',x:-20,y:-20,width:340,height:340},df);sv('feGaussianBlur',{stdDeviation:2.6},gl);   // whole-picture region: a box around a thin slanted line would cut the glow off
     var dsh=sv('filter',{id:id+'s',x:'-30%',y:'-30%',width:'160%',height:'160%'},df);sv('feDropShadow',{dx:3,dy:4,stdDeviation:3,'flood-color':'#000','flood-opacity':.6},dsh);
     var ringG=sv('g',{},svg),segs=[];
     sv('circle',{cx:cx,cy:cy,r:114,fill:'#0b0e12',stroke:'#262b33','stroke-width':2.5},svg);
