@@ -10,6 +10,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
@@ -752,6 +753,14 @@ public class MainActivity extends Activity {
                 fullScreen = on;
                 applyFull();
             });
+        }
+
+        /** "land" turns the screen sideways (either way); anything else gives rotation back to the phone. */
+        @JavascriptInterface
+        public void orient(String mode) {
+            runOnUiThread(() -> setRequestedOrientation("land".equals(mode)
+                    ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                    : ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED));
         }
 
         /** Light theme: light bars with dark icons; dark theme: dark bars with light icons. */

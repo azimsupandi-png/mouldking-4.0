@@ -1051,10 +1051,38 @@ async def t_swing(b):
     check('Swing: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_newdash(b):
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'MK',cfg:{layout:'board',ch:[{},{},{},{},{},{}],board:[{k:'s',c:0,w:1,g:[0,0,6,10]}]}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
+    await pg.add_init_script(STUB + seed + "window.MK6Bridge.orient=function(m){__calls.push('orient:'+m)};")
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("(function(){var p=document.getElementById('tabPlus'),n=document.querySelectorAll('#tabbar > button'),i=[].indexOf.call(n,p);return [n[i-1].dataset.tab,n[i+1].dataset.tab,getComputedStyle(p).display!=='none']})()")
+    check('(+): sits between Drive and Models', r == ['drive', 'models', True], r)
+    await pg.evaluate("document.getElementById('tabPlus').click()")
+    r = await pg.evaluate("[!!document.getElementById('ndSheet'),[...document.querySelectorAll('#ndSheet .nd-tp')].map(b=>b.dataset.k).join()]")
+    check('(+): opens the New dashboard sheet with 4 starts', r == [True, 'empty,exc,car,copy'], r)
+    await pg.evaluate("var i=document.querySelector('#ndSheet input');i.value='Gali';document.querySelector('#ndSheet [data-k=exc]').click();document.querySelector('#ndSheet [data-a=go]').click()")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[__t.store.profiles.length,__t.store.profiles[1].name,__t.store.active===__t.store.profiles[1].id,__t.store.profiles[1].cfg.dash,__t.store.profiles[1].cfg.board.length>0,__calls.indexOf('orient:land')>=0,document.documentElement.getAttribute('data-v')]")
+    check('(+): creates a sideways board from the template and asks for landscape', r == [2, 'Gali', True, True, True, True, 'drive'], r)
+    await pg.set_viewport_size({'width': 844, 'height': 390})
+    await pg.wait_for_timeout(700)
+    r = await pg.evaluate("[document.documentElement.classList.contains('dash'),document.querySelectorAll('#boardGrid .dw-ed').length>0]")
+    check('(+): once sideways, the board opens in edit mode', r == [True, True], r)
+    await pg.evaluate("document.getElementById('dbEdit').click()")
+    r = await pg.evaluate("__calls.filter(c=>c.indexOf('orient:')===0)")
+    check('(+): Done gives rotation back to the phone', r == ['orient:land', 'orient:auto'], r)
+    check('(+): no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

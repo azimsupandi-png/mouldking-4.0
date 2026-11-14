@@ -5460,7 +5460,7 @@ try{
     "Length":"Panjang","Repeat":"Ulang","Once":"Sekali","Loop":"Ulang terus","Timeline name":"Nama garis masa","+ Lane":"+ Lorong","Channel for the new lane":"Saluran untuk lorong baharu",
     "Drag a point. Tap an empty spot in a lane to add a point. Tap a point to change it exactly.":"Seret titik. Ketik ruang kosong dalam lorong untuk tambah titik. Ketik titik untuk ubah dengan tepat.",
     "Undo changes":"Batal perubahan","Done":"Siap","Delete point":"Padam titik","Value":"Nilai","Time":"Masa","Change":"Peralihan","Smooth":"Licin","Straight":"Lurus","Jump":"Lompat",
-    "Changes undone.":"Perubahan dibatalkan.","Swing angle":"Sudut pusingan","Swing angle settings":"Tetapan sudut pusingan","Swing channel":"Saluran pusing","Limits":"Had","Left and right limits":"Had kiri dan kanan","No limit (turns 360\u00b0)":"Tanpa had (pusing 360\u00b0)","Left limit":"Had kiri","Right limit":"Had kanan","Slow down before the limit":"Perlahan sebelum had","Speed at full power":"Kelajuan pada kuasa penuh","Direction":"Arah","Reversed":"Terbalik","Limit \u00b7 turn back only":"Had \u00b7 pusing balik sahaja","Slowing near the limit":"Perlahan dekat had","Set the angle to 0":"Tetapkan sudut ke 0","Angle set to 0. Do this when the cab points straight ahead.":"Sudut ditetapkan ke 0. Buat ini bila kabin menghala lurus ke depan.","Turn one full circle at full power, then tap Done.":"Pusing satu bulatan penuh pada kuasa penuh, kemudian ketik Siap.","That took too long or too short. Try again.":"Terlalu lama atau terlalu singkat. Cuba lagi.","Tap Start, turn the model one full circle at full power, then tap Done.":"Ketik Mula, pusing model satu bulatan penuh pada kuasa penuh, kemudian ketik Siap.","\u25B6 Start":"\u25B6 Mula","\u2713 Done":"\u2713 Siap","This channel already has a swing angle widget.":"Saluran ini sudah ada widget sudut pusingan.","Swing angle widget: the excavator seen from above turns with the estimated cab angle, slows near the limits and stops at them":"Widget sudut pusingan: jengkaut dilihat dari atas berpusing ikut anggaran sudut kabin, perlahan dekat had dan berhenti di had","Ready":"Sedia","Playing":"Sedang main","D/R switch removed":"Suis D/R dibuang","Timeline player: smaller play and stop signs, channel letters on each lane, a live dot on each curve and the repeat count":"Pemain garis masa: simbol main dan henti lebih kecil, huruf saluran pada setiap lorong, titik langsung pada setiap lengkung dan kiraan ulangan","Up to 16 points in a lane.":"Maksimum 16 titik dalam satu lorong.","▶ Play":"▶ Main","■ Stop":"■ Henti","This timeline is missing.":"Garis masa ini tiada.",
+    "Changes undone.":"Perubahan dibatalkan.","New dashboard":"Papan pemuka baharu","A new board of its own, arranged sideways.":"Papan baharu tersendiri, disusun dalam landskap.","Start with":"Mula dengan","Empty":"Kosong","Arrange it yourself":"Susun sendiri","Excavator":"Jengkaut","2 sliders \u00b7 dual stick":"2 peluncur \u00b7 joystik berkembar","Car":"Kereta","Throttle \u00b7 steering \u00b7 lights":"Pendikit \u00b7 stereng \u00b7 lampu","Copy this board":"Salin papan ini","Every widget of the current model":"Semua widget model semasa","The screen turns sideways and the board opens in edit mode.":"Skrin berpusing ke landskap dan papan dibuka dalam mod edit.","Create & arrange":"Cipta & susun","Name":"Nama","Model list is full.":"Senarai model penuh.","New dashboard button (+) between Drive and Models: name it, pick a start, and it opens sideways in edit mode":"Butang papan pemuka baharu (+) antara Drive dan Models: beri nama, pilih permulaan, dan ia dibuka dalam landskap dalam mod edit","Sharper model photos (512 px)":"Gambar model lebih tajam (512 px)","Swing angle":"Sudut pusingan","Swing angle settings":"Tetapan sudut pusingan","Swing channel":"Saluran pusing","Limits":"Had","Left and right limits":"Had kiri dan kanan","No limit (turns 360\u00b0)":"Tanpa had (pusing 360\u00b0)","Left limit":"Had kiri","Right limit":"Had kanan","Slow down before the limit":"Perlahan sebelum had","Speed at full power":"Kelajuan pada kuasa penuh","Direction":"Arah","Reversed":"Terbalik","Limit \u00b7 turn back only":"Had \u00b7 pusing balik sahaja","Slowing near the limit":"Perlahan dekat had","Set the angle to 0":"Tetapkan sudut ke 0","Angle set to 0. Do this when the cab points straight ahead.":"Sudut ditetapkan ke 0. Buat ini bila kabin menghala lurus ke depan.","Turn one full circle at full power, then tap Done.":"Pusing satu bulatan penuh pada kuasa penuh, kemudian ketik Siap.","That took too long or too short. Try again.":"Terlalu lama atau terlalu singkat. Cuba lagi.","Tap Start, turn the model one full circle at full power, then tap Done.":"Ketik Mula, pusing model satu bulatan penuh pada kuasa penuh, kemudian ketik Siap.","\u25B6 Start":"\u25B6 Mula","\u2713 Done":"\u2713 Siap","This channel already has a swing angle widget.":"Saluran ini sudah ada widget sudut pusingan.","Swing angle widget: the excavator seen from above turns with the estimated cab angle, slows near the limits and stops at them":"Widget sudut pusingan: jengkaut dilihat dari atas berpusing ikut anggaran sudut kabin, perlahan dekat had dan berhenti di had","Ready":"Sedia","Playing":"Sedang main","D/R switch removed":"Suis D/R dibuang","Timeline player: smaller play and stop signs, channel letters on each lane, a live dot on each curve and the repeat count":"Pemain garis masa: simbol main dan henti lebih kecil, huruf saluran pada setiap lorong, titik langsung pada setiap lengkung dan kiraan ulangan","Up to 16 points in a lane.":"Maksimum 16 titik dalam satu lorong.","▶ Play":"▶ Main","■ Stop":"■ Henti","This timeline is missing.":"Garis masa ini tiada.",
     "Timeline: draw smooth moves for several channels on lanes, then play them with one button":"Garis masa: lukis gerakan licin untuk beberapa saluran pada lorong, kemudian mainkan dengan satu butang"};
   for(var v2k10 in V2MS10) MS[v2k10]=V2MS10[v2k10];
   MS_RE.push([/^Timeline · (.+)$/,function(m){return 'Garis masa · '+m[1]}]);
@@ -5788,6 +5788,59 @@ try{
     if(key==='empty'){var e=$('#bdEdit');if(e&&e.getAttribute('aria-pressed')!=='true') e.click()}
   }
   Array.prototype.forEach.call(document.querySelectorAll('[data-wiz]'),function(b){b.addEventListener('click',function(){v2NewTpl(b.dataset.wiz)})});
+  // ---- (+) in the tab bar: a new dashboard, opened sideways in edit mode ----
+  var NDASH=false, ND_FORCED=false;
+  var NDT=[['empty','Empty','Arrange it yourself'],['exc','Excavator','2 sliders · dual stick'],['car','Car','Throttle · steering · lights'],['copy','Copy this board','Every widget of the current model']];
+  function ndPrev(key){
+    var B={empty:[],exc:[[2,4,14,32,'s'],[20,4,52,32,'j'],[76,4,14,32,'s']],car:[[2,4,22,32,'s'],[28,4,20,15,'l'],[28,21,20,15,'b'],[52,4,20,15,'t'],[76,4,18,15,'e'],[52,21,42,15,'h']]};
+    var L=key==='copy'?(C.board||[]).filter(function(o){return o.g}).slice(0,12).map(function(o){return [o.g[0]/48*96+2,o.g[1]/24*36+2,o.g[2]/48*96-2,o.g[3]/24*36-2,'x']}):B[key]||[];
+    var o='<svg viewBox="0 0 100 40" aria-hidden="true"><rect x=".5" y=".5" width="99" height="39" rx="5" fill="#0b0c0e" stroke="'+(key==='empty'?'#3a3f47':'#262a31')+'"'+(key==='empty'?' stroke-dasharray="3 2"':'')+'/>';
+    L.forEach(function(b){o+='<rect x="'+b[0]+'" y="'+b[1]+'" width="'+b[2]+'" height="'+b[3]+'" rx="3" fill="#232831" stroke="#4a505b" stroke-width=".6"/>';
+      var cx=b[0]+b[2]/2,cy=b[1]+b[3]/2;o+=b[4]==='s'||b[4]==='h'?'<rect x="'+(cx-(b[4]==='h'?b[2]/2-4:1.5))+'" y="'+(cy-(b[4]==='h'?1.5:b[3]/2-4))+'" width="'+(b[4]==='h'?b[2]-8:3)+'" height="'+(b[4]==='h'?3:b[3]-8)+'" rx="1.5" fill="#FFC400"/>':b[4]==='e'?'<circle cx="'+cx+'" cy="'+cy+'" r="4.5" fill="#E24B4A"/>':'<circle cx="'+cx+'" cy="'+cy+'" r="'+Math.min(b[2],b[3])*.28+'" fill="#FFC400"/>'});
+    return o+'</svg>';
+  }
+  function ndShow(){
+    if(store.prefs.lock){toast('Settings are locked.');return}
+    if(store.profiles.length>=MAX_MODELS){toast('Model list is full.');return}
+    var old=document.getElementById('ndSheet');if(old) old.remove();
+    var ov=document.createElement('div');ov.id='ndSheet';ov.className='gedit nd';
+    var bx=document.createElement('div');bx.className='gbox ndbox';bx.setAttribute('role','dialog');bx.setAttribute('aria-modal','true');ov.appendChild(bx);
+    var n=store.profiles.length+1;
+    bx.innerHTML='<h3></h3><p class="note nd-sub"></p><label class="nd-f"><span></span><input class="txt" maxlength="24"></label><div class="nd-l"></div><div class="nd-t"></div><p class="nd-rot"></p><div class="rec-row"><button class="btn" type="button" data-a="x"></button><button class="btn pri" type="button" data-a="go"></button></div>';
+    bx.querySelector('h3').textContent='New dashboard';bx.querySelector('.nd-sub').textContent='A new board of its own, arranged sideways.';
+    bx.querySelector('.nd-f span').textContent='Name';var inp=bx.querySelector('input');inp.value=(store.prefs.lang==='ms'?'Papan ':'Board ')+n;
+    bx.querySelector('.nd-l').textContent='Start with';
+    bx.querySelector('.nd-rot').textContent='The screen turns sideways and the board opens in edit mode.';
+    bx.querySelector('[data-a=x]').textContent='Cancel';bx.querySelector('[data-a=go]').textContent='Create & arrange';
+    var key='empty',tg=bx.querySelector('.nd-t');
+    NDT.forEach(function(t){if(t[0]==='copy'&&!(C.board&&C.board.length)) return;var b=document.createElement('button');b.type='button';b.className='nd-tp';b.dataset.k=t[0];
+      b.innerHTML=ndPrev(t[0])+'<b></b><small></small>';b.querySelector('b').textContent=t[1];b.querySelector('small').textContent=t[2];
+      b.setAttribute('aria-pressed',String(t[0]===key));b.addEventListener('click',function(){key=t[0];[].forEach.call(tg.children,function(z){z.setAttribute('aria-pressed',String(z===b))});feedback('tick')});tg.appendChild(b)});
+    bx.querySelector('[data-a=x]').addEventListener('click',function(){ov.remove()});
+    ov.addEventListener('click',function(e){if(e.target===ov) ov.remove()});
+    bx.querySelector('[data-a=go]').addEventListener('click',function(){var nm=inp.value.trim().slice(0,24)||('Board '+n);ov.remove();ndCreate(nm,key)});
+    document.body.appendChild(ov);feedback('tap');
+  }
+  function ndCreate(name,key){
+    if(store.profiles.length>=MAX_MODELS){toast('Model list is full.');return}
+    var cfg;
+    if(key==='copy'){cfg=JSON.parse(JSON.stringify(C));Object.keys(cfg).forEach(function(k){if(k.charAt(0)==='_') delete cfg[k]});delete cfg.st;delete cfg.fav}
+    else{var t=V2TPL[key]||V2TPL.empty;cfg=baseCfg(t.ch||undefined);t.light.forEach(function(i){cfg.ch[i].kind='light'});cfg.board=[];cfg.hubs=C.hubs.slice()}
+    cfg.layout='board';cfg.dash=true;
+    var p={id:uid(),name:name,cfg:sanitizeCfg(cfg)};store.profiles.push(p);switchProfile(p.id);
+    if(key!=='copy'&&DTPL[key]) dtplApply(DTPL[key],name);
+    save();v2Go('drive');feedback('success');
+    NDASH=true;if(NB&&NB.orient){try{NB.orient('land');ND_FORCED=true}catch(_){}}
+    toast('"'+name+'" created. Turn the phone sideways to arrange it.',3500);
+    setTimeout(ndTry,120);
+  }
+  // open the editor as soon as the sideways dashboard is showing
+  function ndTry(){if(!NDASH||!dashOn()) return;NDASH=false;if(!bdEditing){var e=$('#dbEdit');if(e) e.click()}}
+  function ndDone(){if(ND_FORCED){ND_FORCED=false;try{NB.orient('auto')}catch(_){}}}
+  window.addEventListener('resize',function(){setTimeout(ndTry,250)});
+  $('#dbEdit').addEventListener('click',function(){if(!bdEditing) ndDone()});
+  $('#dbExit').addEventListener('click',ndDone);
+  v2Click('#tabPlus',ndShow);
   v2Click('#tSave',function(){$('#exBtn').click()});
   v2Click('#tLoad',function(){$('#imBtn').click();if(!NB) v2Go('backup')});
 
@@ -6213,6 +6266,7 @@ try{
 
   // ---- What's new, version and update check ----
   var CHANGES=[
+    {b:64,items:[['new','New dashboard button (+) between Drive and Models: name it, pick a start, and it opens sideways in edit mode'],['better','Sharper model photos (512 px)']]},
     {b:57,items:[['new','Swing angle widget: the excavator seen from above turns with the estimated cab angle, slows near the limits and stops at them']]},
     {b:56,items:[['better','Timeline player: smaller play and stop signs, channel letters on each lane, a live dot on each curve and the repeat count'],['better','D/R switch removed']]},
     {b:52,items:[['new','Timeline: draw smooth moves for several channels on lanes, then play them with one button']]},

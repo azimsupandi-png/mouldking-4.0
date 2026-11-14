@@ -1770,6 +1770,21 @@ html[data-cb] .sf-fill.warn,html[data-cb] .sf-tip.warn{stroke:#E69F00;color:#E69
 @media (orientation:landscape){.tled{padding-left:calc(env(safe-area-inset-left,0px) + 12px);padding-right:calc(env(safe-area-inset-right,0px) + 12px)}
   .tle-body{flex-direction:row;align-items:flex-start}.tle-main{flex:1}.tle-side{width:300px;flex:none;max-height:calc(100vh - 120px);overflow:auto;padding-bottom:8px}
   .tle-end{margin-top:0}.tle-hint{font-size:12px}}
+/* ---------- (+) new dashboard ---------- */
+.v2-nav .v2-plus{flex:0 0 72px;max-width:72px;align-self:flex-start;margin-top:-18px;background:none}
+.v2-pb{display:grid;place-items:center;width:58px;height:58px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe27a,#FFC400 55%,#b98a00);
+  box-shadow:0 0 0 5px var(--panel),0 8px 18px rgba(255,196,0,.35)}
+.v2-pb .ic{width:28px!important;height:28px!important;stroke:#141414;stroke-width:3}
+.v2-plus:active .v2-pb{transform:scale(.92)}
+html[data-lock] .v2-nav .v2-plus{display:none!important}
+.ndbox h3{margin:0 0 2px}.nd-sub{margin:0 0 12px}
+.nd-f{display:grid;gap:5px;font-size:12.5px;color:var(--muted);margin-bottom:12px}
+.nd-l{font-size:12.5px;color:var(--muted);margin-bottom:6px}
+.nd-t{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.nd-tp{display:grid;gap:3px;text-align:left;padding:8px;border-radius:14px;border:1.5px solid var(--line);background:rgba(0,0,0,.18);color:var(--fg);font:inherit;cursor:pointer}
+.nd-tp svg{width:100%;height:auto;margin-bottom:4px}.nd-tp b{font-size:13.5px}.nd-tp small{font-size:11.5px;color:var(--muted)}
+.nd-tp[aria-pressed=true]{border-color:var(--acc,#FFC400);background:rgba(255,196,0,.08)}
+.nd-rot{font-size:12.5px;color:var(--muted);margin:12px 0 4px}
 /* ---------- Hub link diagnostics ---------- */
 .v2-diag{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;margin:6px 2px 4px;font-size:13.5px}
 .v2-diag dt{color:var(--muted)}
@@ -2408,6 +2423,7 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
 <nav class="v2-nav" id="tabbar" aria-label="Main">
   <button type="button" data-tab="home" aria-pressed="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.8 12 3.6l8.5 7.2V19.5a1.3 1.3 0 0 1-1.3 1.3H15v-6.2H9v6.2H4.8a1.3 1.3 0 0 1-1.3-1.3z"/></svg><span>Home</span></button>
   <button type="button" data-tab="drive" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="2.6"/><path d="M12 14.6v6M9.6 11.1 3.6 9.6M14.4 11.1l6-1.5"/></svg><span>Drive</span></button>
+  <button type="button" class="v2-plus" id="tabPlus" aria-label="New dashboard"><span class="v2-pb"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span></button>
   <button type="button" data-tab="models" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2 20 7.6v8.8L12 20.8l-8-4.4V7.6z"/><path d="M4 7.6 12 12l8-4.4M12 12v8.8"/></svg><span>Models</span></button>
   <button type="button" data-tab="settings" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.02,10.21 L21.02,13.79 L18.96,13.39 L17.90,15.94 L19.65,17.11 L17.11,19.65 L15.94,17.90 L13.39,18.96 L13.79,21.02 L10.21,21.02 L10.61,18.96 L8.06,17.90 L6.89,19.65 L4.35,17.11 L6.10,15.94 L5.04,13.39 L2.98,13.79 L2.98,10.21 L5.04,10.61 L6.10,8.06 L4.35,6.89 L6.89,4.35 L8.06,6.10 L10.61,5.04 L10.21,2.98 L13.79,2.98 L13.39,5.04 L15.94,6.10 L17.11,4.35 L19.65,6.89 L17.90,8.06 L18.96,10.61Z"/><circle cx="12" cy="12" r="3"/></svg><span>Settings</span></button>
 </nav>
