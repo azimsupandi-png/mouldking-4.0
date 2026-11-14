@@ -1104,10 +1104,68 @@ async def t_recx(b):
     check('scope REC: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_chmap(b):
+    ctx = await b.new_context(viewport={'width': 844, 'height': 390})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'CH',cfg:{layout:'board',dash:true,ch:[{},{},{},{},{},{}],
+      board:[{k:'n',c:0,w:1},{k:'n',c:1,w:1},{k:'d',c:0,d:1,e:2,f:3,w:2},{k:'lx',t:'eq',c:2,cs:[3],w:1}]}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("mk6Go('drive')"); await pg.wait_for_timeout(400)
+    await pg.evaluate("document.getElementById('dbEdit').click()"); await pg.wait_for_timeout(400)
+    B = "JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.board"
+    W = "[...document.querySelectorAll('#boardGrid .bdw')]"
+    r = await pg.evaluate("document.querySelectorAll('#boardGrid .bdw-chip.tap').length")
+    check('channels: chips can be tapped while editing', r >= 2, r)
+    await pg.evaluate(W+"[0].querySelector('.bdw-chip.tap').click()"); await pg.wait_for_timeout(200)
+    r = await pg.evaluate("[document.querySelectorAll('#chPop .chp-g .btn').length,document.querySelector('#chPop .chp-g .btn[aria-pressed=true] b').textContent,document.querySelectorAll('#chPop .chp-g .btn.used').length]")
+    check('channels: the pop-over shows A-F, the current one picked, used ones marked', r[0] == 6 and r[1] == 'A' and r[2] >= 3, r)
+    await pg.evaluate("[...document.querySelectorAll('#chPop .chp-g .btn')][4].click()"); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("["+B+"[0].c,!!document.getElementById('chShare'),!document.getElementById('dbBack').hidden]")
+    check('channels: a free channel is taken at once and can be undone', r == [4, False, True], r)
+    await pg.evaluate(W+"[0].querySelector('.bdw-chip.tap').click()"); await pg.wait_for_timeout(200)
+    await pg.evaluate("[...document.querySelectorAll('#chPop .chp-g .btn')][1].click()"); await pg.wait_for_timeout(200)
+    r = await pg.evaluate("[!!document.getElementById('chShare'),"+B+"[0].c]")
+    check('channels: a used channel asks first (share or cancel)', r == [True, 4], r)
+    await pg.evaluate("document.querySelector('#chShare [data-a=go]').click()"); await pg.wait_for_timeout(300)
+    r = await pg.evaluate(B+"[0].c")
+    check('channels: Share uses the channel together', r == 1, r)
+    # double stick: role picker through the toolbar, picking a channel it already uses swaps the two
+    await pg.evaluate("var w="+W+".find(e=>e.dataset.k==='d'),r=w.getBoundingClientRect();w.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:3,clientX:r.left+20,clientY:r.top+40}));w.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:3,clientX:r.left+20,clientY:r.top+40}))")
+    await pg.wait_for_timeout(300)
+    await pg.evaluate("var w="+W+".find(e=>e.dataset.k==='d');w.querySelector('.bdw-ed [aria-label=\"Change channel\"]').click()"); await pg.wait_for_timeout(200)
+    r = await pg.evaluate("document.querySelectorAll('#chPop .chp-r .btn').length")
+    check('channels: a double stick lists its 4 roles', r == 4, r)
+    await pg.evaluate("[...document.querySelectorAll('#chPop .chp-g .btn')][3].click()"); await pg.wait_for_timeout(300)
+    sh = await pg.evaluate("!!document.getElementById('chShare')")
+    await pg.evaluate("document.querySelector('#chShare [data-a=go]').click()"); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("(function(){var d="+B+".find(o=>o.k==='d');return [d.c,d.f]})()")
+    check('channels: D is also on the LED bars (asks), and the stick swaps its own two roles', sh and r == [3, 0], [sh, r])
+    # settings sheet: named list
+    await pg.evaluate("var w="+W+"[1],r=w.getBoundingClientRect();w.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:4,clientX:r.left+r.width/2,clientY:r.top+r.height*0.7}));w.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:4,clientX:r.left+r.width/2,clientY:r.top+r.height*0.7}))")
+    await pg.wait_for_timeout(300)
+    await pg.evaluate(W+"[1].querySelector('.bdw-ed [aria-label=\"Widget settings\"]').click()"); await pg.wait_for_timeout(200)
+    await pg.evaluate("document.querySelector('#gEdit .ws-chb').click()"); await pg.wait_for_timeout(200)
+    r = await pg.evaluate("[document.querySelectorAll('#chList .chl-r').length,document.querySelector('#chList .chl-r.me .chl-n').textContent.length>0,document.querySelectorAll('#chList .chl-u.used').length]")
+    check('channels: the named list shows 6 channels, this widget and the used ones', r[0] == 6 and r[1] and r[2] >= 2, r)
+    await pg.evaluate("[...document.querySelectorAll('#chList .chl-r')][5].click()"); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("["+B+"[1].c,!!document.querySelector('#gEdit .ws-chb'),document.querySelector('#gEdit .ws-chb .bdw-chip').textContent]")
+    check('channels: picked in the list, the settings sheet comes back with the new channel', r == [5, True, 'F'], r)
+    await pg.evaluate("document.querySelector('#gEdit .gact .btn:last-child').click()")
+    await pg.evaluate("document.getElementById('dbBack').click()"); await pg.wait_for_timeout(300)
+    r = await pg.evaluate(B+"[1].c")
+    check('channels: Back undoes the last channel change', r == 1, r)
+    r = await pg.evaluate("(function(){var o=__t.C.board.find(o=>o.k==='lx');return [typeof o.c,JSON.stringify(o.cs)]})()")
+    check('channels: LED bars keep their own extra channels', r == ['number', '[3]'], r)
+    check('channels: no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
