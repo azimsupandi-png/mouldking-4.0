@@ -803,7 +803,7 @@ try{
   function swBuild(el,it,hd){
     var id='sw'+(++XWN),OFF='rgba(150,160,175,.32)',cx=150,cy=150;
     var box=document.createElement('div');box.className='mtr-box';
-    var svg=sv('svg',{'class':'xwv','data-k':'sw',viewBox:'0 0 300 300','preserveAspectRatio':'xMidYMid meet'},box);el.appendChild(box);
+    var svg=sv('svg',{'class':'xwv','data-k':'sw',viewBox:'0 0 300 324','preserveAspectRatio':'xMidYMid meet'},box);el.appendChild(box);
     var df=sv('defs',{},svg),gl=sv('filter',{id:id+'g',filterUnits:'userSpaceOnUse',x:-20,y:-20,width:340,height:340},df);sv('feGaussianBlur',{stdDeviation:2.6},gl);   // whole-picture region: a box around a thin slanted line would cut the glow off
     var dsh=sv('filter',{id:id+'s',x:'-30%',y:'-30%',width:'160%',height:'160%'},df);sv('feDropShadow',{dx:3,dy:4,stdDeviation:3,'flood-color':'#000','flood-opacity':.6},dsh);
     var ringG=sv('g',{},svg),segs=[];
@@ -817,7 +817,7 @@ try{
     var home=sv('g',{style:'cursor:pointer'},svg);sv('rect',{x:4,y:4,width:56,height:30,rx:15,fill:'#232831',stroke:'#3a414d'},home);var hT=sv('text',{x:32,y:24,'text-anchor':'middle','font-size':15,'font-weight':800,fill:'#c8cdd4'},home);hT.textContent='⌂ 0';
     home.setAttribute('role','button');home.setAttribute('aria-label','Set the angle to 0');
     home.addEventListener('click',function(){if(bdEditing) return;it.a=0;it._z='';save();feedback('ok');toast('Angle set to 0. Do this when the cab points straight ahead.',3000);m.upd(true)});
-    var spT=txt({x:292,y:24,'text-anchor':'end','font-size':14,fill:'#8a93a0'},''),stT=txt({x:cx,y:294,'text-anchor':'middle','font-size':17,'font-weight':900,fill:'#e8e8ea'},'');
+    var spT=txt({x:292,y:24,'text-anchor':'end','font-size':14,fill:'#8a93a0'},''),stT=txt({x:cx,y:316,'text-anchor':'middle','font-size':17,'font-weight':900,fill:'#e8e8ea'},'');
     var key='',m={};
     m.upd=function(force){
       var c=swCfg(it),k0=[c.lo,c.hi,c.sz,c.inf,PAL.r].join();
