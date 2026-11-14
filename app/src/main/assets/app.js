@@ -603,7 +603,7 @@ try{
   /* ---------- Channels ---------- */
   var refs=[], groups=[], wrap=$('#channels'), cols=$('#cols');
   var runBlk=[], runSince=[];
-  var AUTOT={}, RAMP={}, HIST={}, HCNT={}, RECS={}, MPK={}, RAMPLAST={};
+  var AUTOT={}, RAMP={}, HIST={}, HCNT={}, RECS={}, RX={}, MPK={}, RAMPLAST={};
   function autoTick(){
     var now=performance.now();
     (C.board||[]).forEach(function(it){
@@ -623,7 +623,7 @@ try{
     });
     var mtr=false;
     var hdone={};
-    (C.board||[]).forEach(function(o){if(o.k==='k'||(o.k==='y'&&o.sc)){[o.c].concat(o.k==='k'&&o.cs?o.cs:[]).forEach(function(hc,hj){if(hdone[hc]) return;hdone[hc]=1;var hh=HIST[hc]||(HIST[hc]=[]);var rs0=hj?'live':(RECS[hc]||'live');if(rs0==='rec'&&hh.length>=600) RECS[hc]='done';else if(rs0!=='done'){hh.push(S.estop?0:(crzT(hc)||0));HCNT[hc]=(HCNT[hc]||0)+1;if(hh.length>600) hh.shift()}});mtr=true}else if(o.k==='f'||o.k==='i'||o.k==='lx') mtr=true});
+    (C.board||[]).forEach(function(o){if(o.k==='k'||(o.k==='y'&&o.sc)){[o.c].concat(o.k==='k'&&o.cs?o.cs:[]).forEach(function(hc,hj){if(hdone[hc]) return;hdone[hc]=1;var hh=HIST[hc]||(HIST[hc]=[]);var rs0=hj?'live':(RECS[hc]||'live');if(rs0==='rec'&&hh.length>=600) RECS[hc]='done';else if(rs0!=='done'){hh.push(S.estop?0:(crzT(hc)||0));HCNT[hc]=(HCNT[hc]||0)+1;if(hh.length>600) hh.shift()}});if(o.k==='k'&&o.cs&&o.cs.length&&RECS[o.c]==='rec'&&!hdone['rx'+o.c]){hdone['rx'+o.c]=1;var rx=RX[o.c]||(RX[o.c]={});o.cs.forEach(function(xc){(rx[xc]||(rx[xc]=[])).push(S.estop?0:(crzT(xc)||0))})}mtr=true}else if(o.k==='f'||o.k==='i'||o.k==='lx') mtr=true});
     if(C.board&&(mtr||C.board.some(function(o){return o.k==='a'}))&&typeof paintBoard==='function') paintBoard();
   }
   setInterval(autoTick,100);
@@ -1286,8 +1286,8 @@ try{
       var cnt=function(){return HCNT[c]||0},first=function(){return cnt()-(HIST[c]||[]).length};
       var step=function(d){var n=m.n;if(!m.pause){m.pause=true;m.endAbs=cnt()}m.endAbs=Math.max(first()+Math.min(n,(HIST[c]||[]).length),Math.min(cnt(),m.endAbs+d*Math.round(n/2)));if(d>0&&m.endAbs>=cnt()) m.pause=false};
       mk('back','Back in time',function(){step(-1)});
-      m.br=mk('rec','Record up to 60 s',function(){HIST[c]=[];RECS[c]='rec';m.pause=false});
-      mk('stop','Stop',function(){var st=RECS[c]||'live';if(st==='rec'){RECS[c]='done';m.pause=true;m.endAbs=cnt()}else{HIST[c]=[];RECS[c]='live';m.pause=false}});
+      m.br=mk('rec','Record up to 60 s',function(){HIST[c]=[];RX[c]={};RECS[c]='rec';m.pause=false});
+      mk('stop','Stop',function(){var st=RECS[c]||'live';if(st==='rec'){RECS[c]='done';m.pause=true;m.endAbs=cnt()}else{HIST[c]=[];RX[c]={};RECS[c]='live';m.pause=false}});
       m.bp=mk('pause','Pause',function(){if(m.pause){m.pause=false}else{m.pause=true;m.endAbs=cnt()}});
       mk('play','Forward or live',function(){if(m.pause) step(1)});
       el.appendChild(bar);
@@ -1320,15 +1320,14 @@ try{
         var xlive=(RECS[c]||'live')==='live';
         (it.cs||[]).forEach(function(xc,xj){
           var ln=m.xl[xj];if(!ln) return;
-          if(!xlive){ln.setAttribute('visibility','hidden');return}
-          var xh=HIST[xc]||[],xp=[];
+          var xh=xlive?(HIST[xc]||[]):((RX[c]||{})[xc]||[]),xp=[];
           for(var q=0;q<n;q++){var xi=xh.length-off-n+q,xv=xi>=0&&xi<xh.length?xh[xi]:0;xp.push((PL+q*PW/(n-1)).toFixed(1)+','+(md-xv*sc).toFixed(1))}
           ln.setAttribute('points',xp.join(' '));ln.setAttribute('visibility','visible');
         });
         if(m.curX>=0&&m.pause){
           var cq=Math.max(0,Math.min(n-1,Math.round((m.curX-PL)/PW*(n-1)))),cx2=PL+cq*PW/(n-1),back=(n-1-cq+off)/10;
-          var pick=function(ch){var hh2=HIST[ch]||[],ii=hh2.length-off-n+cq;return ii>=0&&ii<hh2.length?Math.round(hh2[ii]):0};
-          var parts=[tagOf(c)+' '+mSgn(pick(c))];if(xlive) (it.cs||[]).forEach(function(xc){parts.push(tagOf(xc)+' '+mSgn(pick(xc)))});
+          var pick=function(ch){var hh2=(ch===c||xlive)?(HIST[ch]||[]):((RX[c]||{})[ch]||[]),ii=hh2.length-off-n+cq;return ii>=0&&ii<hh2.length?Math.round(hh2[ii]):0};
+          var parts=[tagOf(c)+' '+mSgn(pick(c))];(it.cs||[]).forEach(function(xc){parts.push(tagOf(xc)+' '+mSgn(pick(xc)))});
           m.cur.setAttribute('x1',cx2);m.cur.setAttribute('x2',cx2);m.cur.setAttribute('y1',m.bt0);m.cur.setAttribute('y2',m.bb);m.cur.setAttribute('visibility','visible');
           var ctx='\u2212'+back.toFixed(1)+' s \u00b7 '+parts.join(' \u00b7 ');if(m.curT.textContent!==ctx) m.curT.textContent=ctx;
           var right=cx2>PL+PW/2;m.curT.setAttribute('text-anchor',right?'end':'start');m.curT.setAttribute('x',(cx2+(right?-6:6)).toFixed(1));m.curT.setAttribute('y',(m.bt0+12).toFixed(1));m.curT.setAttribute('visibility','visible');
@@ -5460,7 +5459,7 @@ try{
     "Length":"Panjang","Repeat":"Ulang","Once":"Sekali","Loop":"Ulang terus","Timeline name":"Nama garis masa","+ Lane":"+ Lorong","Channel for the new lane":"Saluran untuk lorong baharu",
     "Drag a point. Tap an empty spot in a lane to add a point. Tap a point to change it exactly.":"Seret titik. Ketik ruang kosong dalam lorong untuk tambah titik. Ketik titik untuk ubah dengan tepat.",
     "Undo changes":"Batal perubahan","Done":"Siap","Delete point":"Padam titik","Value":"Nilai","Time":"Masa","Change":"Peralihan","Smooth":"Licin","Straight":"Lurus","Jump":"Lompat",
-    "Changes undone.":"Perubahan dibatalkan.","New dashboard":"Papan pemuka baharu","A new board of its own, arranged sideways.":"Papan baharu tersendiri, disusun dalam landskap.","Start with":"Mula dengan","Empty":"Kosong","Arrange it yourself":"Susun sendiri","Excavator":"Jengkaut","2 sliders \u00b7 dual stick":"2 peluncur \u00b7 joystik berkembar","Car":"Kereta","Throttle \u00b7 steering \u00b7 lights":"Pendikit \u00b7 stereng \u00b7 lampu","Copy this board":"Salin papan ini","Every widget of the current model":"Semua widget model semasa","The screen turns sideways and the board opens in edit mode.":"Skrin berpusing ke landskap dan papan dibuka dalam mod edit.","Create & arrange":"Cipta & susun","Name":"Nama","Model list is full.":"Senarai model penuh.","New dashboard button (+) between Drive and Models: name it, pick a start, and it opens sideways in edit mode":"Butang papan pemuka baharu (+) antara Drive dan Models: beri nama, pilih permulaan, dan ia dibuka dalam landskap dalam mod edit","Sharper model photos (512 px)":"Gambar model lebih tajam (512 px)","Swing angle":"Sudut pusingan","Swing angle settings":"Tetapan sudut pusingan","Swing channel":"Saluran pusing","Limits":"Had","Left and right limits":"Had kiri dan kanan","No limit (turns 360\u00b0)":"Tanpa had (pusing 360\u00b0)","Left limit":"Had kiri","Right limit":"Had kanan","Slow down before the limit":"Perlahan sebelum had","Speed at full power":"Kelajuan pada kuasa penuh","Direction":"Arah","Reversed":"Terbalik","Limit \u00b7 turn back only":"Had \u00b7 pusing balik sahaja","Slowing near the limit":"Perlahan dekat had","Set the angle to 0":"Tetapkan sudut ke 0","Angle set to 0. Do this when the cab points straight ahead.":"Sudut ditetapkan ke 0. Buat ini bila kabin menghala lurus ke depan.","Turn one full circle at full power, then tap Done.":"Pusing satu bulatan penuh pada kuasa penuh, kemudian ketik Siap.","That took too long or too short. Try again.":"Terlalu lama atau terlalu singkat. Cuba lagi.","Tap Start, turn the model one full circle at full power, then tap Done.":"Ketik Mula, pusing model satu bulatan penuh pada kuasa penuh, kemudian ketik Siap.","\u25B6 Start":"\u25B6 Mula","\u2713 Done":"\u2713 Siap","This channel already has a swing angle widget.":"Saluran ini sudah ada widget sudut pusingan.","Swing angle widget: the excavator seen from above turns with the estimated cab angle, slows near the limits and stops at them":"Widget sudut pusingan: jengkaut dilihat dari atas berpusing ikut anggaran sudut kabin, perlahan dekat had dan berhenti di had","Ready":"Sedia","Playing":"Sedang main","D/R switch removed":"Suis D/R dibuang","Timeline player: smaller play and stop signs, channel letters on each lane, a live dot on each curve and the repeat count":"Pemain garis masa: simbol main dan henti lebih kecil, huruf saluran pada setiap lorong, titik langsung pada setiap lengkung dan kiraan ulangan","Up to 16 points in a lane.":"Maksimum 16 titik dalam satu lorong.","▶ Play":"▶ Main","■ Stop":"■ Henti","This timeline is missing.":"Garis masa ini tiada.",
+    "Changes undone.":"Perubahan dibatalkan.","New dashboard":"Papan pemuka baharu","A new board of its own, arranged sideways.":"Papan baharu tersendiri, disusun dalam landskap.","Start with":"Mula dengan","Empty":"Kosong","Arrange it yourself":"Susun sendiri","Excavator":"Jengkaut","2 sliders \u00b7 dual stick":"2 peluncur \u00b7 joystik berkembar","Car":"Kereta","Throttle \u00b7 steering \u00b7 lights":"Pendikit \u00b7 stereng \u00b7 lampu","Copy this board":"Salin papan ini","Every widget of the current model":"Semua widget model semasa","The screen turns sideways and the board opens in edit mode.":"Skrin berpusing ke landskap dan papan dibuka dalam mod edit.","Create & arrange":"Cipta & susun","Name":"Nama","Model list is full.":"Senarai model penuh.","New dashboard button (+) between Drive and Models: name it, pick a start, and it opens sideways in edit mode":"Butang papan pemuka baharu (+) antara Drive dan Models: beri nama, pilih permulaan, dan ia dibuka dalam landskap dalam mod edit","Sharper model photos (512 px)":"Gambar model lebih tajam (512 px)","Graph: while recording, the extra channels keep their lines too, and stay after Stop":"Graf: semasa merakam, saluran tambahan juga kekal dilukis, dan kekal selepas Henti","Swing angle":"Sudut pusingan","Swing angle settings":"Tetapan sudut pusingan","Swing channel":"Saluran pusing","Limits":"Had","Left and right limits":"Had kiri dan kanan","No limit (turns 360\u00b0)":"Tanpa had (pusing 360\u00b0)","Left limit":"Had kiri","Right limit":"Had kanan","Slow down before the limit":"Perlahan sebelum had","Speed at full power":"Kelajuan pada kuasa penuh","Direction":"Arah","Reversed":"Terbalik","Limit \u00b7 turn back only":"Had \u00b7 pusing balik sahaja","Slowing near the limit":"Perlahan dekat had","Set the angle to 0":"Tetapkan sudut ke 0","Angle set to 0. Do this when the cab points straight ahead.":"Sudut ditetapkan ke 0. Buat ini bila kabin menghala lurus ke depan.","Turn one full circle at full power, then tap Done.":"Pusing satu bulatan penuh pada kuasa penuh, kemudian ketik Siap.","That took too long or too short. Try again.":"Terlalu lama atau terlalu singkat. Cuba lagi.","Tap Start, turn the model one full circle at full power, then tap Done.":"Ketik Mula, pusing model satu bulatan penuh pada kuasa penuh, kemudian ketik Siap.","\u25B6 Start":"\u25B6 Mula","\u2713 Done":"\u2713 Siap","This channel already has a swing angle widget.":"Saluran ini sudah ada widget sudut pusingan.","Swing angle widget: the excavator seen from above turns with the estimated cab angle, slows near the limits and stops at them":"Widget sudut pusingan: jengkaut dilihat dari atas berpusing ikut anggaran sudut kabin, perlahan dekat had dan berhenti di had","Ready":"Sedia","Playing":"Sedang main","D/R switch removed":"Suis D/R dibuang","Timeline player: smaller play and stop signs, channel letters on each lane, a live dot on each curve and the repeat count":"Pemain garis masa: simbol main dan henti lebih kecil, huruf saluran pada setiap lorong, titik langsung pada setiap lengkung dan kiraan ulangan","Up to 16 points in a lane.":"Maksimum 16 titik dalam satu lorong.","▶ Play":"▶ Main","■ Stop":"■ Henti","This timeline is missing.":"Garis masa ini tiada.",
     "Timeline: draw smooth moves for several channels on lanes, then play them with one button":"Garis masa: lukis gerakan licin untuk beberapa saluran pada lorong, kemudian mainkan dengan satu butang"};
   for(var v2k10 in V2MS10) MS[v2k10]=V2MS10[v2k10];
   MS_RE.push([/^Timeline · (.+)$/,function(m){return 'Garis masa · '+m[1]}]);
@@ -6266,6 +6265,7 @@ try{
 
   // ---- What's new, version and update check ----
   var CHANGES=[
+    {b:65,items:[['fix','Graph: while recording, the extra channels keep their lines too, and stay after Stop']]},
     {b:64,items:[['new','New dashboard button (+) between Drive and Models: name it, pick a start, and it opens sideways in edit mode'],['better','Sharper model photos (512 px)']]},
     {b:57,items:[['new','Swing angle widget: the excavator seen from above turns with the estimated cab angle, slows near the limits and stops at them']]},
     {b:56,items:[['better','Timeline player: smaller play and stop signs, channel letters on each lane, a live dot on each curve and the repeat count'],['better','D/R switch removed']]},

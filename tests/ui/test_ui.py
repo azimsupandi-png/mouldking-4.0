@@ -1079,10 +1079,35 @@ async def t_newdash(b):
     check('(+): no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_recx(b):
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'RX',cfg:{layout:'board',limit:100,ramp:100,ch:[{},{},{},{},{},{}],
+      board:[{k:'s',c:0,w:1},{k:'s',c:1,w:1},{k:'k',c:0,w:2,cs:[1]}]}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML)
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.wait_for_timeout(300)
+    await pg.evaluate("window.MK6Bridge.send=function(f){};mk6Go('home');document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.wait_for_timeout(300)
+    await pg.evaluate("document.querySelector('#boardGrid .bdw[data-k=k] [aria-label=\"Record up to 60 s\"]').click()")
+    await pg.evaluate("var r=document.querySelectorAll('#boardGrid .bdw[data-k=s] input[type=range]')[1];r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=70;r.dispatchEvent(new Event('input',{bubbles:true}))")
+    await pg.wait_for_timeout(1500)
+    js = "(function(){var s=document.querySelector('#boardGrid .bdw[data-k=k] svg.mtr'),p=[...s.querySelectorAll('polyline')].find(p=>p.getAttribute('stroke')==='#ffd84a');if(!p) return 'none';var md=Math.max(...p.getAttribute('points').split(' ').map(q=>-+q.split(',')[1]));return [p.getAttribute('visibility'),md]})()"
+    r1 = await pg.evaluate(js)
+    await pg.evaluate("document.querySelector('#boardGrid .bdw[data-k=k] [aria-label=Stop]').click()")
+    await pg.wait_for_timeout(300)
+    r2 = await pg.evaluate(js)
+    lo = await pg.evaluate("(function(){var s=document.querySelector('#boardGrid .bdw[data-k=k] svg.mtr'),p=[...s.querySelectorAll('polyline')].find(p=>p.getAttribute('stroke')==='#ffd84a');return Math.min(...p.getAttribute('points').split(' ').map(q=>+q.split(',')[1]))})()")
+    check('scope REC: the second channel is drawn while recording and after Stop', r1 != 'none' and r1[0] == 'visible' and r2[0] == 'visible' and r1[1] > -60 and r2[1] > -60, [r1, r2])
+    check('scope REC: no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
