@@ -1135,7 +1135,7 @@ async def t_chmap(b):
     # double stick: role picker through the toolbar, picking a channel it already uses swaps the two
     await pg.evaluate("var w="+W+".find(e=>e.dataset.k==='d'),r=w.getBoundingClientRect();w.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:3,clientX:r.left+20,clientY:r.top+40}));w.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:3,clientX:r.left+20,clientY:r.top+40}))")
     await pg.wait_for_timeout(300)
-    await pg.evaluate("var w="+W+".find(e=>e.dataset.k==='d');w.querySelector('.bdw-ed [aria-label=\"Change channel\"]').click()"); await pg.wait_for_timeout(200)
+    await pg.evaluate("var w="+W+".find(e=>e.dataset.k==='d');w.querySelector('.bdw-chip.tap').click()"); await pg.wait_for_timeout(200)
     r = await pg.evaluate("document.querySelectorAll('#chPop .chp-r .btn').length")
     check('channels: a double stick lists its 4 roles', r == 4, r)
     await pg.evaluate("[...document.querySelectorAll('#chPop .chp-g .btn')][3].click()"); await pg.wait_for_timeout(300)
@@ -1159,6 +1159,15 @@ async def t_chmap(b):
     check('channels: Back undoes the last channel change', r == 1, r)
     r = await pg.evaluate("(function(){var o=__t.C.board.find(o=>o.k==='lx');return [typeof o.c,JSON.stringify(o.cs)]})()")
     check('channels: LED bars keep their own extra channels', r == ['number', '[3]'], r)
+    # while driving, with the hub on
+    await pg.evaluate("document.getElementById('dbEdit').click()"); await pg.wait_for_timeout(300)
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};onHubState('ready')"); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[document.querySelectorAll('#boardGrid .bdw-chip.tap').length,!!"+W+".find(e=>e.dataset.k==='d').querySelector('.bdw-chip.tap')]")
+    check('channels: chips stay tappable while driving, double stick has one too', r[0] >= 4 and r[1], r)
+    await pg.evaluate(W+"[0].querySelector('.bdw-chip.tap').click()"); await pg.wait_for_timeout(200)
+    await pg.evaluate("[...document.querySelectorAll('#chPop .chp-g .btn')][4].click()"); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("["+B+"[0].c,document.documentElement.classList.contains('dash')]")
+    check('channels: the pop-over changes the channel while the hub is on', r == [4, True], r)
     check('channels: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
