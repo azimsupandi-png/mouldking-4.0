@@ -341,7 +341,7 @@ try{
     d.icon=['car','dig','crane','truck','tractor','boat'].indexOf(c.icon)>=0?c.icon:'';
     d.fav=c.fav===true;
     var st0=(c.st&&typeof c.st==='object')?c.st:{};d.st={ms:Math.max(0,Math.min(36e8*1e3,+st0.ms||0)),last:Math.max(0,+st0.last||0)};
-    d.photo=(typeof c.photo==='string'&&c.photo.length<160000&&/^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(c.photo))?c.photo:'';
+    d.photo=(typeof c.photo==='string'&&c.photo.length<420000&&/^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(c.photo))?c.photo:'';
     // steering eases at speed: steering channel output shrinks as the throttle channel output grows
     var ss0=(c.ss&&typeof c.ss==='object')?c.ss:{};
     d.ss={on:ss0.on===true,st:Math.round(num(ss0.st,0,17,1)),th:Math.round(num(ss0.th,0,17,0)),min:pickOf(ss0.min,[40,55,70],55)};
@@ -6660,9 +6660,13 @@ try{
   function v2PhotoSet(url){
     if(!url){toast('No image was chosen.');return}
     var img=new Image();img.onload=function(){
-      var S0=240,c=document.createElement('canvas'),k=Math.max(S0/img.width,S0/img.height),w=img.width*k,h=img.height*k;
-      c.width=c.height=S0;c.getContext('2d').drawImage(img,(S0-w)/2,(S0-h)/2,w,h);
-      C.photo=c.toDataURL('image/jpeg',.72);save();v2MiPaint();v2Models();toast('Photo set for this model.');
+      // 512 px square, scaled down in halves for a sharp result (one big jump makes it soft)
+      var S0=512,side=Math.min(img.width,img.height),sx=(img.width-side)/2,sy=(img.height-side)/2;
+      var src=document.createElement('canvas');src.width=src.height=side;src.getContext('2d').drawImage(img,sx,sy,side,side,0,0,side,side);
+      while(src.width/2>=S0){var h2=document.createElement('canvas');h2.width=h2.height=Math.round(src.width/2);var g2=h2.getContext('2d');g2.imageSmoothingEnabled=true;g2.imageSmoothingQuality='high';g2.drawImage(src,0,0,h2.width,h2.height);src=h2}
+      var c=document.createElement('canvas'),n0=Math.min(S0,src.width);c.width=c.height=n0;var g=c.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(src,0,0,n0,n0);
+      var q=.88,du=c.toDataURL('image/jpeg',q);while(du.length>400000&&q>.5){q-=.08;du=c.toDataURL('image/jpeg',q)}
+      C.photo=du;save();v2MiPaint();v2Models();toast('Photo set for this model.');
     };img.onerror=function(){toast('That image could not be read.')};img.src=url;
   }
   (function(){var ow=window.onWallpaper;window.onWallpaper=function(slot,url){if(slot==='m'||v2PhotoWant){v2PhotoWant=false;v2PhotoSet(url);return}return ow.apply(this,arguments)}})();
