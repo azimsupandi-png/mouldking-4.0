@@ -271,7 +271,7 @@ async def t_twelve(b):
     check('9 size: a widget can be made 2x1', 'w2' in r, r)
     # 10 gallery: picture cards and category tabs
     r = await pg.evaluate("var t=[...document.querySelectorAll('.v2-gtabs .btn')].find(b=>b.textContent==='Meters');t.click();[document.querySelectorAll('.bd-types .gt svg').length,[...document.querySelectorAll('.bd-types > .btn')].filter(b=>!b.hidden).length]")
-    check('10 gallery: 33 picture cards, Meters tab shows 6', r == [33, 6], r)
+    check('10 gallery: 34 picture cards, Meters tab shows 6', r == [34, 6], r)
     await pg.evaluate("document.getElementById('bdEdit').click()")
     # 8 model colour persists and tints the board
     await pg.evaluate("mk6Go('medit');document.querySelectorAll('#swatches .sw')[2].click()")
@@ -1018,10 +1018,43 @@ async def t_drtl(b):
     check('S4: no JS errors (landscape)', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_swing(b):
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'X',cfg:{layout:'board',limit:100,ramp:100,
+      ch:[{},{},{},{},{},{}],board:[{k:'s',c:2,w:2},{k:'sw',c:2,w:2,dps:90,a:0}]}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.wait_for_timeout(400)
+    r = await pg.evaluate("[!!document.querySelector('#boardGrid .bdw[data-k=sw] svg image[href=\"swing-upper.png\"]'),!!document.querySelector('#boardGrid .bdw[data-k=sw] svg image[href=\"swing-tracks.png\"]')]")
+    check('Swing: the widget shows the excavator (tracks + turning upper)', r == [True, True], r)
+    await pg.evaluate("__t.rt.t[2]=100")
+    await pg.wait_for_timeout(1000)
+    r = await pg.evaluate("[__t.C.board[1].a,document.querySelector('#boardGrid .bdw[data-k=sw] .bdw-h output').textContent,document.querySelector('#boardGrid .bdw[data-k=sw] svg g[filter]').getAttribute('transform')]")
+    check('Swing: driving the channel turns the cab and shows the angle', r[0] > 8 and r[1].startswith('+') and 'rotate(' in r[2], r)
+    await pg.evaluate("__t.C.board[1].a=145")
+    await pg.wait_for_timeout(1500)
+    r = await pg.evaluate("[__t.C.board[1].a,+(window.__last||'').split(',')[2],document.querySelector('#boardGrid .bdw[data-k=sw] svg').textContent.indexOf('turn back only')>=0]")
+    check('Swing: it stops at the right limit and the output goes to 0', r[0] == 150 and r[1] == 0 and r[2], r)
+    await pg.evaluate("__t.rt.t[2]=-100")
+    await pg.wait_for_timeout(800)
+    r = await pg.evaluate("[__t.C.board[1].a,+(window.__last||'').split(',')[2]]")
+    check('Swing: turning back away from the limit still works', r[0] < 150 and r[1] < 0, r)
+    await pg.evaluate("__t.rt.t[2]=0")
+    await pg.wait_for_timeout(300)
+    await pg.evaluate("document.querySelector('#boardGrid .bdw[data-k=sw] svg g[role=button]').dispatchEvent(new MouseEvent('click',{bubbles:true}))")
+    r = await pg.evaluate("[__t.C.board[1].a,JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.board[1].a]")
+    check('Swing: the 0 button resets and saves the angle', r == [0, 0], r)
+    check('Swing: no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

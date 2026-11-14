@@ -153,7 +153,7 @@ try{
     if(!g.every(function(q){return isFinite(q)})||g[0]<0||g[1]<0||g[2]<mn[0]||g[3]<mn[1]||g[0]+g[2]>gx||g[1]+g[3]>gy) return null;
     return g;
   }
-  var DMIN={tl:[12,8],lx:[8,5],rs:[8,8],st:[8,8],lv:[6,12],dp:[10,10],s:[12,6],j:[10,12],d:[20,12],m:[12,6],l:[6,6],t:[6,6],b:[6,6],e:[6,6],g:[12,6],z:[8,6],n:[8,8],w:[12,6],a:[10,6],y:[12,6],f:[10,8],i:[6,10],k:[12,8],ps:[8,9]};
+  var DMIN={sw:[10,10],tl:[12,8],lx:[8,5],rs:[8,8],st:[8,8],lv:[6,12],dp:[10,10],s:[12,6],j:[10,12],d:[20,12],m:[12,6],l:[6,6],t:[6,6],b:[6,6],e:[6,6],g:[12,6],z:[8,6],n:[8,8],w:[12,6],a:[10,6],y:[12,6],f:[10,8],i:[6,10],k:[12,8],ps:[8,9]};
   function ci(v,lo,hi,def){v=Math.round(+v);return (v>=lo&&v<=hi)?v:def}
   function cleanJc(j){
     if(!j||typeof j!=='object') return null;
@@ -219,6 +219,12 @@ try{
           out.push(xo)}
       }else if(x.k==='tl'){
         if(typeof x.tl==='string'&&/^[A-Za-z0-9_-]{1,40}$/.test(x.tl)) out.push({k:'tl',w:w,tl:x.tl});
+      }else if(x.k==='sw'){
+        var swc=Math.round(+x.c);
+        if(swc>=0&&swc<NMAX){var swo={k:'sw',c:swc,w:w},q;
+          q=Math.round(+x.lo);if(x.lo!==undefined&&q>=-180&&q<=0&&q!==-150) swo.lo=q;q=Math.round(+x.hi);if(x.hi!==undefined&&q>=0&&q<=180&&q!==150) swo.hi=q;
+          q=Math.round(+x.sz);if(x.sz!==undefined&&q>=0&&q<=60&&q!==20) swo.sz=q;q=+x.dps;if(q>=1&&q<=360&&q!==30) swo.dps=Math.round(q*10)/10;
+          if(+x.inf===1) swo.inf=1;if(+x.rv===1) swo.rv=1;q=+x.a;if(q>=-180&&q<=180) swo.a=Math.round(q*10)/10;out.push(swo)}
       }else if(x.k==='ro'){
         var roc=Math.round(+x.c);
         if(roc>=0&&roc<NMAX){var roo={k:'ro',c:roc,w:w},rbn=Math.round(+x.n);if(rbn===2||rbn===5) roo.n=rbn;if(+x.bs===1) roo.bs=1;out.push(roo)}
@@ -577,7 +583,7 @@ try{
     if(C.ss&&C.ss.on&&i===C.ss.st&&C.ss.th!==i&&!cal&&!testOn()) out*=1-(1-C.ss.min/100)*Math.min(1,Math.abs(rt.o[C.ss.th]||0)/100);
     // trim: a small fixed offset so the model runs straight (never while E-Stop is on)
     var tr0=C.ch[i].trim||0;if(tr0&&!S.estop&&!cal&&!testOn()) out=Math.max(-100,Math.min(100,out+tr0*PLAY.f));
-    return out;
+    return swLim(i,out);
   }
 
   function goalOfAt(i,t){
@@ -759,6 +765,83 @@ try{
       var dis=!on&&(S.estop||!!S.rec||!!S.play);pb.style.opacity=dis?.45:1;
     };
     m.upd();return m;
+  }
+  // ---- Swing angle: estimated turret angle from output x time, soft stops near the limits ----
+  var SWC=null, SWT=0, SWSV=0;
+  function swOf(i){if(!SWC){SWC={};(C.board||[]).forEach(function(o){if(o.k==='sw'&&typeof o.c==='number') SWC[o.c]=o})}return SWC[i]||null}
+  function swCfg(it){return {lo:it.lo===undefined?-150:it.lo,hi:it.hi===undefined?150:it.hi,sz:it.sz===undefined?20:it.sz,dps:it.dps||30,inf:it.inf===1,rv:it.rv===1}}
+  // limit one channel's output so the turret slows near a limit and stops at it (only away from the limit is allowed)
+  function swLim(i,out){
+    var it=swOf(i);if(!it||!out) return out;var c=swCfg(it);if(c.inf) return out;
+    var a=it.a||0,dir=(c.rv?-out:out),rem=dir>0?c.hi-a:a-c.lo,st='';
+    if(rem<=0){out=0;st='lim'}else if(c.sz>0&&rem<c.sz){out*=Math.max(.25,rem/c.sz);st='slow'}
+    it._st=st;it._pw=Math.round(Math.abs(out));return out;
+  }
+  function swStep(now){
+    var dt=SWT?Math.min(.25,(now-SWT)/1000):0;SWT=now;if(!dt||!C.board) return;
+    var moved=false;
+    C.board.forEach(function(it){if(it.k!=='sw'||!isActive(it.c)) return;
+      var c=swCfg(it),o=(S.connected&&!S.estop)?(rt.o[it.c]||0):0;if(c.rv) o=-o;
+      var sp=o/100*c.dps;it._sp=sp;
+      if(Math.abs(o)<1){if(it._st!=='lim') it._st='';return}
+      var a=(it.a||0)+sp*dt;
+      if(c.inf){a=((a+180)%360+360)%360-180}else a=Math.max(c.lo,Math.min(c.hi,a));
+      var pz=it._z,z=c.inf?'':(a>=c.hi||a<=c.lo)?'lim':(c.sz>0&&(c.hi-a<c.sz||a-c.lo<c.sz))?'slow':'';
+      if(z!==pz){it._z=z;if(z==='slow') feedback('tick');else if(z==='lim') feedback('warn')}
+      it.a=Math.round(a*10)/10;moved=true});
+    if(moved&&now-SWSV>3000){SWSV=now;save()}
+  }
+  function swCalMk(get,set){
+    var box=document.createElement('div');box.className='swcal';
+    var out=document.createElement('b'),b=document.createElement('button'),t0=0,tm=0;b.type='button';b.className='btn';
+    function paint(){var v=get();out.textContent=t0?((performance.now()-t0)/1000).toFixed(1)+' s':(v?v+' °/s · '+(360/v).toFixed(1)+' s / 360°':'');b.textContent=t0?'✓ Done':'▶ Start';b.classList.toggle('pri',!!t0)}
+    b.addEventListener('click',function(){if(!t0){t0=performance.now();tm=setInterval(paint,100);toast('Turn one full circle at full power, then tap Done.',4000)}
+      else{var s=(performance.now()-t0)/1000;clearInterval(tm);t0=0;if(s>=2&&s<=120){set(Math.round(360/s*10)/10);feedback('success')}else toast('That took too long or too short. Try again.');}paint()});
+    var p=document.createElement('p');p.className='note';p.textContent='Tap Start, turn the model one full circle at full power, then tap Done.';
+    box.appendChild(out);box.appendChild(b);box.appendChild(p);paint();return box;
+  }
+  function swBuild(el,it,hd){
+    var id='sw'+(++XWN),OFF='rgba(150,160,175,.32)',cx=150,cy=150;
+    var box=document.createElement('div');box.className='mtr-box';
+    var svg=sv('svg',{'class':'xwv','data-k':'sw',viewBox:'0 0 300 300','preserveAspectRatio':'xMidYMid meet'},box);el.appendChild(box);
+    var df=sv('defs',{},svg),gl=sv('filter',{id:id+'g',x:'-50%',y:'-50%',width:'200%',height:'200%'},df);sv('feGaussianBlur',{stdDeviation:2.6},gl);
+    var dsh=sv('filter',{id:id+'s',x:'-30%',y:'-30%',width:'160%',height:'160%'},df);sv('feDropShadow',{dx:3,dy:4,stdDeviation:3,'flood-color':'#000','flood-opacity':.6},dsh);
+    var ringG=sv('g',{},svg),segs=[];
+    sv('circle',{cx:cx,cy:cy,r:114,fill:'#0b0e12',stroke:'#262b33','stroke-width':2.5},svg);
+    // excavator: tracks stay, the upper part turns about the slew centre
+    var S0=128/495.7,iw=247*S0,ih=682*S0,ix=cx-123.5*S0,iy=cy-495.7*S0;
+    var trk=sv('image',{x:ix,y:iy,width:iw,height:ih,preserveAspectRatio:'none'},svg);trk.setAttribute('href','swing-tracks.png');
+    var upG=sv('g',{filter:'url(#'+id+'s)'},svg),upI=sv('image',{x:ix,y:iy,width:iw,height:ih,preserveAspectRatio:'none'},upG);upI.setAttribute('href','swing-upper.png');
+    sv('path',{d:'M'+cx+' '+(cy-118)+' l-5 -8 h10z',fill:'#8a93a0'},svg);
+    function txt(at,s0){var t=sv('text',at,svg);t.textContent=s0;return t}
+    var home=sv('g',{style:'cursor:pointer'},svg);sv('rect',{x:4,y:4,width:56,height:30,rx:15,fill:'#232831',stroke:'#3a414d'},home);var hT=sv('text',{x:32,y:24,'text-anchor':'middle','font-size':15,'font-weight':800,fill:'#c8cdd4'},home);hT.textContent='⌂ 0';
+    home.setAttribute('role','button');home.setAttribute('aria-label','Set the angle to 0');
+    home.addEventListener('click',function(){if(bdEditing) return;it.a=0;it._z='';save();feedback('ok');toast('Angle set to 0. Do this when the cab points straight ahead.',3000);m.upd(true)});
+    var spT=txt({x:292,y:24,'text-anchor':'end','font-size':14,fill:'#8a93a0'},''),stT=txt({x:cx,y:294,'text-anchor':'middle','font-size':17,'font-weight':900,fill:'#e8e8ea'},'');
+    var key='',m={};
+    m.upd=function(force){
+      var c=swCfg(it),k0=[c.lo,c.hi,c.sz,c.inf,PAL.r].join();
+      if(k0!==key||force){key=k0;while(ringG.firstChild) ringG.removeChild(ringG.firstChild);segs=[];
+        var a0=c.inf?-180:c.lo,a1=c.inf?172.5:c.hi,n=Math.max(2,Math.round((a1-a0)/7.5)+1);
+        for(var i=0;i<n;i++){var a=a0+i*(a1-a0)/(n-1),r=a*Math.PI/180,lim=!c.inf&&(a>c.hi-8||a<c.lo+8);
+          segs.push({a:a,lim:lim,e:sv('line',{x1:cx+Math.sin(r)*122,y1:cy-Math.cos(r)*122,x2:cx+Math.sin(r)*138,y2:cy-Math.cos(r)*138,'stroke-width':6,'stroke-linecap':'round'},ringG)})}
+        segs.forEach(function(s0){s0.e.setAttribute('stroke',s0.lim?PAL.r:OFF);s0.e.setAttribute('opacity',s0.lim?.35:1)});m._la=null}
+      var a=it.a||0,st=c.inf?'':(a>=c.hi||a<=c.lo)?'lim':(Math.abs(it._sp||0)>.5&&c.sz>0&&(c.hi-a<c.sz||a-c.lo<c.sz))?'slow':'',ak=Math.round(a)+st+(it._st||'');
+      upG.setAttribute('transform','rotate('+a.toFixed(1)+' '+cx+' '+cy+')');
+      if(ak!==m._la){m._la=ak;
+        segs.forEach(function(s0){var lit=c.inf?Math.abs(((s0.a-a+540)%360)-180)<6:(a>=0?(s0.a>=0&&s0.a<=a+.01):(s0.a<=0&&s0.a>=a-.01)),col=OFF,op=1;
+          if(s0.lim){col=PAL.r;op=(st==='lim'&&((a>0)===(s0.a>0)))?1:.35}
+          if(lit&&!s0.lim){col=(c.sz>0&&(c.hi-s0.a<c.sz||s0.a-c.lo<c.sz)&&!c.inf)?PAL.o:'#ffd84a'}
+          s0.e.setAttribute('stroke',col);s0.e.setAttribute('opacity',op);
+          s0.e.setAttribute('filter',(st==='lim'&&s0.lim&&(a>0)===(s0.a>0))?'url(#'+id+'g)':'')});
+        var t=(a>0?'+':a<0?'−':'')+Math.abs(Math.round(a))+'°';if(hd&&hd.textContent!==t) hd.textContent=t;
+        stT.textContent=st==='lim'?tr2('Limit · turn back only'):st==='slow'?tr2('Slowing near the limit'):(C.ch[it.c]?tagOf(it.c)+' · '+C.ch[it.c].name:'');
+        stT.setAttribute('fill',st==='lim'?PAL.r:st==='slow'?PAL.o:'#e8e8ea');
+        box.setAttribute('aria-label','Swing angle '+t);
+      }
+      var sp=Math.round(Math.abs(it._sp||0)),spx=sp?(it._sp>0?'↻ ':'↺ ')+sp+'°/s':'';if(spT.textContent!==spx) spT.textContent=spx;
+    };
+    m.upd(true);return m;
   }
   function tr2(s){return store.prefs.lang==='ms'&&Object.prototype.hasOwnProperty.call(MS,s)?MS[s]:s}
   // ---- Timeline editor: one lane per channel, drag points, pick the shape of each change ----
@@ -1463,6 +1546,11 @@ try{
       {k:'md',l:'In the centre',ch:[0,1],lab:['Both channels at full power','Half power each'],only:true,def:0},
       {k:'rc',l:'Reverse the left side',ch:[0,1],lab:['Off','On'],only:true,def:0},{k:'rd',l:'Reverse the right side',ch:[0,1],lab:['Off','On'],only:true,def:0},
       {k:'xi',l:'How to use',info:function(){return 'Push the fader on the left up to run, pull it down to stop. Slide the knob to share the power, or tap C, 50 or D. \u21c4 reverses a side. Double-tap the knob to go back to the centre.'}}]},
+    sw:{t:'Swing angle settings',f:[{k:'inf',l:'Limits',ch:[0,1],lab:['Left and right limits','No limit (turns 360\u00b0)'],only:true,def:0},
+      {k:'lo',l:'Left limit',u:'\u00b0',min:-180,max:0,st:5,ch:[-180,-150,-90],def:-150,dep:{k:'inf',v:0}},{k:'hi',l:'Right limit',u:'\u00b0',min:0,max:180,st:5,ch:[90,150,180],def:150,dep:{k:'inf',v:0}},
+      {k:'sz',l:'Slow down before the limit',u:'\u00b0',min:0,max:60,st:5,ch:[0,20,40],def:20,dep:{k:'inf',v:0}},
+      {k:'dps',l:'Speed at full power',ed:true,g:function(it){return it.dps||30},s:function(it,v){if(v>0) it.dps=v},mk:function(get,set){return swCalMk(get,set)}},
+      {k:'rv',l:'Direction',ch:[0,1],lab:['Normal','Reversed'],only:true,def:0}]},
     ro:{t:'Rotor settings',f:[{k:'bs',l:'Style',ch:[2,1],lab:['Jet turbine','Boat propeller'],only:true,def:2},{k:'n',l:'Blades',ch:[2,3,5],lab:['2','3','5'],only:true,def:3,dep:{k:'bs',v:1}}]},
     a:{t:'Auto-stop settings',f:[{k:'s',l:'Stop after',u:'s',min:1,max:300,st:1,ch:[5,10,20,30,60]}]},
     z:{t:'Timer settings',f:[{k:'a',l:'Alert after (0 = off)',u:'min',min:0,max:240,st:1,ch:[0,5,10,15,20,30]}]}
@@ -2483,7 +2571,7 @@ try{
     padPoll();tiltStep();
     if(C.layout==='board') paintBoard();
     var now=performance.now();
-    stepRecord(now);stepPlay(now);
+    stepRecord(now);stepPlay(now);swStep(now);
     safetyStep(now);
     var step=Math.max(2,200*Math.pow(1-C.ramp/100,2)), vals=new Array(NMAX);
     for(var i=0;i<NMAX;i++){
@@ -3048,7 +3136,7 @@ try{
   var bdSel=[$('#bdTarget'),$('#bdTarget2'),$('#bdTarget3'),$('#bdTarget4')];
   var bdFields=[$('#bdF1'),$('#bdF2'),$('#bdF3'),$('#bdF4')], bdLbl=[$('#bdL1'),$('#bdL2'),$('#bdL3'),$('#bdL4')];
   var bdModeF=$('#bdFM'), bdMode=$('#bdMode'), bdWideChk=$('#bdWideChk'), bdSpring=$('#bdSpring'), bdSpringL=$('#bdSpringL');
-  var bdTypes=[['tl',$('#bdTTL')],['s',$('#bdTS')],['j',$('#bdTJ')],['d',$('#bdTD')],['m',$('#bdTM')],['l',$('#bdTL')],['t',$('#bdTT')],['b',$('#bdTB')],['w',$('#bdTW')],['a',$('#bdTA')],['y',$('#bdTY')],['f',$('#bdTF')],['f',$('#bdTFN')],['lx',$('#bdTXmx')],['lx',$('#bdTXeq')],['lx',$('#bdTXts')],['lx',$('#bdTXgi')],['lx',$('#bdTXlp')],['lx',$('#bdTXtk')],['i',$('#bdTI')],['k',$('#bdTK')],['n',$('#bdTN')],['rs',$('#bdTRS')],['g',$('#bdTG')],['st',$('#bdTST')],['lv',$('#bdTLV')],['dp',$('#bdTDP')],['xy',$('#bdTXY')],['xf',$('#bdTXF')],['ro',$('#bdTRO')],['z',$('#bdTZ')],['e',$('#bdTE')],['ps',$('#bdTPS')]];
+  var bdTypes=[['sw',$('#bdTSW')],['tl',$('#bdTTL')],['s',$('#bdTS')],['j',$('#bdTJ')],['d',$('#bdTD')],['m',$('#bdTM')],['l',$('#bdTL')],['t',$('#bdTT')],['b',$('#bdTB')],['w',$('#bdTW')],['a',$('#bdTA')],['y',$('#bdTY')],['f',$('#bdTF')],['f',$('#bdTFN')],['lx',$('#bdTXmx')],['lx',$('#bdTXeq')],['lx',$('#bdTXts')],['lx',$('#bdTXgi')],['lx',$('#bdTXlp')],['lx',$('#bdTXtk')],['i',$('#bdTI')],['k',$('#bdTK')],['n',$('#bdTN')],['rs',$('#bdTRS')],['g',$('#bdTG')],['st',$('#bdTST')],['lv',$('#bdTLV')],['dp',$('#bdTDP')],['xy',$('#bdTXY')],['xf',$('#bdTXF')],['ro',$('#bdTRO')],['z',$('#bdTZ')],['e',$('#bdTE')],['ps',$('#bdTPS')]];
   var bdRat=(typeof document.querySelectorAll==='function')?[].slice.call(document.querySelectorAll('.bdRat')):[$('.bdRat'),$('.bdRat'),$('.bdRat'),$('.bdRat')], bdMixRow=$('#bdMixRow');
   bdRat.forEach(function(sel){[100,75,50,25,-25,-50,-75,-100].forEach(function(v){bdOpt(sel,String(v),(v>0?'+':'')+v+'%')});sel.value='100'});
   var BPRE={bdTFN:{nd:1},bdTXmx:{t:'mx'},bdTXeq:{t:'eq'},bdTXts:{t:'ts'},bdTXgi:{t:'gi'},bdTXlp:{t:'lp'},bdTXtk:{t:'tk'}}, bdBtn=null, bdK='s', bdEditing=false, bdPick=null, bdPickAt=0, bdW=[], dashAdd=false;
@@ -3061,7 +3149,7 @@ try{
     if(!bdSel[0]) return;
     var chans=activeIdx(), tank=bdMode.value==='tank';
     var n=(bdK==='e'||bdK==='z'||bdK==='rs'||bdK==='ps'||bdK==='tl')?0:(bdK==='j'||bdK==='w'||bdK==='dp'||bdK==='xy'||bdK==='xf')?2:(bdK==='d'||bdK==='m'?4:1);
-    var L=bdK==='w'?['Output A','Output B']:bdK==='xy'?['X (left / right)','Y (up / down)']:bdK==='xf'?['Left side','Right side']:bdK==='ro'?['Channel']:(bdK==='l'||bdK==='t'||bdK==='b'||bdK==='g'||bdK==='st'||bdK==='lv'||bdK==='n'||bdK==='a'||bdK==='y'||bdK==='f'||bdK==='i'||bdK==='k')?[bdK==='l'?'Light channel':'Channel']:bdK==='m'?['Channel 1','Channel 2','Channel 3','Channel 4']:((bdK==='s')?['Channel']:
+    var L=bdK==='w'?['Output A','Output B']:bdK==='xy'?['X (left / right)','Y (up / down)']:bdK==='xf'?['Left side','Right side']:bdK==='ro'?['Channel']:bdK==='sw'?['Swing channel']:(bdK==='l'||bdK==='t'||bdK==='b'||bdK==='g'||bdK==='st'||bdK==='lv'||bdK==='n'||bdK==='a'||bdK==='y'||bdK==='f'||bdK==='i'||bdK==='k')?[bdK==='l'?'Light channel':'Channel']:bdK==='m'?['Channel 1','Channel 2','Channel 3','Channel 4']:((bdK==='s')?['Channel']:
       (bdK==='dp'?(tank?['Left motor','Right motor']:['Drive','Steer']):
       (bdK==='j'?(tank?['Left motor','Right motor']:['Drive','Steer']):
       (tank?['Left stick: Left motor','Left stick: Right motor','Right stick: Left motor','Right stick: Right motor']:
@@ -3215,6 +3303,7 @@ try{
     if(k==='xy') return L?[12,14]:[16,16];
     if(k==='xf') return L?[16,12]:[20,12];
     if(k==='ro') return L?[10,12]:[14,12];
+    if(k==='sw') return L?[12,14]:[24,16];
     if(k==='tl') return L?[18,12]:[24,12];
     if(k==='lv') return L?[8,14]:[10,14];
     if(k==='dp') return L?[12,14]:[16,14];
@@ -3453,7 +3542,7 @@ try{
     else{BD_SEL=[it];toast('Tap other widgets to add them, then drag one to move them together.',4000)}
     syncBoard();
   }
-  var KNAME={tl:'Timeline',s:'Slider',j:'Joystick',d:'Dual joystick',b:'Button',t:'Toggle',m:'Meter',f:'Arc meter',g:'Gear',lv:'Lever',st:'Steering wheel',e:'Emergency stop',xy:'XY pad',xf:'Crossfader',ro:'Rotor',a:'Light'};
+  var KNAME={sw:'Swing angle',tl:'Timeline',s:'Slider',j:'Joystick',d:'Dual joystick',b:'Button',t:'Toggle',m:'Meter',f:'Arc meter',g:'Gear',lv:'Lever',st:'Steering wheel',e:'Emergency stop',xy:'XY pad',xf:'Crossfader',ro:'Rotor',a:'Light'};
   function bdA11y(el,it){
     var hs=el.querySelector('.bdw-h > span'), nm=(it.lbl)||(hs&&(hs.title||hs.textContent))||KNAME[it.k]||'Widget';
     if(it.lbl&&KNAME[it.k]) nm=it.lbl+', '+KNAME[it.k];
@@ -3538,6 +3627,7 @@ try{
   }
   function syncBoard(){
     if(!bdGrid||!C.board) return;
+    SWC=null;
     bdFill();
     bdGrid.innerHTML='';bdW=[];BD_PADS=[];
     var dash0=dashOn();
@@ -4063,6 +4153,9 @@ try{
         w.lx=lxBuild(el,it);
       }else if(it.k==='tl'){
         var tlo=tlOf(it);var tlhd=bdHead(el,tlo?tlo.name:'Timeline',it,true);el.classList.add('mtrw');w.mtr=pxBuild(el,it,tlhd);
+      }else if(it.k==='sw'){
+        if(!isActive(it.c)) return;
+        var swhd=bdHead(el,'Swing \u00b7 '+tagOf(it.c)+' '+C.ch[it.c].name,it,true);el.classList.add('mtrw');w.mtr=swBuild(el,it,swhd);
       }else if(it.k==='xy'||it.k==='xf'||it.k==='ro'){
         if(!isActive(it.c)||(it.k!=='ro'&&!isActive(it.d))) return;
         var xhd=bdHead(el,it.k==='xy'?'XY pad \u00b7 '+tagOf(it.c)+'+'+tagOf(it.d):it.k==='xf'?'Crossfader \u00b7 '+tagOf(it.c)+'\u21c4'+tagOf(it.d):'Rotor \u00b7 '+tagOf(it.c)+' \u00b7 '+C.ch[it.c].name,it,true);
@@ -4862,6 +4955,7 @@ try{
       C.board.push({k:bdK,c:n[0],d:n[1],w:ww});
     }
     else if(bdK==='ro') C.board.push({k:'ro',c:n[0],w:ww});
+    else if(bdK==='sw'){if(C.board.some(function(o){return o.k==='sw'&&o.c===n[0]})){bdNote.textContent='This channel already has a swing angle widget.';return}C.board.push({k:'sw',c:n[0],w:ww,a:0})}
     else if(bdK==='tl'){var ntl=tlNew();if(!ntl){bdNote.textContent='Up to 10 timelines. Remove one first.';return}var ntw={k:'tl',w:ww,tl:ntl.id};C.board.push(ntw);setTimeout(function(){tlEdit(ntw)},350)}
     else if(bdK==='dp'){
       if(n[1]>=0&&n[0]===n[1]){bdNote.textContent='Pick different channels for each motor.';return}
@@ -5364,7 +5458,7 @@ try{
     "Length":"Panjang","Repeat":"Ulang","Once":"Sekali","Loop":"Ulang terus","Timeline name":"Nama garis masa","+ Lane":"+ Lorong","Channel for the new lane":"Saluran untuk lorong baharu",
     "Drag a point. Tap an empty spot in a lane to add a point. Tap a point to change it exactly.":"Seret titik. Ketik ruang kosong dalam lorong untuk tambah titik. Ketik titik untuk ubah dengan tepat.",
     "Undo changes":"Batal perubahan","Done":"Siap","Delete point":"Padam titik","Value":"Nilai","Time":"Masa","Change":"Peralihan","Smooth":"Licin","Straight":"Lurus","Jump":"Lompat",
-    "Changes undone.":"Perubahan dibatalkan.","Ready":"Sedia","Playing":"Sedang main","D/R switch removed":"Suis D/R dibuang","Timeline player: smaller play and stop signs, channel letters on each lane, a live dot on each curve and the repeat count":"Pemain garis masa: simbol main dan henti lebih kecil, huruf saluran pada setiap lorong, titik langsung pada setiap lengkung dan kiraan ulangan","Up to 16 points in a lane.":"Maksimum 16 titik dalam satu lorong.","▶ Play":"▶ Main","■ Stop":"■ Henti","This timeline is missing.":"Garis masa ini tiada.",
+    "Changes undone.":"Perubahan dibatalkan.","Swing angle":"Sudut pusingan","Swing angle settings":"Tetapan sudut pusingan","Swing channel":"Saluran pusing","Limits":"Had","Left and right limits":"Had kiri dan kanan","No limit (turns 360\u00b0)":"Tanpa had (pusing 360\u00b0)","Left limit":"Had kiri","Right limit":"Had kanan","Slow down before the limit":"Perlahan sebelum had","Speed at full power":"Kelajuan pada kuasa penuh","Direction":"Arah","Reversed":"Terbalik","Limit \u00b7 turn back only":"Had \u00b7 pusing balik sahaja","Slowing near the limit":"Perlahan dekat had","Set the angle to 0":"Tetapkan sudut ke 0","Angle set to 0. Do this when the cab points straight ahead.":"Sudut ditetapkan ke 0. Buat ini bila kabin menghala lurus ke depan.","Turn one full circle at full power, then tap Done.":"Pusing satu bulatan penuh pada kuasa penuh, kemudian ketik Siap.","That took too long or too short. Try again.":"Terlalu lama atau terlalu singkat. Cuba lagi.","Tap Start, turn the model one full circle at full power, then tap Done.":"Ketik Mula, pusing model satu bulatan penuh pada kuasa penuh, kemudian ketik Siap.","\u25B6 Start":"\u25B6 Mula","\u2713 Done":"\u2713 Siap","This channel already has a swing angle widget.":"Saluran ini sudah ada widget sudut pusingan.","Swing angle widget: the excavator seen from above turns with the estimated cab angle, slows near the limits and stops at them":"Widget sudut pusingan: jengkaut dilihat dari atas berpusing ikut anggaran sudut kabin, perlahan dekat had dan berhenti di had","Ready":"Sedia","Playing":"Sedang main","D/R switch removed":"Suis D/R dibuang","Timeline player: smaller play and stop signs, channel letters on each lane, a live dot on each curve and the repeat count":"Pemain garis masa: simbol main dan henti lebih kecil, huruf saluran pada setiap lorong, titik langsung pada setiap lengkung dan kiraan ulangan","Up to 16 points in a lane.":"Maksimum 16 titik dalam satu lorong.","▶ Play":"▶ Main","■ Stop":"■ Henti","This timeline is missing.":"Garis masa ini tiada.",
     "Timeline: draw smooth moves for several channels on lanes, then play them with one button":"Garis masa: lukis gerakan licin untuk beberapa saluran pada lorong, kemudian mainkan dengan satu butang"};
   for(var v2k10 in V2MS10) MS[v2k10]=V2MS10[v2k10];
   MS_RE.push([/^Timeline · (.+)$/,function(m){return 'Garis masa · '+m[1]}]);
@@ -6117,6 +6211,7 @@ try{
 
   // ---- What's new, version and update check ----
   var CHANGES=[
+    {b:57,items:[['new','Swing angle widget: the excavator seen from above turns with the estimated cab angle, slows near the limits and stops at them']]},
     {b:56,items:[['better','Timeline player: smaller play and stop signs, channel letters on each lane, a live dot on each curve and the repeat count'],['better','D/R switch removed']]},
     {b:52,items:[['new','Timeline: draw smooth moves for several channels on lanes, then play them with one button']]},
     {b:51,items:[['new','Search settings: type a word such as power or lock and jump straight to it'],
@@ -6313,8 +6408,8 @@ try{
   // ---- 10 · Widget gallery: picture cards with categories instead of a list of names ----
   (function(){
     var box=document.querySelector('#bdEditor .bd-types');if(!box) return;
-    var K={bdTS:'s',bdTJ:'j',bdTD:'d',bdTM:'m',bdTL:'l',bdTT:'t',bdTB:'b',bdTW:'w',bdTA:'a',bdTY:'y',bdTF:'f',bdTFN:'fn',bdTI:'i',bdTXmx:'xmx',bdTXeq:'xeq',bdTXts:'xts',bdTXgi:'xgi',bdTXlp:'xlp',bdTXtk:'xtk',bdTK:'k',bdTN:'n',bdTRS:'rs',bdTG:'g',bdTST:'st',bdTLV:'lv',bdTDP:'dp',bdTZ:'z',bdTE:'e',bdTPS:'ps',bdTXY:'xy',bdTXF:'xf',bdTRO:'ro',bdTTL:'tl'};
-    var CAT={drive:['s','j','d','m','st','dp','n','g','lv','rs','y','xy','xf','tl'],light:['l','t','b','w'],meter:['f','fn','i','k','z','ro'],led:['xmx','xeq','xts','xgi','xlp','xtk'],safe:['e','ps','a']};
+    var K={bdTS:'s',bdTJ:'j',bdTD:'d',bdTM:'m',bdTL:'l',bdTT:'t',bdTB:'b',bdTW:'w',bdTA:'a',bdTY:'y',bdTF:'f',bdTFN:'fn',bdTI:'i',bdTXmx:'xmx',bdTXeq:'xeq',bdTXts:'xts',bdTXgi:'xgi',bdTXlp:'xlp',bdTXtk:'xtk',bdTK:'k',bdTN:'n',bdTRS:'rs',bdTG:'g',bdTST:'st',bdTLV:'lv',bdTDP:'dp',bdTZ:'z',bdTE:'e',bdTPS:'ps',bdTXY:'xy',bdTXF:'xf',bdTRO:'ro',bdTSW:'sw',bdTTL:'tl'};
+    var CAT={drive:['s','j','d','m','st','dp','n','g','lv','rs','y','xy','xf','tl','sw'],light:['l','t','b','w'],meter:['f','fn','i','k','z','ro'],led:['xmx','xeq','xts','xgi','xlp','xtk'],safe:['e','ps','a']};
     box.classList.add('v2-gal2');
     Array.prototype.forEach.call(box.querySelectorAll('button'),function(b){
       var k=K[b.id];if(!k) return;b.setAttribute('data-cat',Object.keys(CAT).filter(function(c){return CAT[c].indexOf(k)>=0})[0]||'drive');
@@ -6368,6 +6463,7 @@ try{
       case 'xy': o='<rect x="14" y="2" width="20" height="20" rx="3" fill="'+D+'" stroke="'+S+'" stroke-width=".5"/><path d="M24 4v16M16 12h16" stroke="#2a303b" stroke-width=".5"/>'+kn(29,8,3.4);break;
       case 'xf': o='<rect x="5" y="4" width="4" height="16" rx="1" fill="#2a303b"/><rect x="5" y="10" width="4" height="10" rx="1" fill="'+G+'"/><rect x="39" y="4" width="4" height="16" rx="1" fill="#2a303b"/><rect x="39" y="13" width="4" height="7" rx="1" fill="'+G+'"/><rect x="12" y="10" width="24" height="5" rx="2.5" fill="'+D+'" stroke="'+S+'" stroke-width=".4"/>'+kn(20,12.5,3.4);break;
       case 'tl': o='<rect x="4" y="3" width="40" height="18" rx="3" fill="'+D+'" stroke="'+S+'" stroke-width=".5"/><path d="M7 15 C12 15 12 7 18 7 S24 13 30 13 S36 6 41 6" fill="none" stroke="'+Y+'" stroke-width="1.3"/><path d="M7 18 C14 18 16 11 24 11 S34 17 41 17" fill="none" stroke="#4DA3E0" stroke-width="1.1"/><path d="M21 4v16" stroke="#fff" stroke-width=".7"/>';break;
+      case 'sw': o=ring(24,12,10,.35,Y)+'<rect x="20.5" y="9" width="7" height="8" rx="1.5" fill="'+Y+'"/><rect x="23" y="2.5" width="2" height="8" rx=".8" fill="'+Y+'" transform="rotate(35 24 13)"/>';break;
       case 'ro': o='<circle cx="24" cy="12" r="10.5" fill="'+D+'" stroke="'+S+'" stroke-width=".6"/>';[0,120,240].forEach(function(a){o+='<path d="M24 12 L22.6 3.5 Q24 2.4 25.4 3.5Z" fill="#c9ced6" transform="rotate('+a+' 24 12)"/>'});o+='<circle cx="24" cy="12" r="2" fill="'+Y+'"/>';break;
       case 'z': o='<text x="24" y="15.5" font-size="8.5" font-weight="900" text-anchor="middle" fill="#e8e8ea">12:30</text>';break;
       case 'e': o='<circle cx="24" cy="12" r="9" fill="'+R+'"/><text x="24" y="13.6" font-size="4.4" font-weight="900" text-anchor="middle" fill="#fff">STOP</text>';break;
