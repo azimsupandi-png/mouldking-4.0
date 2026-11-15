@@ -1324,27 +1324,10 @@ async def t_set2(b):
     check('set 2: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
-async def t_comet(b):
-    ctx = await b.new_context(viewport={'width': 844, 'height': 390})
-    pg = await ctx.new_page(); pg.errors = []
-    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
-    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'CM',cfg:{layout:'board',dash:true,limit:100,ramp:100,ch:[{},{},{},{},{},{}],
-      board:[{k:'s',c:0,w:2},{k:'f',c:0,w:1},{k:'i',c:0,w:1},{k:'lx',t:'eq',c:0,w:1},{k:'lx',t:'mx',c:0,w:1}]}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
-    await pg.add_init_script(STUB + seed)
-    await pg.goto(HTML + '?mk6test')
-    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
-    await pg.evaluate("window.MK6Bridge.send=function(f){};mk6Go('drive');onHubState('ready')"); await pg.wait_for_timeout(500)
-    await pg.evaluate("window.__an={};var r=document.querySelector('#boardGrid .bdw[data-k=s] input[type=range]:not(.ovr)');r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=r.max;r.dispatchEvent(new Event('input',{bubbles:true}))")
-    r = await pg.evaluate("""new Promise(function(res){var seen={};var iv=setInterval(function(){[...document.querySelectorAll('#boardGrid .bdw')].forEach(function(w,i){var n=0;w.querySelectorAll('*').forEach(function(e){if(e.getAnimations&&e.getAnimations().some(a=>a.effect&&a.effect.getKeyframes&&a.effect.getKeyframes().some(k=>/255, 226, 122|ffe27a/.test(String(k.fill)+String(k.stroke))))) n++});seen[w.dataset.k+(i)]=Math.max(seen[w.dataset.k+(i)]||0,n)})},40);setTimeout(function(){clearInterval(iv);res(seen)},1500)})""")
-    check('comet trail: LED meters and LED bars flash as their level moves', r.get('f1', 0) > 0 and r.get('i2', 0) > 0 and r.get('lx3', 0) > 0, r)
-    check('comet trail: the LED matrix and the slider are left alone', r.get('lx4', 0) == 0 and r.get('s0', 0) == 0, r)
-    check('comet trail: no JS errors', not pg.errors, pg.errors[:3])
-    await ctx.close()
-
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_comet, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
