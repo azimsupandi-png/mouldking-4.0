@@ -782,6 +782,11 @@ textarea.txt{padding:8px;font-family:var(--f-mono);font-size:12px;line-height:1.
 .dw-psz{position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(18px,4vw,34px);font-weight:800;color:#ffd84a;text-shadow:0 2px 10px #000,0 0 3px #000;pointer-events:none;z-index:9;background:rgba(10,12,16,.35);border-radius:inherit}
 :root.dash .dw.sel{outline:3px solid #f4b800;z-index:3}
 :root.dash .dw .bdw-ed.empty{display:none}
+:root:not(.dash) .bdw-ed.empty,:root:not(.dash) #boardGrid>.bdw:not(.psel) .bdw-ed{display:none}
+:root:not(.dash) .bdw.dw-p,:root:not(.dash) #boardGrid>.bdw{position:relative}
+:root:not(.dash) #boardGrid>.bdw.psel{outline:3px solid #f4b800;outline-offset:1px;z-index:3}
+:root:not(.dash) #boardGrid .bdw-ed{position:absolute;right:6px;top:6px;z-index:6;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;width:auto;min-width:0;max-width:calc(100% - 12px);margin:0;animation:edIn .15s steps(1,end)}
+:root:not(.dash) #boardGrid .bdw-ed .btn{flex:0 0 40px!important;width:40px!important;min-width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;font-size:16px;box-shadow:0 4px 10px rgba(0,0,0,.55)}
 .mtr-ctl{display:flex;gap:4px;justify-content:center;flex:none;margin-top:2px;min-width:0}
 .mtr-ctl .btn{flex:1 1 0;min-width:0;max-width:54px;height:26px;min-height:26px;padding:0 2px;display:flex;align-items:center;justify-content:center}
 .mtr-ctl .btn svg{width:16px;height:16px;flex:none;display:block}
@@ -1860,7 +1865,7 @@ html.booting body>*{content-visibility:hidden}
 
 /* ---------- Graphics upgrade 4 · no hub: board widgets dim, with a "No hub" tag (E-Stop and START/STOP stay bright) ---------- */
 html.v2-nohub:not(.dash) #boardGrid > .bdw:not(.psw):not(.v2-es),html.v2-nohub:not(.dash) .v2-previn .bdw:not(.psw):not(.v2-es){position:relative;overflow:visible}
-html.v2-nohub:not(.dash) #boardGrid > .bdw:not(.psw):not(.v2-es) > *,html.v2-nohub:not(.dash) .v2-previn .bdw:not(.psw):not(.v2-es) > *{opacity:.45;filter:saturate(.4)}
+html.v2-nohub:not(.dash) #boardGrid > .bdw:not(.psw):not(.v2-es) > *:not(.bdw-ed),html.v2-nohub:not(.dash) .v2-previn .bdw:not(.psw):not(.v2-es) > *:not(.bdw-ed){opacity:.45;filter:saturate(.4)}
 html.v2-nohub:not(.v2-editing):not(.dash) #boardGrid > .bdw:not(.psw):not(.v2-es)::after{content:var(--v2nh,"No hub");position:absolute;left:50%;bottom:-10px;transform:translateX(-50%);z-index:2;display:flex;align-items:center;gap:5px;
   padding:3px 10px 3px 24px;border:1px solid rgba(226,75,74,.65);border-radius:11px;background:#0b0d11 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23E24B4A' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M9.5 14.5 7 17a3.2 3.2 0 0 1-4.5-4.5L5 10M14.5 9.5 17 7a3.2 3.2 0 0 1 4.5 4.5L19 14M4 4l16 16'/%3E%3C/svg%3E") 8px center/12px no-repeat;
   font:800 10.5px var(--f-body);letter-spacing:.02em;color:#E24B4A;white-space:nowrap;pointer-events:none}
