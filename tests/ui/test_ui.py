@@ -1171,10 +1171,86 @@ async def t_chmap(b):
     check('channels: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_upg(b):
+    ctx = await b.new_context(viewport={'width': 844, 'height': 390})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'UP',cfg:{layout:'board',dash:true,limit:100,ramp:100,ch:[{},{},{},{},{},{}],
+      board:[{k:'s',c:0,w:2},{k:'j',c:1,d:2,w:2},{k:'n',c:3,w:1}]}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("window.MK6Bridge.send=function(f){};mk6Go('drive');onHubState('ready')"); await pg.wait_for_timeout(500)
+    W = "[...document.querySelectorAll('#boardGrid .bdw')]"
+    # live frames
+    await pg.evaluate("var r=document.querySelector('#boardGrid .bdw[data-k=s] input[type=range]:not(.ovr)');r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=50;r.dispatchEvent(new Event('input',{bubbles:true}))")
+    await pg.wait_for_timeout(700)
+    r1 = await pg.evaluate(W+".find(e=>e.dataset.k==='s').className")
+    await pg.evaluate("var r=document.querySelector('#boardGrid .bdw[data-k=s] input[type=range]:not(.ovr)');r.value=r.max;r.dispatchEvent(new Event('input',{bubbles:true}))")
+    await pg.wait_for_timeout(900)
+    r2 = await pg.evaluate(W+".find(e=>e.dataset.k==='s').className")
+    r3 = await pg.evaluate(W+".find(e=>e.dataset.k==='n').className")
+    check('live frames: green while running, red at full stroke, idle stays plain', 'lv-run' in r1 and 'lv-lim' in r2 and 'lv-' not in r3, [r1, r2, r3])
+    await pg.evaluate("document.querySelector('#boardGrid .bdw[data-k=s] input[type=range]:not(.ovr)').dispatchEvent(new PointerEvent('pointerup',{bubbles:true}))")
+    await pg.evaluate("document.getElementById('estop').click()"); await pg.wait_for_timeout(400)
+    r = await pg.evaluate(W+".filter(e=>e.classList.contains('lv-stop')).length")
+    check('live frames: every widget blinks red on E-Stop', r == 3, r)
+    await pg.evaluate("onHubState('ready');document.getElementById('estop').click()"); await pg.wait_for_timeout(300)
+    # joystick trail + fine control on the joystick
+    await pg.evaluate("""(function(){var p=document.querySelector('#boardGrid .bdw[data-k=j] .pad'),r=p.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+      p.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:21,clientX:cx,clientY:cy}));
+      for(var i=1;i<=6;i++) p.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerId:21,clientX:cx+i*8,clientY:cy}));})()""")
+    await pg.wait_for_timeout(120)
+    r = await pg.evaluate("(function(){var c=document.querySelector('#boardGrid .bdw[data-k=j] canvas.ptrail'),x=c.getContext('2d').getImageData(0,0,c.width,c.height).data,n=0;for(var i=3;i<x.length;i+=4) if(x[i]>20) n++;return n})()")
+    check('joystick trail: a light tail is drawn behind the knob', r > 50, r)
+    await pg.evaluate("document.querySelector('#boardGrid .bdw[data-k=j] .pad').dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:21}))")
+    await pg.wait_for_timeout(600)
+    r = await pg.evaluate("(function(){var c=document.querySelector('#boardGrid .bdw[data-k=j] canvas.ptrail'),x=c.getContext('2d').getImageData(0,0,c.width,c.height).data,n=0;for(var i=3;i<x.length;i+=4) if(x[i]>20) n++;return n})()")
+    check('joystick trail: the tail fades out after about 0.4 s', r == 0, r)
+    # fine control: second finger on the grid itself
+    await pg.evaluate("var g=document.getElementById('boardGrid'),r=g.getBoundingClientRect();g.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:31,clientX:r.right-3,clientY:r.bottom-3}))")
+    r = await pg.evaluate("[document.documentElement.classList.contains('fine'),!!document.querySelector('#fineBadge.on')]")
+    check('fine control: a second finger on empty space shows the Fine badge', r == [True, True], r)
+    jx = await pg.evaluate(r"""(function(){var p=document.querySelector('#boardGrid .bdw[data-k=j] .pad'),r=p.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+      p.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:22,clientX:cx,clientY:cy}));
+      p.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerId:22,clientX:cx+50,clientY:cy}));
+      return new Promise(function(res){setTimeout(function(){var m=/translate\(([-\d.]+)px/.exec(p.querySelector('.knob').style.transform);res(m?+m[1]:null)},80)})})()""")
+    check('fine control: the joystick knob moves 30% of the finger (50 px -> 15 px)', jx is not None and abs(jx - 15) < 1.5, jx)
+    await pg.evaluate("document.querySelector('#boardGrid .bdw[data-k=j] .pad').dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:22}))")
+    sv = await pg.evaluate("""(function(){var r=document.querySelector('#boardGrid .bdw[data-k=s] input[type=range]:not(.ovr)');r.value=0;r.dispatchEvent(new Event('input',{bubbles:true}));
+      var rc=r.getBoundingClientRect(),x=rc.left+rc.width/2,y=rc.top+rc.height/2;
+      r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:23,clientX:x,clientY:y}));
+      r.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerId:23,clientX:x+rc.width/2,clientY:y}));
+      var v=+r.value;r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:23}));return [v,+r.max]})()""")
+    check('fine control: a half-width slide moves the slider 30% of half its range', abs(sv[0] - sv[1]*0.3) <= 2, sv)
+    await pg.evaluate("document.getElementById('boardGrid').dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:31}))")
+    r = await pg.evaluate("document.documentElement.classList.contains('fine')")
+    check('fine control: lifting the second finger ends it', r is False, r)
+    # pinch in edit mode
+    await pg.evaluate("onHubState('off')"); await pg.wait_for_timeout(200)
+    await pg.evaluate("document.getElementById('dbEdit').click()"); await pg.wait_for_timeout(400)
+    g0 = await pg.evaluate("JSON.stringify(__t.C.board.find(o=>o.k==='n').g)")
+    await pg.evaluate("""(function(){var w=[...document.querySelectorAll('#boardGrid .bdw')].find(e=>e.dataset.k==='n'),r=w.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+      w.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:41,clientX:cx-5,clientY:cy-5}));
+      w.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:42,clientX:cx+5,clientY:cy+5}));
+      window.__pzLab=!!w.querySelector('.dw-psz');
+      w.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerId:42,clientX:cx+5,clientY:cy+60}));
+      w.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerId:41,clientX:cx-5,clientY:cy-5}));
+      w.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:42,clientX:cx+5,clientY:cy+60}));
+      w.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:41,clientX:cx-5,clientY:cy-5}));})()""")
+    await pg.wait_for_timeout(300)
+    g1 = await pg.evaluate("JSON.stringify(JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.board.find(o=>o.k==='n').g)")
+    lab = await pg.evaluate("window.__pzLab")
+    check('pinch: two fingers on a widget show the size and resize it in grid steps', lab and g1 != g0 and g1 is not None, [lab, g0, g1])
+    r = await pg.evaluate("!document.getElementById('dbBack').hidden")
+    check('pinch: the new size can be undone with Back', r, r)
+    check('upgrades: no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
