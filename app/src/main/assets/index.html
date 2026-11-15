@@ -133,7 +133,6 @@ textarea.txt{padding:8px;font-family:var(--f-mono);font-size:12px;line-height:1.
 .adv input[type=range]{width:100%;accent-color:#f4b800;min-height:28px}
 .adv .seg{margin:0}
 .curve{width:100%;max-width:160px;height:auto;border-radius:6px;background:var(--well)}
-.cgrid{fill:none;stroke:var(--line);stroke-width:1}
 .cved{display:grid;gap:8px}
 .cved-g{width:100%;max-width:320px;height:auto;aspect-ratio:5/3;border-radius:10px;background:var(--well,#0f1217);border:1px solid var(--line,#2a303b);overflow:visible;touch-action:none}
 .cved-l{stroke:var(--line,#2a303b);stroke-width:.6}.cved-d{stroke:var(--muted,#8a93a0);stroke-width:1;stroke-dasharray:4 4;opacity:.6}
@@ -783,7 +782,7 @@ textarea.txt{padding:8px;font-family:var(--f-mono);font-size:12px;line-height:1.
 :root.dash .dw.sel{outline:3px solid #f4b800;z-index:3}
 :root.dash .dw .bdw-ed.empty{display:none}
 :root:not(.dash) .bdw-ed.empty,:root:not(.dash) #boardGrid>.bdw:not(.psel) .bdw-ed{display:none}
-:root:not(.dash) .bdw.dw-p,:root:not(.dash) #boardGrid>.bdw{position:relative}
+:root:not(.dash) #boardGrid>.bdw{position:relative}
 :root:not(.dash) #boardGrid>.bdw.psel{outline:3px solid #f4b800;outline-offset:1px;z-index:3}
 :root:not(.dash) #boardGrid .bdw-ed{position:absolute;right:6px;top:6px;z-index:6;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;width:auto;min-width:0;max-width:calc(100% - 12px);margin:0;animation:edIn .15s steps(1,end)}
 :root:not(.dash) #boardGrid .bdw-ed .btn{flex:0 0 40px!important;width:40px!important;min-width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;font-size:16px;box-shadow:0 4px 10px rgba(0,0,0,.55)}
@@ -996,7 +995,6 @@ html,body{overflow-anchor:none}
 .wsf[hidden]{display:none}
 .bdw .psb{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;flex:1 1 auto;min-height:0;padding:0;border:0;background:none;color:inherit;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
 .bdw .pssvg{display:block;width:100%;height:100%;max-height:100%;min-height:0}
-.bdw .psb .psc{transition:transform .08s}
 .bdw .psb.dn g:nth-of-type(2){transform:scale(.96);transform-origin:60px 58px}
 :root.dash.nolink .bdw.psw{opacity:1}
 .bdw .sesst{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:100%;min-height:46px;border-radius:14px;border:2px solid #0d1015;background:linear-gradient(#444c5c,#2a303b 50%,#1b2028);color:#aeb6c2;touch-action:manipulation;user-select:none;-webkit-user-select:none;cursor:pointer}

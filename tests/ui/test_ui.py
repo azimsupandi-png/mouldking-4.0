@@ -1029,7 +1029,7 @@ async def t_swing(b):
     await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
     await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
     await pg.wait_for_timeout(400)
-    r = await pg.evaluate("[!!document.querySelector('#boardGrid .bdw[data-k=sw] svg image[href=\"swing-upper.png\"]'),!!document.querySelector('#boardGrid .bdw[data-k=sw] svg image[href=\"swing-tracks.png\"]')]")
+    r = await pg.evaluate("[!!document.querySelector('#boardGrid .bdw[data-k=sw] svg image[href=\"img/swing-upper.webp\"]'),!!document.querySelector('#boardGrid .bdw[data-k=sw] svg image[href=\"img/swing-tracks.webp\"]')]")
     check('Swing: the widget shows the excavator (tracks + turning upper)', r == [True, True], r)
     await pg.evaluate("__t.rt.t[2]=100")
     await pg.wait_for_timeout(1000)
