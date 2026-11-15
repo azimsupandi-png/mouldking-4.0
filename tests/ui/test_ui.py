@@ -1116,6 +1116,7 @@ async def t_chmap(b):
     await pg.evaluate("mk6Go('drive')"); await pg.wait_for_timeout(400)
     await pg.evaluate("document.getElementById('dbEdit').click()"); await pg.wait_for_timeout(400)
     B = "JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.board"
+    y0 = await pg.evaluate("__t.C.board.map(o=>o.g[1])")
     W = "[...document.querySelectorAll('#boardGrid .bdw')]"
     r = await pg.evaluate("document.querySelectorAll('#boardGrid .bdw-chip.tap').length")
     check('channels: chips can be tapped while editing', r >= 2, r)
@@ -1247,10 +1248,86 @@ async def t_upg(b):
     check('upgrades: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_set2(b):
+    ctx = await b.new_context(viewport={'width': 844, 'height': 390})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'S2',cfg:{layout:'board',dash:true,limit:100,ramp:100,ch:[{},{},{},{},{},{}],
+      board:[{k:'s',c:0,w:2,g:[0,0,16,8]},{k:'n',c:1,w:1,g:[16,0,10,12]},{k:'s',c:2,w:2,g:[0,8,16,8]},{k:'n',c:3,w:1,g:[26,0,8,8]}]}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("window.MK6Bridge.send=function(f){};mk6Go('drive');onHubState('ready')"); await pg.wait_for_timeout(500)
+    W = "[...document.querySelectorAll('#boardGrid .bdw')]"
+    # dial comet
+    await pg.evaluate("""(function(){var k=document.querySelectorAll('#boardGrid .dialk')[0],r=k.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,R=r.width/2;
+      k.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:5,clientX:cx,clientY:cy-R}));
+      for(var i=1;i<=10;i++){var a=-Math.PI/2+i*0.15;k.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerId:5,clientX:cx+R*Math.cos(a),clientY:cy+R*Math.sin(a)}))}})()""")
+    await pg.wait_for_timeout(120)
+    r = await pg.evaluate("[...document.querySelectorAll('#boardGrid .dcomet')[0].children].filter(e=>+e.style.opacity>0).length")
+    check('dial comet: the segments the dial just passed glow', r >= 2, r)
+    await pg.evaluate("var k=document.querySelectorAll('#boardGrid .dialk')[0];k.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:5}))")
+    await pg.wait_for_timeout(700)
+    r = await pg.evaluate("[...document.querySelectorAll('#boardGrid .dialk')].map(k=>k.getAttribute('aria-valuenow')).concat([[...document.querySelectorAll('#boardGrid .dcomet')[0].children].filter(e=>+e.style.opacity>0).length])")
+    check('dial comet: the tail fades out after the dial stops', r[2] == 0 and r[0] not in ('0', None), r)
+    # dial double tap -> 0
+    await pg.evaluate("""(function(){var k=document.querySelectorAll('#boardGrid .dialk')[0],r=k.getBoundingClientRect(),x=r.left+r.width*.8,y=r.top+r.height*.5;
+      for(var i=0;i<2;i++){k.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:6+i,clientX:x,clientY:y}));k.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:6+i,clientX:x,clientY:y}))}})()""")
+    await pg.wait_for_timeout(600)
+    r = await pg.evaluate("document.querySelectorAll('#boardGrid .dialk')[0].getAttribute('aria-valuenow')")
+    check('double tap: the dial glides back to 0', r == '0', r)
+    # slider double tap on the thumb
+    sv = await pg.evaluate("""(function(){var r=document.querySelectorAll('#boardGrid .bdw[data-k=s] input[type=range]:not(.ovr)')[0];r.value=60;r.dispatchEvent(new Event('input',{bubbles:true}));
+      var rc=r.getBoundingClientRect(),z=parseFloat(r.style.zoom)||1,T=40*z,f=(60-r.min)/(r.max-r.min),x=rc.left+T/2+f*(rc.width-T),y=rc.top+rc.height/2;
+      for(var i=0;i<2;i++){r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:8+i,clientX:x,clientY:y}));r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:8+i,clientX:x,clientY:y}))}
+      return new Promise(function(res){setTimeout(function(){res([+r.value,+r.min])},450)})})()""")
+    check('double tap: a slider knob glides back to 0', sv[0] == (0 if sv[1] < 0 else sv[1]), sv)
+    # black box
+    await pg.evaluate("var r=document.querySelectorAll('#boardGrid .bdw[data-k=s] input[type=range]:not(.ovr)')[1];r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=r.max;r.dispatchEvent(new Event('input',{bubbles:true}))")
+    await pg.wait_for_timeout(900)
+    await pg.evaluate("document.getElementById('estop').click()"); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("(function(){var a=JSON.parse(localStorage.getItem('mk6bb')||'[]');return [a.length,a[0]&&a[0].ch.length,a[0]&&a[0].d.length,a[0]&&Math.max.apply(null,a[0].d.map(p=>Math.max.apply(null,p.slice(1).map(Math.abs))))]})()")
+    check('black box: E-Stop keeps the last seconds of the channels that moved', r[0] == 1 and r[1] >= 1 and r[2] >= 5 and r[3] > 20, r)
+    await pg.evaluate("document.getElementById('estop').click()"); await pg.wait_for_timeout(200)
+    await pg.evaluate("mk6Go('settings')"); await pg.wait_for_timeout(300)
+    await pg.evaluate("document.getElementById('sBb').click()"); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[!!document.querySelector('#bbView canvas'),document.querySelectorAll('#bbView .bb-li').length,document.querySelector('#bbView canvas').width>0]")
+    check('black box: Settings shows the graph with a legend', r[0] and r[1] >= 1 and r[2], r)
+    await pg.evaluate("document.querySelector('#bbView .gact .btn:last-child').click();mk6Go('drive');onHubState('off')"); await pg.wait_for_timeout(400)
+    # swap in edit mode
+    await pg.evaluate("document.getElementById('dbEdit').click()"); await pg.wait_for_timeout(400)
+    B = "JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.board"
+    y0 = await pg.evaluate("__t.C.board.map(o=>o.g[1])")
+    await pg.evaluate("""(function(){var ws=[...document.querySelectorAll('#boardGrid .bdw')],a=ws[0],b=ws[2],ra=a.getBoundingClientRect(),rb=b.getBoundingClientRect();
+      a.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:11,clientX:ra.left+20,clientY:ra.top+30}));
+      for(var i=1;i<=6;i++) a.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerId:11,clientX:ra.left+20,clientY:ra.top+30+(rb.top-ra.top)*i/6}));
+      window.__swt=!!document.querySelector('#boardGrid .swapt');
+      a.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:11,clientX:ra.left+20,clientY:rb.top+30}))})()""")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[window.__swt,"+B+".map(o=>o.g[1])]")
+    check('swap: dropping a widget on another swaps their places', r[0] and r[1][0] == y0[2] and r[1][2] == y0[0] and y0[0] != y0[2], [r, y0])
+    # match size: pick widget 1 (dial 10x12), match onto dial 2 (8x8)
+    await pg.evaluate("""(function(){var w=[...document.querySelectorAll('#boardGrid .bdw')][3],r=w.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height*.75;
+      w.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:12,clientX:x,clientY:y}));w.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:12,clientX:x,clientY:y}))})()""")
+    await pg.wait_for_timeout(300)
+    await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw')][3].querySelector('.bdw-ed [aria-label=\"Match size\"]').click()"); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("!!document.querySelector('#msBar.on')")
+    check('match size: the bar tells you to tap widgets', r, r)
+    await pg.evaluate("""(function(){var w=[...document.querySelectorAll('#boardGrid .bdw')][1],r=w.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height*.75;
+      w.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:13,clientX:x,clientY:y}));w.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:13,clientX:x,clientY:y}))})()""")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate(B+".map(o=>o.g.slice(2).join('x'))")
+    check('match size: the tapped widget takes the same size', r[1] == r[3], r)
+    await pg.evaluate("document.querySelector('#msBar .btn').click()"); await pg.wait_for_timeout(200)
+    r = await pg.evaluate("!document.querySelector('#msBar.on')")
+    check('match size: Done ends it', r, r)
+    check('set 2: no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

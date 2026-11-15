@@ -2559,8 +2559,27 @@ try{
     last=null;tick();
     live.textContent=S.outOff?'Hub output is off: the chosen channels are held at 0':'Hub output is on';
   }
+  // E-Stop black box: the last 10 s of every channel's output, kept while running and frozen when E-Stop goes on
+  var BBX={buf:[],last:0}, BBK='mk6bb';
+  function bbRec(now){
+    if(S.estop||now-BBX.last<90) return;BBX.last=now;
+    var t=Date.now(),o=new Array(NMAX);for(var i=0;i<NMAX;i++) o[i]=Math.round(rt.o[i]||0);
+    BBX.buf.push({t:t,o:o});while(BBX.buf.length&&t-BBX.buf[0].t>10500) BBX.buf.shift();
+  }
+  function bbLoad(){try{var a=JSON.parse(localStorage.getItem(BBK)||'[]');return Array.isArray(a)?a:[]}catch(e){return []}}
+  function bbSave(){
+    var at=Date.now(),buf=BBX.buf.slice();if(buf.length<2) return;
+    var o=new Array(NMAX);for(var i=0;i<NMAX;i++) o[i]=Math.round(rt.o[i]||0);buf.push({t:at,o:o});
+    var used=activeIdx().filter(function(c){return buf.some(function(p){return p.o[c]!==0})});
+    if(!used.length) used=activeIdx().slice(0,4);
+    var rec={at:at,m:(store.profiles.filter(function(p){return p.id===store.active})[0]||{}).name||'',
+      ch:used.map(function(c){return {t:tagOf(c),n:C.ch[c].name}}),d:buf.map(function(p){return [p.t-at].concat(used.map(function(c){return p.o[c]}))})};
+    var a=bbLoad();a.unshift(rec);a=a.slice(0,3);try{localStorage.setItem(BBK,JSON.stringify(a))}catch(e){}
+    BBX.buf=[];
+  }
   function setEstop(on){
     if(S.estop===on) return;
+    if(on) bbSave();
     S.estop=on;
     stopRecord();stopPlay(false);
     zeroAll();
@@ -2582,7 +2601,7 @@ try{
   }
 
   function tick(){
-    padPoll();tiltStep();
+    padPoll();tiltStep();bbRec(performance.now());
     if(C.layout==='board') paintBoard();
     var now=performance.now();
     stepRecord(now);stepPlay(now);swStep(now);
@@ -3279,6 +3298,65 @@ try{
     if(FT[e.pointerId]) delete FT[e.pointerId];
   };
   window.addEventListener('pointerup',fineUp,true);window.addEventListener('pointercancel',fineUp,true);
+  var BBC=['#ffd84a','#1D9E75','#5aa9ff','#E24B4A','#c78bff','#EF9F27','#3fe0d0','#ff8ac2'];
+  function bbShow(k){
+    var a=bbLoad();k=k||0;
+    var old=document.getElementById('bbView');if(old) old.remove();
+    var ov=document.createElement('div');ov.id='bbView';ov.className='gedit';
+    var bx=document.createElement('div');bx.className='gbox bbx';ov.appendChild(bx);
+    var mk=function(t,x,c){var e=document.createElement(t);if(x) e.textContent=x;if(c) e.className=c;return e};
+    bx.appendChild(mk('h3','E-Stop black box'));
+    if(!a.length){bx.appendChild(mk('p','Nothing recorded yet. When E-Stop goes on, the last 10 seconds of every channel are kept here.','note'))}
+    else{
+      var tabs=mk('div','','bb-tabs');
+      a.forEach(function(r0,i){var b=mk('button',new Date(r0.at).toTimeString().slice(0,8),'btn');b.type='button';b.setAttribute('aria-pressed',String(i===k));b.addEventListener('click',function(){bbShow(i)});tabs.appendChild(b)});
+      bx.appendChild(tabs);
+      var r=a[k]||a[0];
+      var hd=mk('div','','bb-h');hd.appendChild(mk('b','\u25A0 E-STOP'));hd.appendChild(document.createTextNode(' '+new Date(r.at).toLocaleString()+(r.m?' \u00b7 '+r.m:'')));bx.appendChild(hd);
+      var wrap=mk('div','','bb-g');var cv=document.createElement('canvas');wrap.appendChild(cv);bx.appendChild(wrap);
+      var lg=mk('div','','bb-l');r.ch.forEach(function(c,i){var e=mk('span','','bb-li');var d=mk('i');d.style.background=BBC[i%BBC.length];e.appendChild(d);e.appendChild(mk('b',c.t));e.appendChild(document.createTextNode(' '+c.n));lg.appendChild(e)});bx.appendChild(lg);
+      bx.appendChild(mk('p','The last 10 seconds before E-Stop. The red line is the moment it stopped.','note'));
+      var draw=function(){
+        var W=wrap.clientWidth,H=wrap.clientHeight,d=Math.min(2,window.devicePixelRatio||1);cv.width=W*d;cv.height=H*d;var x=cv.getContext('2d');x.setTransform(d,0,0,d,0,0);
+        var X=function(t){return 4+(t+10000)/10000*(W-12)},Y=function(v){return H/2-v/100*(H/2-10)};
+        x.strokeStyle='#1f242c';x.lineWidth=1;for(var s2=-10;s2<=0;s2+=1){x.beginPath();x.moveTo(X(s2*1000),0);x.lineTo(X(s2*1000),H);x.stroke()}
+        x.strokeStyle='#2b303a';x.beginPath();x.moveTo(0,H/2);x.lineTo(W,H/2);x.stroke();
+        r.ch.forEach(function(c,i){x.strokeStyle=BBC[i%BBC.length];x.lineWidth=2;x.beginPath();var f=true;r.d.forEach(function(p){if(p[0]<-10000) return;var px=X(p[0]),py=Y(p[i+1]);if(f){x.moveTo(px,py);f=false}else x.lineTo(px,py)});x.stroke()});
+        x.strokeStyle='#E24B4A';x.setLineDash([5,4]);x.lineWidth=2;x.beginPath();x.moveTo(X(0),0);x.lineTo(X(0),H);x.stroke();x.setLineDash([]);
+        x.fillStyle='#8a93a0';x.font='10px system-ui,sans-serif';x.fillText('\u221210 s',6,H-6);x.fillText('+100',6,12);x.fillStyle='#E24B4A';x.fillText('STOP',X(0)-30,12);
+      };
+      setTimeout(draw,0);
+    }
+    var act=mk('div','','gact');
+    if(a.length){var cl=mk('button','Clear','btn');cl.type='button';cl.addEventListener('click',function(){try{localStorage.removeItem(BBK)}catch(e){}ov.remove();v2Paint();toast('Black box cleared.')});act.appendChild(cl)}
+    var ok=mk('button','Close','btn');ok.type='button';ok.setAttribute('aria-pressed','true');ok.addEventListener('click',function(){ov.remove()});act.appendChild(ok);bx.appendChild(act);
+    ov.addEventListener('click',function(e){if(e.target===ov) ov.remove()});
+    document.body.appendChild(ov);
+  }
+  // Double tap the knob of a slider: it glides back to 0 (or to its lowest end when it has no 0) in 0.2 s
+  var DT2={};
+  function thumbHit(r,x,y){
+    var rc=r.getBoundingClientRect(),mn=+r.min,mx=+r.max,f=mx>mn?(+r.value-mn)/(mx-mn):.5,vert=!!r.closest('.bdv'),z=parseFloat(r.style.zoom)||1,T=40*z;
+    if(vert){var py=rc.bottom-T/2-f*(rc.height-T);return Math.abs(y-py)<T*.75&&Math.abs(x-(rc.left+rc.width/2))<T}
+    var px=rc.left+T/2+f*(rc.width-T);return Math.abs(x-px)<T*.75&&Math.abs(y-(rc.top+rc.height/2))<T;
+  }
+  function glideZero(r){
+    var mn=+r.min,mx=+r.max,z=(mn<=0&&mx>=0)?0:mn,from=+r.value,t0=performance.now();if(from===z) return;
+    dialBuzz();
+    (function step(){var f=Math.min(1,(performance.now()-t0)/200),e=1-Math.pow(1-f,3);r.value=Math.round(from+(z-from)*e);r.dispatchEvent(new Event('input',{bubbles:true}));
+      if(f<1) requestAnimationFrame(step);else r.dispatchEvent(new Event('change',{bubbles:true}))})();
+  }
+  window.addEventListener('pointerdown',function(e){
+    var r=e.target;if(!r||!r.matches||!r.matches('#boardGrid input[type=range]:not(.ovr)')||bdEditing||S.estop||S.play) return;
+    DT2.cur={r:r,x:e.clientX,y:e.clientY,t:Date.now(),on:thumbHit(r,e.clientX,e.clientY)};
+  },true);
+  window.addEventListener('pointerup',function(e){
+    var c=DT2.cur;DT2.cur=null;if(!c) return;
+    var nw=Date.now();if(!c.on||nw-c.t>300||Math.hypot(e.clientX-c.x,e.clientY-c.y)>10){DT2.last=null;return}
+    var l=DT2.last;
+    if(l&&l.r===c.r&&nw-l.t<350){DT2.last=null;setTimeout(function(){glideZero(c.r)},0)}
+    else DT2.last={r:c.r,t:nw};
+  },true);
   // Joystick light trail: a short yellow tail behind the knob that fades in 0.4 s (Settings: Joystick light trail)
   function padTrail(jp,kn){
     var cv=document.createElement('canvas');cv.className='ptrail';cv.setAttribute('aria-hidden','true');jp.insertBefore(cv,jp.firstChild);
@@ -3559,6 +3637,7 @@ try{
           if(n[0]<0||n[1]<0||n[0]+n[2]>DG.x||n[1]+n[3]>DG.y) bad=true;
           else if(C.board.some(function(o){return BD_SEL.indexOf(o)<0&&o[DG.k]&&dashHitsG(o[DG.k],n)})) bad=true});
         return !bad}
+      var swT=null, swEl=null;
       try{el.setPointerCapture(pid)}catch(_){}
       el.classList.add('moving');
       var mv=function(ev){
@@ -3570,6 +3649,19 @@ try{
           dashGuides(it,[g0[0]+gd[0],g0[1]+gd[1],g0[2],g0[3]]);return}
         if(mode==='mv'){n[0]=clamp(g0[0]+dx,0,DG.x-g0[2]);n[1]=clamp(g0[1]+dy,0,DG.y-g0[3])}
         else{n[2]=clamp(g0[2]+dx,mn[0],DG.x-g0[0]);n[3]=clamp(g0[3]+dy,mn[1],DG.y-g0[1])}
+        // over another widget: drop here to swap places with it
+        var st=null;
+        if(mode==='mv'&&dashHits(it,n)){
+          var br=el.parentNode.getBoundingClientRect(),gx=Math.floor((ev.clientX-br.left)/cw),gy=Math.floor((ev.clientY-br.top)/ch);
+          C.board.forEach(function(o){var q=o[DG.k];if(o!==it&&q&&gx>=q[0]&&gx<q[0]+q[2]&&gy>=q[1]&&gy<q[1]+q[3]) st=o});
+        }
+        if(st!==swT){
+          if(swEl) swEl.classList.remove('swapt');
+          swT=st;swEl=null;
+          if(swT){bdW.forEach(function(w){if(w.it===swT) swEl=w.el});if(swEl) swEl.classList.add('swapt');dialBuzz()}
+        }
+        if(swT){el.classList.add('swapping');dashStyle(el,n);dashGuides(null);return}
+        el.classList.remove('swapping');
         if(dashHits(it,n)){
           var nx=n.slice();nx[1]=g1[1];nx[3]=g1[3];
           var ny=n.slice();ny[0]=g1[0];ny[2]=g1[2];
@@ -3587,6 +3679,7 @@ try{
         dashGuides(null);
         if(tap&&ev.type==='pointerup'&&BD_SEL.length&&mode==='mv'){var si=BD_SEL.indexOf(it);if(si>=0){if(BD_SEL.length>1) BD_SEL.splice(si,1)}else BD_SEL.push(it);
           bdPick=it;bdPickAt=Date.now();syncBoard();toast(BD_SEL.length+' selected');return}
+        if(tap&&ev.type==='pointerup'&&MSZ&&mode==='mv'){if(MSZ.src===it) matchEnd();else matchApply(it,el);return}
         if(tap&&ev.type==='pointerup'){bdPick=(bdPick===it&&mode==='mv')?null:it;bdPickAt=Date.now();syncBoard();return}
         if(grp){
           if(gd[0]||gd[1]){var snp=JSON.parse(JSON.stringify(C.board));grp.forEach(function(m){snp[C.board.indexOf(m.o)][DG.k]=m.g0.slice()});
@@ -3595,6 +3688,15 @@ try{
           syncBoard();return}
         if(bdPick!==it) bdPickAt=Date.now();
         bdPick=it;
+        el.classList.remove('swapping');
+        if(swT){
+          var so=swT, sg=so[DG.k].slice(), mo=dmin(so);swT=null;if(swEl) swEl.classList.remove('swapt');swEl=null;
+          if(ev.type==='pointerup'&&sg[2]>=mn[0]&&sg[3]>=mn[1]&&g0[2]>=mo[0]&&g0[3]>=mo[1]){
+            var snap2=JSON.parse(JSON.stringify(C.board));snap2[C.board.indexOf(it)][DG.k]=g0.slice();
+            BD_UNDO.push({board:snap2,msg:'Swap undone.'});if(BD_UNDO.length>20)BD_UNDO.shift();
+            it[DG.k]=sg;so[DG.k]=g0.slice();save();syncBoard();feedback('ok');return}
+          if(ev.type==='pointerup') toast('Too small to swap there.');
+          dashStyle(el,g0);dashFit();return}
         if(dashHits(it,g1)){dashStyle(el,g0)}else if(g1.join()!==g0.join()){
           var snap=JSON.parse(JSON.stringify(C.board));snap[C.board.indexOf(it)][DG.k]=g0.slice();
           BD_UNDO.push({board:snap,msg:mode==='mv'?'Move undone.':'Size undone.'});if(BD_UNDO.length>20)BD_UNDO.shift();
@@ -3604,6 +3706,28 @@ try{
       el.addEventListener('pointermove',mv);el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
       e.preventDefault();
     });
+  }
+  // Match size: pick a widget, then tap others to give them its size (where there is room)
+  var MSZ=null;
+  function matchStart(it){
+    MSZ={src:it};var b=document.getElementById('msBar');
+    if(!b){b=document.createElement('div');b.id='msBar';b.setAttribute('role','status');b.innerHTML='<span class="ms-t"></span> <b></b><button class="btn" type="button"></button>';document.body.appendChild(b);
+      b.querySelector('button').textContent='Done';b.querySelector('button').addEventListener('click',matchEnd)}
+    b.querySelector('.ms-t').textContent='Tap widgets to give them this size:';b.querySelector('b').textContent=it[DG.k][2]+' \u00d7 '+it[DG.k][3];
+    b.classList.add('on');document.documentElement.classList.add('matching');bdPick=it;bdPickAt=Date.now();syncBoard();
+  }
+  function matchEnd(){MSZ=null;var b=document.getElementById('msBar');if(b) b.classList.remove('on');document.documentElement.classList.remove('matching');if(typeof syncBoard==='function') syncBoard()}
+  function matchApply(it,el){
+    var s0=MSZ.src[DG.k], g=it[DG.k];if(!s0||!g) return;
+    var w=s0[2], h=s0[3], mn=dmin(it);
+    if(w<mn[0]||h<mn[1]){toast('Too small for this widget.');el.animate&&el.animate([{transform:'translateX(-5px)'},{transform:'translateX(5px)'},{transform:'none'}],{duration:220});return}
+    if(g[2]===w&&g[3]===h) return;
+    var tries=[[g[0],g[1]],[g[0]+g[2]-w,g[1]],[g[0],g[1]+g[3]-h],[g[0]+g[2]-w,g[1]+g[3]-h],[Math.round(g[0]+g[2]/2-w/2),Math.round(g[1]+g[3]/2-h/2)]], n=null;
+    tries.forEach(function(p){if(n) return;var q=[clamp(p[0],0,DG.x-w),clamp(p[1],0,DG.y-h),w,h];if(!dashHits(it,q)) n=q});
+    if(!n){toast('No room for that size here.');dialBuzz();el.animate&&el.animate([{transform:'translateX(-5px)'},{transform:'translateX(5px)'},{transform:'none'}],{duration:220});return}
+    var snap=JSON.parse(JSON.stringify(C.board));
+    BD_UNDO.push({board:snap,msg:'Size undone.'});if(BD_UNDO.length>20)BD_UNDO.shift();
+    it[DG.k]=n;save();dialBuzz();syncBoard();
   }
   function dashPinch(el,it,P,e0){
     var ids=Object.keys(P.pts), a=P.pts[ids[0]], b=P.pts[ids[1]];
@@ -3856,6 +3980,7 @@ try{
     },!it.hold]);
     if(it.k==='j'||it.k==='d') defs.push(['\u2699','Joystick settings',function(){jcShow(it)}]);
     if(it.k==='tl') defs.push(['\u223F','Edit timeline',function(){tlEdit(it)}]);
+    if(dashOn()&&it[DG.k]) defs.push(['\u25A3','Match size',function(){matchStart(it)}]);
     if(it.k==='g'||it.k==='lv') defs.push(['\u2699','Gear settings',function(){gearEdit(it)}]);
     else if(WSPEC[it.k]) defs.push(['\u2699','Widget settings',function(){wsEdit(it)}]);
     if(it.k!=='e') defs.push(['\u270E','Rename widget',function(e){bdRename(it,e.target.closest('.bdw-h'))}]);
@@ -3922,6 +4047,7 @@ try{
     return out;
   }
   function syncBoard(){
+    if(MSZ&&(!bdEditing||!dashOn()||C.board.indexOf(MSZ.src)<0)){MSZ=null;var msb=document.getElementById('msBar');if(msb) msb.classList.remove('on');document.documentElement.classList.remove('matching')}
     if(!bdGrid||!C.board) return;
     SWC=null;
     bdFill();
@@ -4131,6 +4257,10 @@ try{
           nse.setAttribute('d','M'+npt(49,na1)+'A49 49 0 0 1 '+npt(49,na2)+'L'+npt(42,na2)+'A42 42 0 0 0 '+npt(42,na1)+'Z');
           nse.setAttribute('fill','rgba(150,160,175,.32)');nsv.appendChild(nse);nsg.push({e:nse,v:it.ow?(nj+.5)/NSEG*100:(-135+(nj+.5)*nstep)/135*100,f:''});
         }
+        // comet tail: a glow layer over the ring, lit where the value just passed and fading in 0.4 s
+        var ncg=document.createElementNS('http://www.w3.org/2000/svg','g');ncg.setAttribute('class','dcomet');
+        nsg.forEach(function(q){var ce=q.e.cloneNode(false);ce.setAttribute('fill','#ffd84a');ce.style.opacity='0';ncg.appendChild(ce);q.ce=ce;q.ct=-1e9;q.co=0});
+        nsv.appendChild(ncg);
         nbx.appendChild(nsv);
         var nk=document.createElement('div');nk.className='dialk';nk.setAttribute('role','slider');nk.setAttribute('aria-valuemin',it.ow?'0':'-100');nk.setAttribute('aria-valuemax','100');
         var ni=document.createElement('i');nk.appendChild(ni);
@@ -4180,6 +4310,13 @@ try{
               noteInput();delete RAMP[nc];setT(nc,0,false);dialBuzz();
               nk.classList.add('pop');setTimeout(function(){nk.classList.remove('pop')},250);
             }
+          }
+          // double tap anywhere on the knob: glide back to 0 in 0.2 s
+          if(ev==='pointerup'&&nPend&&!S.estop&&!S.play){
+            var nnow=Date.now();
+            if(w.ntap&&nnow-w.ntap<350){w.ntap=0;var zc2=wIn(it,rt.t[nc]);if(zc2!==0) w.dlv=zc2;noteInput();RAMP[nc]={t0:performance.now(),from:rt.t[nc],to:0,d:0.2};dialBuzz();
+              nk.classList.add('pop');setTimeout(function(){nk.classList.remove('pop')},250)}
+            else w.ntap=nnow;
           }
           nPend=false;nLong=false;w.drag=false;
         })});
@@ -4368,8 +4505,18 @@ try{
           e.preventDefault();try{lvt.setPointerCapture(e.pointerId)}catch(_){}
           lvD=true;w.lvi=-1;lvSet(e);
         });
+        var lvX=0,lvY=0,lvT0=0;
+        lvt.addEventListener('pointerdown',function(e){lvX=e.clientX;lvY=e.clientY;lvT0=Date.now()});
         lvt.addEventListener('pointermove',function(e){if(lvD) lvSet(e)});
-        ['pointerup','pointercancel'].forEach(function(ev){lvt.addEventListener(ev,function(){lvD=false})});
+        ['pointerup','pointercancel'].forEach(function(ev){lvt.addEventListener(ev,function(e){
+          lvD=false;
+          // double tap the lever: back to N (the notch that gives 0)
+          if(ev!=='pointerup'||S.estop||S.play) return;
+          var lnow=Date.now();if(lnow-lvT0>300||Math.hypot(e.clientX-lvX,e.clientY-lvY)>10) return;
+          if(w.ltap&&lnow-w.ltap<350){w.ltap=0;var ni2=-1;lvl.forEach(function(gd,gi){if(gd[1]===0&&ni2<0) ni2=gi});
+            if(ni2>=0&&ni2!==w.lvi){w.lvi=ni2;noteInput();delete RAMP[lvc];dialBuzz();setT(lvc,wOut(it,0),false)}}
+          else w.ltap=lnow;
+        })});
         lvt.addEventListener('contextmenu',function(e){e.preventDefault()});
         lvw.appendChild(lvt);el.appendChild(lvw);w.lev={c:lvc,k:lvk,b:lvb,l:lvl,y:lvy};
       }else if(it.k==='dp'){
@@ -4878,7 +5025,13 @@ try{
         w.dial.i.style.transform='rotate('+(w.it.ow?-135+dv/100*270:dv/100*135)+'deg)';
         w.dial.k.setAttribute('aria-valuenow',String(dv));
         w.dial.k.classList.toggle('on',dv!==0);
-        if(w.dial.lv!==dv){w.dial.lv=dv;w.dial.sg.forEach(function(q){var on=w.it.ow?q.v<=dv&&dv>0:(q.v>0&&q.v<=dv)||(q.v<0&&q.v>=dv),col=on?mCol(q.v,MTH[(w.it.th===1||w.it.th===2)?w.it.th:0]):'rgba(150,160,175,.32)';if(q.f!==col){q.f=col;q.e.setAttribute('fill',col)}})}
+        if(w.dial.cm!==undefined){var cnw=performance.now(),cany=false;
+          w.dial.sg.forEach(function(q){var f=Math.max(0,1-(cnw-q.ct)/400);if(f>0) cany=true;f=Math.round(f*20)/20;if(q.co!==f){q.co=f;q.ce.style.opacity=String(f*.95)}});
+          if(!cany) delete w.dial.cm}
+        if(w.dial.lv!==dv){
+          if(w.dial.lv!==null&&store.prefs.trail!==false){var cl=Math.min(w.dial.lv,dv),ch=Math.max(w.dial.lv,dv),cn=performance.now();
+            w.dial.sg.forEach(function(q){if(q.v>=cl-4&&q.v<=ch+4) q.ct=cn});w.dial.cm=cn}
+          w.dial.lv=dv;w.dial.sg.forEach(function(q){var on=w.it.ow?q.v<=dv&&dv>0:(q.v>0&&q.v<=dv)||(q.v<0&&q.v>=dv),col=on?mCol(q.v,MTH[(w.it.th===1||w.it.th===2)?w.it.th:0]):'rgba(150,160,175,.32)';if(q.f!==col){q.f=col;q.e.setAttribute('fill',col)}})}
       }else if(w.rsd){
         var rd0=w.rsd,rsel=rd0.cur(),ron=!S.estop&&rd0.on();
         w.rsd.i.style.transform='rotate('+rd0.ang(rsel)+'deg)';
@@ -5713,7 +5866,7 @@ try{
   for(var v2k2 in V2MS2) MS[v2k2]=V2MS2[v2k2];
   var V2MS3={"Eco": "Eco", "Sport": "Sport", "Drive mode": "Mod pandu", "Live output (tap for the big view)": "Keluaran langsung (ketik untuk paparan besar)", "Play time limit (a day)": "Had masa main (sehari)", "2 minutes of play time left.": "Tinggal 2 minit masa main.", "Play time is up. Motors are slowing down.": "Masa main tamat. Motor sedang perlahan.", "Hold for 2 seconds to change (parents).": "Tahan 2 saat untuk tukar (ibu bapa).", "Play time limit off.": "Had masa main dimatikan.", "5 more minutes.": "Tambah 5 minit.", "Play time is up": "Masa main tamat", "Come back tomorrow, or a parent can add 5 minutes": "Main lagi esok, atau ibu bapa boleh tambah 5 minit", "+5 min (hold 2 s)": "+5 minit (tahan 2 s)", "Live output meter": "Meter keluaran langsung", "Left-handed (landscape)": "Mod kidal (landskap)", "Model colour": "Warna model", "Yellow": "Kuning", "Red": "Merah", "Blue": "Biru", "Green": "Hijau", "Purple": "Ungu", "White": "Putih", "Trim (runs straight)": "Trim (jalan lurus)", "Trim buttons on the widget": "Butang trim pada widget", "Trim left": "Trim kiri", "Trim right": "Trim kanan", "Trim reset to 0.": "Trim diset semula ke 0.", "Trim · tap to reset": "Trim · ketik untuk set semula", "Size": "Saiz", "Widget type": "Jenis widget", "All": "Semua", "Lights & buttons": "Lampu & butang", "Meters": "Meter", "Tap a button on the picture, or press it on the gamepad.": "Ketik butang pada gambar, atau tekan pada gamepad.", "Quick settings": "Tetapan pantas", "Unlock": "Buka kunci", "Dark theme": "Tema gelap", "Light theme": "Tema cerah", "hold 2 s": "tahan 2 s", "Release E-Stop (hold 1 s)": "Lepas E-Stop (tahan 1 s)", "Drive up to three Mould King 6.0 hubs from your phone. This guide shows the real buttons, step by step.": "Pandu sehingga tiga hub Mould King 6.0 dari telefon anda. Panduan ini menunjukkan butang sebenar, langkah demi langkah.", "Start": "Mula", "Turn the hub on, then hold START for half a second. The ring turns yellow when the hub answers.": "Hidupkan hub, kemudian tahan START selama setengah saat. Cincin bertukar kuning bila hub menjawab.", "Move the controls to drive. Lift your finger and they go back to 0.": "Gerakkan kawalan untuk memandu. Angkat jari dan ia kembali ke 0.", "E-Stop stops every motor at once. Tap it again to release.": "E-Stop menghentikan semua motor serta-merta. Ketik sekali lagi untuk lepas.", "Your models": "Model anda", "Make your own board, start from a template, or share a model with a friend.": "Buat papan sendiri, mula daripada templat, atau kongsi model dengan kawan.", "Welcome to MK6 Console": "Selamat datang ke MK6 Console", "Lock settings": "Kunci tetapan", "Disconnect": "Putuskan"};
   for(var v2k3 in V2MS3) if(!MS[v2k3]) MS[v2k3]=V2MS3[v2k3];
-  var CHMS={"Joystick light trail: a short yellow tail follows the knob and fades in 0.4 s (Settings → Experience)": "Jejak cahaya joystik: ekor kuning pendek mengikut tombol dan pudar dalam 0.4 s (Tetapan → Pengalaman)", "Live frames: the widget rim turns green while its motor runs, red at full stroke, and blinks red on E-Stop": "Bingkai hidup: bingkai widget bertukar hijau bila motornya berjalan, merah pada hujung gerakan, dan berkelip merah semasa E-Stop", "Pinch to resize: in dashboard edit mode, pinch a widget with two fingers to resize it in grid steps (Back undoes it)": "Cubit untuk ubah saiz: dalam mod edit papan landskap, cubit widget dengan dua jari untuk ubah saiz ikut petak grid (Back membatalkan)", "Two-finger fine control: rest a second finger on empty board space and sliders and joysticks move only 30% of your finger (20 / 30 / 50% or off in Settings)": "Kawalan halus dua jari: letak jari kedua di ruang kosong papan dan slider serta joystik hanya bergerak 30% daripada jari (20 / 30 / 50% atau tutup dalam Tetapan)", "Joystick light trail": "Jejak cahaya joystik", "Live frames (green = running, red = full)": "Bingkai hidup (hijau = berjalan, merah = penuh)", "Two-finger fine control": "Kawalan halus dua jari", "Fine": "Halus", "Two-finger fine control off": "Kawalan halus dua jari ditutup","Joystick glow as bright as the sliders: it no longer shrinks with the joystick size, and it is drawn above the knob shadow":"Cahaya joystik kini seterang slider: tidak lagi mengecil ikut saiz joystik, dan dilukis di atas bayang tombol","One glow for every knob: sliders (flat and upright), joysticks and the ON switch now light up the same way; flat sliders draw their knob like the upright ones, so the glow is no longer cut off":"Satu cahaya untuk semua tombol: slider (mendatar dan tegak), joystik dan suis ON kini bercahaya sama; slider mendatar dilukis seperti slider tegak, jadi cahaya tidak lagi terpotong","Channel letter: tap it any time, even while driving with the hub on; every widget with channels has one (double stick too). Cleaner chip look, ⇄ button removed":"Huruf saluran: ketik bila-bila masa, walaupun semasa memandu dengan hub aktif; setiap widget bersaluran ada huruf ini (stik berkembar juga). Rupa cip lebih kemas, butang ⇄ dibuang","Change channel": "Tukar saluran", "Channel change undone.": "Tukar saluran dibatalkan.", "This channel is already used": "Saluran ini sudah digunakan", "Also used by:": "Turut digunakan oleh:", "Both widgets will drive the same channel. The last one you touch wins.": "Kedua-dua widget akan mengawal saluran yang sama. Yang terakhir disentuh menang.", "Share channel": "Kongsi saluran", "Channels": "Saluran", "Names ›": "Nama ›", "● used by another widget": "● digunakan widget lain", "✓ this widget": "✓ widget ini", "free": "bebas", "Channel settings (name, reverse, limit) stay with each channel.": "Tetapan saluran (nama, terbalik, had) kekal pada setiap saluran.", "Up / down": "Atas / bawah", "Left / right": "Kiri / kanan", "Left motor": "Motor kiri", "Right motor": "Motor kanan", "Left stick: left motor": "Stik kiri: motor kiri", "Left stick: right motor": "Stik kiri: motor kanan", "Right stick: left motor": "Stik kanan: motor kiri", "Right stick: right motor": "Stik kanan: motor kanan", "Left stick: up / down": "Stik kiri: atas / bawah", "Left stick: left / right": "Stik kiri: kiri / kanan", "Right stick: up / down": "Stik kanan: atas / bawah", "Right stick: left / right": "Stik kanan: kiri / kanan", "Left side": "Sebelah kiri", "Right side": "Sebelah kanan", "X (left / right)": "X (kiri / kanan)", "Y (up / down)": "Y (atas / bawah)", "Channel 1": "Saluran 1", "Channel 2": "Saluran 2", "Channel 3": "Saluran 3", "Channel 4": "Saluran 4", "Slider": "Peluncur", "Joystick": "Joystik", "Double stick": "Stik berkembar", "Light": "Lampu", "Turbo": "Turbo", "Toggle": "Togol", "Mix": "Campur", "Switch": "Suis", "Auto-stop": "Henti auto", "Ramp": "Naik perlahan", "Meter": "Meter", "Bar meter": "Meter bar", "Graph": "Graf", "Dial": "Dail", "Gear": "Gear", "Lever": "Tuas", "Steering wheel": "Stereng", "XY pad": "Pad XY", "Crossfader": "Crossfader", "Rotor": "Rotor", "Swing angle": "Sudut pusingan", "D-pad": "Pad arah", "LED widget": "Widget LED", "Widget": "Widget", "Hub": "Hub", "None": "Tiada", "Steer": "Pusing", "Drive": "Pandu", "Output A": "Output A", "Output B": "Output B", "Swing channel": "Saluran pusing", "Light channel": "Saluran lampu", "Channel": "Saluran", "Channels, every widget: tap the yellow channel letter while editing (or ⇄) to move a widget to another channel or hub; the named list shows who uses each channel": "Saluran, semua widget: ketik huruf saluran kuning semasa edit (atau ⇄) untuk pindah widget ke saluran atau hub lain; senarai bernama menunjukkan siapa guna setiap saluran"};for(var chk in CHMS) if(!MS[chk]) MS[chk]=CHMS[chk];
+  var CHMS={"Dial comet tail: the LED ring segments the dial just passed glow and fade in 0.4 s (with Light trails in Settings)": "Ekor komet dail: segmen cincin LED yang baru dilalui dail menyala dan pudar dalam 0.4 s (bersama Jejak cahaya dalam Tetapan)", "Swap widgets: in dashboard edit mode, drop a widget on another and they swap places and sizes (Back undoes it)": "Tukar tempat widget: dalam mod edit papan landskap, lepaskan widget di atas widget lain dan kedua-duanya bertukar tempat serta saiz (Back membatalkan)", "Match size: pick a widget, tap ▣ and then tap others to give them the same size where there is room": "Samakan saiz: pilih widget, ketik ▣ kemudian ketik widget lain untuk beri saiz yang sama bila ada ruang", "Double tap to 0: double tap the knob of a slider, dial or lever and it glides back to 0 (lever: to N)": "Ketik dua kali ke 0: ketik dua kali tombol slider, dail atau lever dan ia meluncur kembali ke 0 (lever: ke N)", "E-Stop black box: the last 10 s of every channel are kept when E-Stop goes on; see them in Settings (last 3 stops)": "Kotak hitam E-Stop: 10 s terakhir setiap saluran disimpan bila E-Stop ditekan; lihat dalam Tetapan (3 henti terakhir)", "Match size": "Samakan saiz", "Tap widgets to give them this size:": "Ketik widget untuk beri saiz ini:", "Too small for this widget.": "Terlalu kecil untuk widget ini.", "No room for that size here.": "Tiada ruang untuk saiz itu di sini.", "Swap undone.": "Tukar tempat dibatalkan.", "Too small to swap there.": "Terlalu kecil untuk bertukar tempat di situ.", "E-Stop black box": "Kotak hitam E-Stop", "None yet": "Belum ada", "Nothing recorded yet. When E-Stop goes on, the last 10 seconds of every channel are kept here.": "Belum ada rakaman. Bila E-Stop ditekan, 10 saat terakhir setiap saluran disimpan di sini.", "The last 10 seconds before E-Stop. The red line is the moment it stopped.": "10 saat terakhir sebelum E-Stop. Garis merah ialah saat ia berhenti.", "Clear": "Kosongkan", "Close": "Tutup", "Black box cleared.": "Kotak hitam dikosongkan.", "Light trails (joystick and dial)": "Jejak cahaya (joystik dan dail)","Joystick light trail: a short yellow tail follows the knob and fades in 0.4 s (Settings → Experience)": "Jejak cahaya joystik: ekor kuning pendek mengikut tombol dan pudar dalam 0.4 s (Tetapan → Pengalaman)", "Live frames: the widget rim turns green while its motor runs, red at full stroke, and blinks red on E-Stop": "Bingkai hidup: bingkai widget bertukar hijau bila motornya berjalan, merah pada hujung gerakan, dan berkelip merah semasa E-Stop", "Pinch to resize: in dashboard edit mode, pinch a widget with two fingers to resize it in grid steps (Back undoes it)": "Cubit untuk ubah saiz: dalam mod edit papan landskap, cubit widget dengan dua jari untuk ubah saiz ikut petak grid (Back membatalkan)", "Two-finger fine control: rest a second finger on empty board space and sliders and joysticks move only 30% of your finger (20 / 30 / 50% or off in Settings)": "Kawalan halus dua jari: letak jari kedua di ruang kosong papan dan slider serta joystik hanya bergerak 30% daripada jari (20 / 30 / 50% atau tutup dalam Tetapan)", "Joystick light trail": "Jejak cahaya joystik", "Live frames (green = running, red = full)": "Bingkai hidup (hijau = berjalan, merah = penuh)", "Two-finger fine control": "Kawalan halus dua jari", "Fine": "Halus", "Two-finger fine control off": "Kawalan halus dua jari ditutup","Joystick glow as bright as the sliders: it no longer shrinks with the joystick size, and it is drawn above the knob shadow":"Cahaya joystik kini seterang slider: tidak lagi mengecil ikut saiz joystik, dan dilukis di atas bayang tombol","One glow for every knob: sliders (flat and upright), joysticks and the ON switch now light up the same way; flat sliders draw their knob like the upright ones, so the glow is no longer cut off":"Satu cahaya untuk semua tombol: slider (mendatar dan tegak), joystik dan suis ON kini bercahaya sama; slider mendatar dilukis seperti slider tegak, jadi cahaya tidak lagi terpotong","Channel letter: tap it any time, even while driving with the hub on; every widget with channels has one (double stick too). Cleaner chip look, ⇄ button removed":"Huruf saluran: ketik bila-bila masa, walaupun semasa memandu dengan hub aktif; setiap widget bersaluran ada huruf ini (stik berkembar juga). Rupa cip lebih kemas, butang ⇄ dibuang","Change channel": "Tukar saluran", "Channel change undone.": "Tukar saluran dibatalkan.", "This channel is already used": "Saluran ini sudah digunakan", "Also used by:": "Turut digunakan oleh:", "Both widgets will drive the same channel. The last one you touch wins.": "Kedua-dua widget akan mengawal saluran yang sama. Yang terakhir disentuh menang.", "Share channel": "Kongsi saluran", "Channels": "Saluran", "Names ›": "Nama ›", "● used by another widget": "● digunakan widget lain", "✓ this widget": "✓ widget ini", "free": "bebas", "Channel settings (name, reverse, limit) stay with each channel.": "Tetapan saluran (nama, terbalik, had) kekal pada setiap saluran.", "Up / down": "Atas / bawah", "Left / right": "Kiri / kanan", "Left motor": "Motor kiri", "Right motor": "Motor kanan", "Left stick: left motor": "Stik kiri: motor kiri", "Left stick: right motor": "Stik kiri: motor kanan", "Right stick: left motor": "Stik kanan: motor kiri", "Right stick: right motor": "Stik kanan: motor kanan", "Left stick: up / down": "Stik kiri: atas / bawah", "Left stick: left / right": "Stik kiri: kiri / kanan", "Right stick: up / down": "Stik kanan: atas / bawah", "Right stick: left / right": "Stik kanan: kiri / kanan", "Left side": "Sebelah kiri", "Right side": "Sebelah kanan", "X (left / right)": "X (kiri / kanan)", "Y (up / down)": "Y (atas / bawah)", "Channel 1": "Saluran 1", "Channel 2": "Saluran 2", "Channel 3": "Saluran 3", "Channel 4": "Saluran 4", "Slider": "Peluncur", "Joystick": "Joystik", "Double stick": "Stik berkembar", "Light": "Lampu", "Turbo": "Turbo", "Toggle": "Togol", "Mix": "Campur", "Switch": "Suis", "Auto-stop": "Henti auto", "Ramp": "Naik perlahan", "Meter": "Meter", "Bar meter": "Meter bar", "Graph": "Graf", "Dial": "Dail", "Gear": "Gear", "Lever": "Tuas", "Steering wheel": "Stereng", "XY pad": "Pad XY", "Crossfader": "Crossfader", "Rotor": "Rotor", "Swing angle": "Sudut pusingan", "D-pad": "Pad arah", "LED widget": "Widget LED", "Widget": "Widget", "Hub": "Hub", "None": "Tiada", "Steer": "Pusing", "Drive": "Pandu", "Output A": "Output A", "Output B": "Output B", "Swing channel": "Saluran pusing", "Light channel": "Saluran lampu", "Channel": "Saluran", "Channels, every widget: tap the yellow channel letter while editing (or ⇄) to move a widget to another channel or hub; the named list shows who uses each channel": "Saluran, semua widget: ketik huruf saluran kuning semasa edit (atau ⇄) untuk pindah widget ke saluran atau hub lain; senarai bernama menunjukkan siapa guna setiap saluran"};for(var chk in CHMS) if(!MS[chk]) MS[chk]=CHMS[chk];
 
   var V2MS4={"Cruise": "Cruise", "Connect the hub first.": "Sambungkan hub dahulu.", "Cruise off. Held controls go back to 0.": "Cruise dimatikan. Kawalan yang ditahan kembali ke 0.", "Cruise on: a control you let go of keeps its value. Bring it back to the middle to stop it. Steering and lights still return.": "Cruise hidup: kawalan yang dilepaskan kekal pada nilainya. Bawa kembali ke tengah untuk berhenti. Stereng dan lampu tetap kembali.", "Cruise on": "Cruise hidup", "Steering eases at speed": "Stereng ikut kelajuan", "Steering": "Stereng", "Throttle": "Pendikit", "Steering at full speed": "Stereng pada kelajuan penuh", "At full throttle the steering turns only this much, so the model does not tip over in fast turns.": "Pada pendikit penuh, stereng hanya berpusing setakat ini supaya model tidak terbalik semasa membelok laju.", "Bluetooth is back. Reconnecting the hub. Motors are at zero.": "Bluetooth hidup semula. Menyambung semula hub. Motor pada sifar.", "Reconnect automatically (back in the app, Bluetooth on again, or app opened)": "Sambung semula automatik (kembali ke app, Bluetooth hidup semula, atau app dibuka)", "Reconnecting the hub from last time. Motors are at zero.": "Menyambung semula hub seperti kali lepas. Motor pada sifar.", "Icon & photo": "Ikon & foto", "Model icon": "Ikon model", "Choose photo": "Pilih foto", "Remove photo": "Buang foto", "No icon": "Tiada ikon", "Car": "Kereta", "Excavator": "Jengkaut", "Crane": "Kren", "Truck": "Lori", "Tractor": "Traktor", "Boat": "Bot", "Photo set for this model.": "Foto ditetapkan untuk model ini.", "Photo removed.": "Foto dibuang.", "That image could not be read.": "Imej itu tidak dapat dibaca.", "No image was chosen.": "Tiada imej dipilih.", "Practice: virtual model": "Latihan: model maya", "tap to put the model back in the middle": "ketik untuk letak model di tengah semula", "Undo": "Batal", "Redo": "Ulang", "Focus mode": "Mod fokus", "Focus mode. Tap the focus button at the top to leave.": "Mod fokus. Ketik butang fokus di atas untuk keluar."};
   for(var v2k4 in V2MS4) if(!MS[v2k4]) MS[v2k4]=V2MS4[v2k4];
@@ -6320,7 +6473,8 @@ try{
     var dp=$('#dPlay');if(dp){var lf=v2PlayLeft();if(dp.hidden===!!pl0) dp.hidden=!pl0;if(pl0){v2T(dp.querySelector('b'),v2Clock(lf));v2Tog(dp,'low',lf<=120000)}}
     $('#sLefty').setAttribute('aria-checked',String(!!store.prefs.lefty));
     $('#sTrail').setAttribute('aria-checked',String(store.prefs.trail!==false));$('#sLframe').setAttribute('aria-checked',String(store.prefs.lframe!==false));
-    v2T($('#sFineV'),store.prefs.fine?store.prefs.fine+'%':'Off');$('#sMeter').setAttribute('aria-checked',String(!!store.prefs.meter));
+    v2T($('#sFineV'),store.prefs.fine?store.prefs.fine+'%':'Off');
+    var bbl=bbLoad();v2T($('#sBbV'),bbl.length?new Date(bbl[0].at).toTimeString().slice(0,5):'None yet');$('#sMeter').setAttribute('aria-checked',String(!!store.prefs.meter));
     var mt=$('#dMeter');if(mt&&mt.hidden===!!store.prefs.meter) mt.hidden=!store.prefs.meter;
   }
 
@@ -6585,6 +6739,7 @@ try{
 
   // ---- What's new, version and update check ----
   var CHANGES=[
+    {b:71,items:[['new','Dial comet tail: the LED ring segments the dial just passed glow and fade in 0.4 s (with Light trails in Settings)'],['new','Swap widgets: in dashboard edit mode, drop a widget on another and they swap places and sizes (Back undoes it)'],['new','Match size: pick a widget, tap ▣ and then tap others to give them the same size where there is room'],['new','Double tap to 0: double tap the knob of a slider, dial or lever and it glides back to 0 (lever: to N)'],['new','E-Stop black box: the last 10 s of every channel are kept when E-Stop goes on; see them in Settings (last 3 stops)']]},
     {b:70,items:[['new','Joystick light trail: a short yellow tail follows the knob and fades in 0.4 s (Settings → Experience)'],['new','Live frames: the widget rim turns green while its motor runs, red at full stroke, and blinks red on E-Stop'],['new','Pinch to resize: in dashboard edit mode, pinch a widget with two fingers to resize it in grid steps (Back undoes it)'],['new','Two-finger fine control: rest a second finger on empty board space and sliders and joysticks move only 30% of your finger (20 / 30 / 50% or off in Settings)']]},
     {b:69,items:[['fix','Joystick glow as bright as the sliders: it no longer shrinks with the joystick size, and it is drawn above the knob shadow']]},
     {b:68,items:[['fix','One glow for every knob: sliders (flat and upright), joysticks and the ON switch now light up the same way; flat sliders draw their knob like the upright ones, so the glow is no longer cut off']]},
@@ -6759,6 +6914,7 @@ try{
   function v2PlayExtra(){if(PLAY.extra) return;PLAY.extra=true;PLAY.warned=false;PLAY.end=0;PLAY.f=1;v2PlaySave();v2AlKey='';toast('5 more minutes.')}
 
   // ---- 6 · Left-handed: the landscape dashboard is mirrored (widgets swap sides) ----
+  v2Click('#sBb',function(){bbShow(0)});
   v2Click('#sTrail',function(){store.prefs.trail=store.prefs.trail===false;save();v2Paint()});
   v2Click('#sLframe',function(){store.prefs.lframe=store.prefs.lframe===false;save();v2Paint()});
   v2Click('#sFine',function(){var o=[30,50,0,20],i=o.indexOf(store.prefs.fine);store.prefs.fine=o[(i+1)%o.length];save();fineSet();v2Paint();
