@@ -137,7 +137,7 @@ async def t_features(b):
     r = await pg.evaluate("q.value='';q.dispatchEvent(new Event('input'));var m=document.querySelectorAll('#mList .v2-mmain')[0];m.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));new Promise(r=>setTimeout(()=>{m.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}));m.click();r(document.documentElement.dataset.v)},750))")
     check('long press on a model opens its settings', r == 'medit', r)
     r = await pg.evaluate("mk6Go('hub');document.querySelector('#hubSlots .btn').click();" + W % "[document.getElementById('hub1').value,document.querySelectorAll('#chTest .v2-knob-b').length]")
-    check('Hub: Add second hub gives 12 test knobs', r == ['1', 12], r)
+    check('Hub: Add second hub keeps 6 test knobs (only the hub picked in wiring)', r == ['1', 6], r)
     r = await pg.evaluate("document.querySelector('#hubSlots .btn').click();" + W % "document.getElementById('hub1').value")
     check('Hub: Remove second hub', r == '-1', r)
     r = await pg.evaluate("mk6Go('m-app');document.getElementById('lockBtn').click();mk6Go('drive');" + W % "[getComputedStyle(document.getElementById('recCard')).display,getComputedStyle(document.querySelector('[data-tab=models]')).display]")
@@ -1393,10 +1393,39 @@ async def t_wire(b):
     check('wiring: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_wirelock(b):
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'W',cfg:{layout:'board',hubs:[0,1,-1],ch:[{},{},{},{},{},{},{},{},{},{},{},{}],board:[{k:'s',c:0,w:2}],pf:['l','m','','','','','xl']}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("window.MK6Bridge.send=function(){};onHubState('ready')"); await pg.wait_for_timeout(300)
+    await pg.evaluate("mk6Go('hub')"); await pg.wait_for_timeout(700)
+    r = await pg.evaluate("[document.querySelectorAll('#chTest .v2-knob-b').length,document.querySelector('#chTest .kt').textContent]")
+    check('wiring tabs: channel test shows only the picked hub', r[0] == 6, r)
+    await pg.evaluate("document.querySelectorAll('#wrTabs button')[1].click()"); await pg.wait_for_timeout(400)
+    r = await pg.evaluate("[document.querySelectorAll('#chTest .v2-knob-b').length,document.querySelector('#chTest .kt').textContent]")
+    check('wiring tabs: switching to hub 2 swaps the channel test buttons', r[0] == 6 and r[1] != '', r)
+    r = await pg.evaluate("[document.getElementById('wrLock').getAttribute('aria-pressed'),document.getElementById('wrHost').shadowRoot.querySelector('svg').classList.contains('lk')]")
+    check('wiring lock: on by default', r == ['true', True], r)
+    bb = await pg.evaluate("(function(){var r=document.getElementById('wrHost').shadowRoot.querySelector('.hubg').getBoundingClientRect();return [r.x+r.width*.5,r.y+r.height*.85]})()")
+    await pg.mouse.move(bb[0], bb[1]); await pg.mouse.down(); await pg.mouse.move(bb[0]-40, bb[1]+40, steps=8); await pg.mouse.up(); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("JSON.stringify(JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.pfp||{})")
+    check('wiring lock: a drag while locked moves nothing', '"19"' not in r and '"18"' not in r, r)
+    await pg.evaluate("document.getElementById('wrLock').click()"); await pg.wait_for_timeout(200)
+    bb = await pg.evaluate("(function(){var r=document.getElementById('wrHost').shadowRoot.querySelector('.hubg').getBoundingClientRect();return [r.x+r.width*.5,r.y+r.height*.85]})()")
+    await pg.mouse.move(bb[0], bb[1]); await pg.mouse.down(); await pg.mouse.move(bb[0]-40, bb[1]+40, steps=8); await pg.mouse.up(); await pg.wait_for_timeout(400)
+    r = await pg.evaluate("JSON.stringify(JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.pfp||{})")
+    check('wiring lock: unlocked, the hub can be dragged (saved for hub 2)', '"19"' in r, r)
+    check('wiring lock: no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
