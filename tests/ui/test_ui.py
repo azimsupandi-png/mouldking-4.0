@@ -10,6 +10,8 @@ from playwright.async_api import async_playwright
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 HTML = 'file://' + os.path.join(ROOT, 'app', 'src', 'main', 'assets', 'index.html')
 STUB = """
+window.__ed=function(){var b=document.getElementById('bdEdit');if(b.getAttribute('aria-pressed')==='true'){b.click();if(window.__edOn)onHubState('ready');window.__edOn=0}else{window.__edOn=b.disabled;if(b.disabled)onHubState('off');b.click()}};
+
 window.__calls=[];window.__bt=true;
 window.MK6Bridge={start:function(m){__calls.push('start:'+m)},send:function(f){__calls.push('send')},stop:function(){__calls.push('stop')},
  haptic:function(k){__calls.push('haptic:'+k)},tilt:function(){},immersive:function(){},battery:function(){return 84},btOn:function(){return __bt},
@@ -97,7 +99,7 @@ async def t_hold(b):
     check('Home START/STOP hold (finger wobble) connects', 'start:0' in await pg.evaluate("__calls.join(',')"))
     await pg.evaluate("onHubState('ready')")
     await pg.wait_for_timeout(500)
-    await pg.evaluate("mk6Go('drive');document.getElementById('bdEdit').click();document.getElementById('bdTPS').click();document.getElementById('bdAdd').click();document.getElementById('bdEdit').click();__calls=[]")
+    await pg.evaluate("mk6Go('drive');__ed();document.getElementById('bdTPS').click();document.getElementById('bdAdd').click();__ed();__calls=[]")
     await touch('#boardGrid .psb', 650)
     check('board START/STOP widget hold disconnects', 'stop' in await pg.evaluate("__calls.join(',')"))
     check('no JS errors (hold)', not pg.errors, pg.errors[:3])
@@ -233,11 +235,11 @@ async def t_twelve(b):
     await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
     await pg.wait_for_timeout(300)
     # 1 trim: buttons on the slider widget, offset reaches the hub, E-Stop zeroes it
-    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed()")
     await pg.wait_for_timeout(200)
     await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw[data-k=s] .bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Widget settings').click()")
     await pg.wait_for_timeout(200)
-    await pg.evaluate("var f=[...document.querySelectorAll('#gEdit .wsf')].find(x=>x.querySelector('.wsl').textContent.startsWith('Trim buttons'));[...f.querySelectorAll('.wsc .btn')].find(b=>b.textContent==='On').click();[...document.querySelectorAll('#gEdit .gact .btn')][0].click();document.getElementById('bdEdit').click()")
+    await pg.evaluate("var f=[...document.querySelectorAll('#gEdit .wsf')].find(x=>x.querySelector('.wsl').textContent.startsWith('Trim buttons'));[...f.querySelectorAll('.wsc .btn')].find(b=>b.textContent==='On').click();[...document.querySelectorAll('#gEdit .gact .btn')][0].click();__ed()")
     await pg.wait_for_timeout(300)
     await pg.evaluate("var p=document.querySelector('#boardGrid .bdw-trim .trb:last-child');p.click();p.click()")
     await pg.wait_for_timeout(500)
@@ -249,7 +251,7 @@ async def t_twelve(b):
     check('1 trim: E-Stop sends 0 even with trim', r == '0', r)
     await pg.evaluate("document.getElementById('estop').click()")
     # 2 response curve: editor in the slider settings; 'Fine' preset makes half stick = 22%
-    r = await pg.evaluate("document.getElementById('bdEdit').click();[...document.querySelectorAll('#boardGrid .bdw[data-k=s] .bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Widget settings').click();var ok=!!document.querySelector('#gEdit .cved-g');[...document.querySelectorAll('#gEdit .cved-c button')].find(b=>b.textContent==='Fine').click();[...document.querySelectorAll('#gEdit .gact button')].find(b=>b.textContent==='Save').click();document.getElementById('bdEdit').click();ok")
+    r = await pg.evaluate("__ed();[...document.querySelectorAll('#boardGrid .bdw[data-k=s] .bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Widget settings').click();var ok=!!document.querySelector('#gEdit .cved-g');[...document.querySelectorAll('#gEdit .cved-c button')].find(b=>b.textContent==='Fine').click();[...document.querySelectorAll('#gEdit .gact button')].find(b=>b.textContent==='Save').click();__ed();ok")
     check('2 curve: the editor is in the slider settings', r, r)
     # 3 drive mode chips = Eco / Normal / Sport profiles
     await pg.evaluate("document.querySelector('#dMode [data-lp=\"0\"]').click()")
@@ -263,7 +265,7 @@ async def t_twelve(b):
     check('7 live meter shows the output of channel A', r > 10, r)
     await pg.evaluate("var r=document.querySelector('#boardGrid input[type=range]');r.value=0;r.dispatchEvent(new Event('input',{bubbles:true}));r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}))")
     # 9 size button cycles 1x1 -> 2x1
-    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed()")
     await pg.wait_for_timeout(200)
     await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw[data-k=l] .bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Size').click()")
     await pg.wait_for_timeout(200)
@@ -272,7 +274,7 @@ async def t_twelve(b):
     # 10 gallery: picture cards and category tabs
     r = await pg.evaluate("var t=[...document.querySelectorAll('.v2-gtabs .btn')].find(b=>b.textContent==='Meters');t.click();[document.querySelectorAll('.bd-types .gt svg').length,[...document.querySelectorAll('.bd-types > .btn')].filter(b=>!b.hidden).length]")
     check('10 gallery: 34 picture cards, Meters tab shows 6', r == [34, 6], r)
-    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed()")
     # 8 model colour persists and tints the board
     await pg.evaluate("mk6Go('medit');document.querySelectorAll('#swatches .sw')[2].click()")
     r = await pg.evaluate("document.documentElement.getAttribute('data-macc')")
@@ -359,7 +361,7 @@ async def t_three(b):
         seen.add(await pg.evaluate("(window.__last||'').split(',').map(Number)[4]>0"))
     check('4 hazard: the light flashes on and off', seen == {True, False}, seen)
     # tachometer: needle style of the arc meter, follows channel A
-    await pg.evaluate("document.getElementById('bdEdit').click();document.getElementById('bdTFN').click();document.getElementById('bdAdd').click();document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed();document.getElementById('bdTFN').click();document.getElementById('bdAdd').click();__ed()")
     await pg.wait_for_timeout(300)
     await pg.evaluate("var r="+SL+";r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=100;r.dispatchEvent(new Event('input',{bubbles:true}))")
     await pg.wait_for_timeout(1200)
@@ -408,31 +410,31 @@ async def t_led(b):
     await pg.wait_for_timeout(500)
     r = await pg.evaluate("[document.querySelectorAll('#boardGrid .lx-lb')[0].classList.contains('on'),(window.__last||'').split(',').map(Number)[4]]")
     check('light panel: a tap turns that light channel on', r[0] and r[1] > 0, r)
-    await pg.evaluate("document.getElementById('bdEdit').click();document.getElementById('bdTXmx').click();document.getElementById('bdAdd').click();document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed();document.getElementById('bdTXmx').click();document.getElementById('bdAdd').click();__ed()")
     await pg.wait_for_timeout(300)
     r = await pg.evaluate("[document.querySelectorAll('#boardGrid .lx-mx').length,document.querySelectorAll('#boardGrid .bdw.hzw, #boardGrid .bdw[data-k=i]').length]")
     check('gallery adds LED arrows', r[0] == 2, r)
     # tachometer looks A-F: each builds, and the setting is kept
-    await pg.evaluate("document.getElementById('bdEdit').click();document.getElementById('bdTFN').click();document.getElementById('bdAdd').click();var w=[...document.querySelectorAll('#boardGrid .bdw[data-k=f]')].pop();[...w.querySelectorAll('.bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Widget settings').click()")
+    await pg.evaluate("__ed();document.getElementById('bdTFN').click();document.getElementById('bdAdd').click();var w=[...document.querySelectorAll('#boardGrid .bdw[data-k=f]')].pop();[...w.querySelectorAll('.bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Widget settings').click()")
     await pg.wait_for_timeout(200)
-    r = await pg.evaluate("var box=[...document.querySelectorAll('#gEdit .wsf')].find(f=>f.querySelector('.wsl').textContent==='Tachometer look');var ok=!!box;if(box) [...box.querySelectorAll('button')].find(b=>b.textContent==='E Pro').click();[...document.querySelectorAll('#gEdit .gact button')].find(b=>b.textContent==='Save').click();document.getElementById('bdEdit').click();ok")
+    r = await pg.evaluate("var box=[...document.querySelectorAll('#gEdit .wsf')].find(f=>f.querySelector('.wsl').textContent==='Tachometer look');var ok=!!box;if(box) [...box.querySelectorAll('button')].find(b=>b.textContent==='E Pro').click();[...document.querySelectorAll('#gEdit .gact button')].find(b=>b.textContent==='Save').click();__ed();ok")
     await pg.wait_for_timeout(300)
     r2 = await pg.evaluate("document.querySelectorAll('#boardGrid .bdw[data-k=f] .ndl').length")
     check('tachometer: look A-F can be picked in its settings', r and r2 >= 1, [r, r2])
     # portrait: the undo bar stays put (no grip); landscape dashboard: it can be dragged
-    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed()")
     await pg.wait_for_timeout(300)
     r = await pg.evaluate("getComputedStyle(document.querySelector('#v2Undo .v2-ugrip')).display")
     check('undo bar has no grip in portrait (fixed place)', r == 'none', r)
-    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed()")
     await pg.set_viewport_size({'width': 844, 'height': 390})
-    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed()")
     await pg.wait_for_timeout(400)
     r = await pg.evaluate("[document.documentElement.classList.contains('dash'),getComputedStyle(document.querySelector('#v2Undo .v2-ugrip')).display]")
     check('landscape dashboard shows the undo grip', r == [True, 'flex'] or r == [True, 'inline-flex'], r)
-    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed()")
     # undo bar: drag it by its grip; the spot is kept; double-tap puts it back
-    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed()")
     await pg.wait_for_timeout(400)
     r = await pg.evaluate("""(function(){var g=document.querySelector('#v2Undo .v2-ugrip'),r=g.getBoundingClientRect(),x=r.left+5,y=r.top+5,o={bubbles:true,pointerId:3};
       g.dispatchEvent(new PointerEvent('pointerdown',Object.assign({clientX:x,clientY:y},o)));g.dispatchEvent(new PointerEvent('pointermove',Object.assign({clientX:40,clientY:200},o)));g.dispatchEvent(new PointerEvent('pointerup',Object.assign({clientX:40,clientY:200},o)));
@@ -440,9 +442,9 @@ async def t_led(b):
     check('undo bar can be dragged on the landscape dashboard and its spot is saved', r[0] < 60 and 150 < r[1] < 230 and r[2], r)
     r2 = await pg.evaluate("Math.round(document.getElementById('v2Undo').getBoundingClientRect().height)")
     check('undo bar keeps its size when moved', 40 <= r2 <= 60, r2)
-    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed()")
     await pg.wait_for_timeout(300)
-    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed()")
     await pg.wait_for_timeout(400)
     r = await pg.evaluate("var b=document.getElementById('v2Undo').getBoundingClientRect();[Math.round(b.left),Math.round(b.top)]")
     check('undo bar comes back where it was left', r[0] < 60 and 150 < r[1] < 230, r)
@@ -450,16 +452,16 @@ async def t_led(b):
       for(var k=0;k<2;k++){g.dispatchEvent(new PointerEvent('pointerdown',o));g.dispatchEvent(new PointerEvent('pointerup',o))}
       return document.getElementById('v2Undo').classList.contains('moved')})()""")
     check('double-tap on the grip puts the undo bar back', r is False, r)
-    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed()")
     # widget settings explain the hub value: start power 4 -> 75 becomes 79
     await pg.set_viewport_size({'width': 390, 'height': 844})
     await pg.wait_for_timeout(300)
-    r = await pg.evaluate("document.getElementById('bdEdit').click();[...document.querySelector('#boardGrid .bdw[data-k=s]').querySelectorAll('.bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Widget settings').click();var t=(document.querySelector('#gEdit .wsinfo-t')||{}).textContent||'';var hasOff=[...document.querySelectorAll('#gEdit .wsl')].some(l=>/^Start power/.test(l.textContent));document.getElementById('gEdit').remove();document.getElementById('bdEdit').click();[t,hasOff]")
+    r = await pg.evaluate("__ed();[...document.querySelector('#boardGrid .bdw[data-k=s]').querySelectorAll('.bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Widget settings').click();var t=(document.querySelector('#gEdit .wsinfo-t')||{}).textContent||'';var hasOff=[...document.querySelectorAll('#gEdit .wsl')].some(l=>/^Start power/.test(l.textContent));document.getElementById('gEdit').remove();__ed();[t,hasOff]")
     check('widget settings show start power and explain 75 -> hub 79', 'start power +4%' in r[0] and 'hub 79' in r[0] and r[1], r)
     # light program: Chase across the panel's two lights (E, F), then stop
-    await pg.evaluate("document.getElementById('bdEdit').click();var w=document.querySelector('#boardGrid .lx-lp').closest('.bdw');[...w.querySelectorAll('.bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Widget settings').click()")
+    await pg.evaluate("__ed();var w=document.querySelector('#boardGrid .lx-lp').closest('.bdw');[...w.querySelectorAll('.bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Widget settings').click()")
     await pg.wait_for_timeout(200)
-    await pg.evaluate("var box=[...document.querySelectorAll('#gEdit .wsf')].find(f=>f.querySelector('.wsl').textContent==='Light program');[...box.querySelectorAll('button')].find(b=>b.textContent==='Chase').click();[...document.querySelectorAll('#gEdit .gact button')].find(b=>b.textContent==='Save').click();document.getElementById('bdEdit').click()")
+    await pg.evaluate("var box=[...document.querySelectorAll('#gEdit .wsf')].find(f=>f.querySelector('.wsl').textContent==='Light program');[...box.querySelectorAll('button')].find(b=>b.textContent==='Chase').click();[...document.querySelectorAll('#gEdit .gact button')].find(b=>b.textContent==='Save').click();__ed()")
     await pg.wait_for_timeout(300)
     await pg.evaluate("window.__all=[];document.querySelector('#boardGrid .lx-pg').click()")
     await pg.wait_for_timeout(1500)
@@ -477,7 +479,7 @@ async def t_led(b):
     r = await pg.evaluate("[(window.__last||'').split(',').map(Number)[4],document.querySelector('#boardGrid .lx-pg').getAttribute('aria-pressed')]")
     check('stopping the program turns its lights off', r == [0, 'false'], r)
     # undo/redo really restore: delete a widget, undo brings it back, redo removes it again
-    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed()")
     await pg.wait_for_timeout(500)
     n0 = await pg.evaluate("document.querySelectorAll('#boardGrid > .bdw').length")
     await pg.evaluate("[...[...document.querySelectorAll('#boardGrid > .bdw')].pop().querySelectorAll('.bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Remove').click()")
@@ -493,13 +495,13 @@ async def t_led(b):
     r = await pg.evaluate("var m=document.querySelector('main');[parseInt(getComputedStyle(m).paddingBottom)]")
     check('portrait: page gets room under its content while the undo bar shows', r[0] >= 150, r)
     await pg.evaluate("document.getElementById('unU').click()")
-    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed()")
     await pg.set_viewport_size({'width': 844, 'height': 390})
-    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed()")
     await pg.wait_for_timeout(500)
     r = await pg.evaluate("var b=document.getElementById('v2Undo').getBoundingClientRect();[Math.round(b.width),Math.round(b.height),getComputedStyle(document.querySelector('#unU span')).display]")
     check('landscape undo bar is compact (icons only)', r[0] < 160 and r[1] <= 52 and r[2] == 'none', r)
-    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed()")
     await pg.set_viewport_size({'width': 390, 'height': 844})
     await pg.wait_for_timeout(300)
     check('no JS errors (LED widgets)', not pg.errors, pg.errors[:3])
@@ -552,7 +554,7 @@ async def t_seven(b):
     r = await pg.evaluate("__calls.filter(c=>c.startsWith('start')).length")
     check('4 Bluetooth back on: the hub reconnects by itself', r >= 1, r)
     # 9 undo / redo in edit mode
-    await pg.evaluate("mk6Go('drive');document.getElementById('bdEdit').click()")
+    await pg.evaluate("mk6Go('drive');__ed()")
     await pg.wait_for_timeout(400)
     n0 = await pg.evaluate("document.querySelectorAll('#boardGrid .bdw').length")
     await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw[data-k=l] .bdw-ed button')].find(b=>/Remove|Delete/.test(b.getAttribute('aria-label')||'')).click()")
@@ -561,7 +563,7 @@ async def t_seven(b):
     await pg.wait_for_timeout(300)
     n2 = await pg.evaluate("[document.querySelectorAll('#boardGrid .bdw').length,!document.getElementById('v2Undo').hidden,document.getElementById('unR').disabled]")
     check('9 undo brings a removed widget back (redo then available)', n2 == [n0, True, False], [n0, n2])
-    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed()")
     # 8 icon shows on the gallery card and the model chip
     await pg.evaluate("mk6Go('medit');document.querySelector('#mIcons [data-ic=crane]').click();mk6Go('models')")
     await pg.wait_for_timeout(400)
@@ -688,7 +690,7 @@ async def t_wup(b):
         seen.add(await pg.evaluate("[...document.querySelectorAll('#boardGrid .lx-mx circle')].map(c=>c.getAttribute('fill')==='#ffd84a'?1:0).join('')"))
     check('14a/b LED matrix shows my icon and it scrolls', len(seen) >= 2 and all(s.count('1') == 28 for s in seen), [s.count('1') for s in seen])
     # settings editors open and save
-    await pg.evaluate("document.getElementById('bdEdit').click();[...document.querySelectorAll('#boardGrid .bdw[data-k=lx]')].pop().querySelector('.bdw-ed button[aria-label=\"Widget settings\"]').click()")
+    await pg.evaluate("__ed();[...document.querySelectorAll('#boardGrid .bdw[data-k=lx]')].pop().querySelector('.bdw-ed button[aria-label=\"Widget settings\"]').click()")
     await pg.wait_for_timeout(200)
     r = await pg.evaluate("[document.querySelectorAll('#gEdit .pxed-g button').length,(()=>{document.querySelectorAll('#gEdit .pxed-g button')[0].click();[...document.querySelectorAll('#gEdit .gact button')].find(b=>b.textContent==='Save').click();return JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.board.find(x=>x.t==='mx').px[0]})()]")
     check('14a dot editor: 64 dots, a tap changes the saved icon', r[0] == 64 and r[1] == '01111111', r)
@@ -757,7 +759,7 @@ async def t_xw(b):
     r = await pg.evaluate("[document.querySelectorAll('#boardGrid .bdw[data-k=ro]')[1].querySelectorAll('svg g.rb')[0].children.length,JSON.stringify(JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.board[3])]")
     check('Rotor: old metal style now shows the jet turbine (16 blades)', r[0] == 16 and 'bs' not in r[1], r)
     # settings dialogs + add from the gallery
-    await pg.evaluate("document.getElementById('bdEdit').click()")
+    await pg.evaluate("__ed()")
     for k, n in (('xy', 3), ('xf', 3), ('ro', 2)):
         r = await pg.evaluate("(function(){document.querySelector('#boardGrid .bdw[data-k=%s] .bdw-ed button[aria-label=\"Widget settings\"]').click();var n=document.querySelectorAll('#gEdit .gbox > *').length;var c=[...document.querySelectorAll('#gEdit .gact button')].find(b=>b.textContent==='Cancel');c&&c.click();var g=document.getElementById('gEdit');g&&g.remove();return n})()" % k)
         check('%s settings dialog opens' % k, r >= n + 1, r)
@@ -798,7 +800,7 @@ async def t_pro(b):
     r = await pg.evaluate("document.documentElement.hasAttribute('data-hc')")
     check('P5: outdoor high contrast turns on', r, r)
     # P3: duplicate onto the next free channel, undo
-    await pg.evaluate("__t.rt.t[0]=0;__t.rt.t[1]=0;document.getElementById('bdEdit').click()")
+    await pg.evaluate("__t.rt.t[0]=0;__t.rt.t[1]=0;__ed()")
     r = await pg.evaluate("(function(){var b=document.querySelector('#boardGrid .bdw[data-k=s] .bdw-ed button[aria-label=Duplicate]');b.click();return __t.C.board.map(x=>x.k+x.c).join(',')})()")
     check('P3: duplicate copies a slider onto the next free channel', r == 's0,s2,s1,f0', r)
     r = await pg.evaluate("document.getElementById('dbBack').hidden")
@@ -971,7 +973,7 @@ async def t_drtl(b):
     r = await pg.evaluate("[+(window.__last||'').split(',')[2],!!__t.S.play]")
     check('S4: it stops at the end and returns to 0', r == [0, False], r)
     # editor: open from edit mode, add a point, change shape, add a lane
-    await pg.evaluate("document.getElementById('bdEdit').click();document.querySelector('#boardGrid .bdw[data-k=tl] .bdw-ed button[aria-label=\"Edit timeline\"]').click()")
+    await pg.evaluate("__ed();document.querySelector('#boardGrid .bdw[data-k=tl] .bdw-ed button[aria-label=\"Edit timeline\"]').click()")
     await pg.wait_for_timeout(300)
     r = await pg.evaluate("[!!document.getElementById('tlEd'),document.querySelectorAll('#tlEd svg circle[role=button]').length]")
     check('S4: the editor opens with the points of each lane', r == [True, 3], r)
@@ -1009,7 +1011,7 @@ async def t_drtl(b):
     await pg.add_init_script(STUB + seed)
     await pg.goto(HTML + '?mk6test')
     await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
-    await pg.evaluate("__t.C.tl[0].lanes.push({c:3,pts:[[0,0,0],[2,0,0]]});mk6Go('drive');document.getElementById('dbEdit')?document.getElementById('dbEdit').click():document.getElementById('bdEdit').click()")
+    await pg.evaluate("__t.C.tl[0].lanes.push({c:3,pts:[[0,0,0],[2,0,0]]});mk6Go('drive');document.getElementById('dbEdit')?document.getElementById('dbEdit').click():__ed()")
     await pg.wait_for_timeout(300)
     await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw[data-k=tl] .bdw-ed button')].find(b=>b.getAttribute('aria-label')==='Edit timeline').click()")
     await pg.wait_for_timeout(300)
@@ -1334,7 +1336,7 @@ async def t_ped(b):
     await pg.goto(HTML + '?mk6test')
     await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
     await pg.evaluate("mk6Go('drive')"); await pg.wait_for_timeout(300)
-    await pg.evaluate("document.getElementById('bdEdit').click()"); await pg.wait_for_timeout(300)
+    await pg.evaluate("__ed()"); await pg.wait_for_timeout(300)
     vis = "[...document.querySelectorAll('#boardGrid>.bdw .bdw-ed')].filter(e=>getComputedStyle(e).display!=='none').length"
     r = await pg.evaluate(vis)
     check('upright edit: no tools shown until a widget is tapped', r == 0, r)
@@ -1347,10 +1349,31 @@ async def t_ped(b):
     check('upright edit: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_edlock(b):
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'EL',cfg:{layout:'board',ch:[{},{},{},{},{},{}],board:[{k:'s',c:0,w:2}]}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("window.MK6Bridge.send=function(f){};mk6Go('drive')"); await pg.wait_for_timeout(300)
+    await pg.evaluate("document.getElementById('bdEdit').click()"); await pg.wait_for_timeout(200)
+    r = await pg.evaluate("[document.getElementById('bdEdit').textContent,!!document.querySelector('#boardGrid .bdw-ed')]")
+    check('edit lock: with the hub stopped the upright board can be edited', r[0] == 'Done editing' and r[1], r)
+    await pg.evaluate("onHubState('ready')"); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[document.getElementById('bdEdit').textContent,document.getElementById('bdEdit').disabled,!!document.querySelector('#boardGrid .bdw-ed')]")
+    check('edit lock: starting the hub ends editing and locks the Edit button', r == ['Stop the hub to edit the board', True, False], r)
+    await pg.evaluate("onHubState('off')"); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[document.getElementById('bdEdit').textContent,document.getElementById('bdEdit').disabled]")
+    check('edit lock: stopping the hub unlocks it again', r == ['Edit board', False], r)
+    check('edit lock: no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
