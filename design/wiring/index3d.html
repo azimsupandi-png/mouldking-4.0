@@ -1,0 +1,410 @@
+<!DOCTYPE html><html lang="ms"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MK6 · Pendawaian hub 3D</title><style>
+:root{--k:#ffd84a;--mu:#8a93a0;--off:rgba(150,160,175,.28);--metal:linear-gradient(145deg,#e6e9ef,#6b7280 40%,#2b303a 70%,#9aa3b0)}
+*{box-sizing:border-box}body{margin:0;color:#e8e8ea;font-family:Inter,Roboto,system-ui,sans-serif;background:repeating-linear-gradient(45deg,#11151a 0 6px,#0d1014 6px 12px),#0d1014;min-height:100vh;user-select:none;-webkit-tap-highlight-color:transparent}
+.top{display:flex;align-items:center;gap:8px;padding:10px 14px;background:linear-gradient(180deg,#171b22,#12151b);border-bottom:1px solid #232933;position:sticky;top:0;z-index:5;flex-wrap:wrap}
+h1{margin:0;font-size:15px;color:#ffc400;letter-spacing:.06em;text-transform:uppercase;border-left:4px solid #ffc400;padding-left:8px}
+.grow{flex:1}.btn{background:#1a1e26;border:1.5px solid #2b303a;color:#e8e8ea;border-radius:999px;padding:8px 13px;font:700 12.5px Inter,system-ui;cursor:pointer}.btn.sel{border-color:var(--k);color:var(--k)}
+.wrap{max-width:1180px;margin:auto;padding:14px;display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px;align-items:start}
+.scene{border-radius:24px;padding:2.5px;background:var(--metal)}.scene>div{border-radius:21.5px;background:radial-gradient(700px 500px at 50% 50%,#1f242d,#12151b);overflow:hidden}
+#sc{width:100%;height:auto;display:block;touch-action:none}
+.panel{display:flex;flex-direction:column;gap:12px}
+.box{border-radius:20px;padding:2px;background:var(--metal)}.box>div{border-radius:18px;background:linear-gradient(180deg,#1d222b,#12151b);padding:12px}
+.lab{font-size:11px;color:var(--mu);letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin-bottom:8px}
+.pal{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.pi{background:#161a21;border:1.5px solid #2b303a;border-radius:14px;padding:6px 4px;text-align:center;cursor:grab;touch-action:none;font-size:10.5px;font-weight:700;color:#c9ced6}
+.pi img{width:100%;height:38px;object-fit:contain;display:block;pointer-events:none}
+.pi.sel{border-color:var(--k);color:var(--k);box-shadow:0 0 12px rgba(255,216,74,.25)}
+.row{display:grid;grid-template-columns:28px 1fr 46px;gap:8px;align-items:center;margin:8px 0}
+.chip{background:linear-gradient(180deg,#ffe27a,#e9b81d);color:#14181f;border-radius:7px;font-weight:900;font-size:12px;text-align:center;padding:2px 0}
+.chip.off{background:#3a414d;color:#c9ced6}
+.row small{display:block;color:var(--mu);font-size:11px;margin-bottom:3px}
+.row output{font-weight:900;color:var(--k);text-align:right;font-variant-numeric:tabular-nums;font-size:13px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:7px;border-radius:4px;background:linear-gradient(90deg,#E24B4A,#EF9F27 20%,#1D9E75 40%,#2b303a 50%,#1D9E75 60%,#EF9F27 80%,#E24B4A);outline:none}
+input[type=range]:disabled{opacity:.3}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff6c2,#ffd84a 45%,#c79400);box-shadow:0 0 10px rgba(255,216,74,.6);border:1px solid #a87c00}
+.hint{color:var(--mu);font-size:12px;line-height:1.5}
+.ghost{position:fixed;width:90px;pointer-events:none;z-index:50;opacity:.85;transform:translate(-50%,-50%);filter:drop-shadow(0 8px 14px rgba(0,0,0,.6))}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,10px);background:#222833;border:1px solid #3a414d;padding:9px 16px;border-radius:14px;font-size:13px;font-weight:600;opacity:0;transition:all .25s;z-index:60;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+#sc .slot{cursor:pointer}#sc .slot rect.dz{transition:stroke .2s,fill .2s}
+#sc .slot.hot rect.dz{stroke:#ffd84a;fill:rgba(255,216,74,.08)}
+#sc .xb{cursor:pointer}
+@media (max-width:900px){.wrap{grid-template-columns:1fr;padding:10px}.ctlbox{display:none}}
+.mask{position:fixed;inset:0;background:rgba(5,7,10,.55);opacity:0;pointer-events:none;transition:opacity .2s;z-index:40}.mask.open{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:50%;bottom:0;width:min(520px,100%);transform:translate(-50%,105%);transition:transform .3s cubic-bezier(.2,1.2,.4,1);z-index:41;padding:2.5px 2.5px 0;border-radius:24px 24px 0 0;background:var(--metal)}
+.sheet.open{transform:translate(-50%,0)}.sh{border-radius:22px 22px 0 0;background:linear-gradient(180deg,#1d222b,#12151b);padding:10px 16px 20px}
+.grab{width:44px;height:5px;border-radius:3px;background:#3a414d;margin:0 auto 10px}
+.shh{display:flex;align-items:center;gap:10px;margin-bottom:10px}.shh b{font-size:18px;flex:1}
+.big{font-size:34px;font-weight:900;color:var(--k);text-align:center;margin:4px 0 8px;font-variant-numeric:tabular-nums}
+.holds{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.hold{height:56px;border-radius:16px;border:1.5px solid #2b303a;background:#161a21;color:#e8e8ea;font:800 15px Inter,system-ui;touch-action:none}.hold.down{border-color:var(--k);color:var(--k)}
+.types{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:12px}.types button{background:#161a21;border:1.5px solid #2b303a;border-radius:12px;color:#c9ced6;padding:4px 2px;font:700 10px Inter,system-ui}.types button.sel{border-color:var(--k);color:var(--k)}.types img{width:100%;height:30px;object-fit:contain;display:block}
+.rm{width:100%;margin-top:12px;height:44px;border-radius:14px}
+</style></head><body>
+<div class="top"><h1>Pendawaian hub</h1><span class="grow"></span><button class="btn" id="run">▶ Uji semua</button><button class="btn" id="stop">■ Henti</button><button class="btn" id="lay">Susun semula</button><button class="btn" id="clr">Kosongkan</button></div>
+<div class="wrap">
+ <div class="scene"><div><svg id="sc" viewBox="0 0 1360 1560"></svg></div></div>
+ <div class="panel">
+  <div class="box"><div><div class="lab">Part · seret ke port, atau ketik part kemudian ketik port</div><div class="pal" id="pal"></div></div></div>
+  <div class="box ctlbox"><div><div class="lab">Kawalan port</div><div id="ctl"></div></div></div>
+  <div class="hint">Setiap part disambung dengan kabel ke port hub Mould King 6.0. Ketik × pada part untuk cabut. Kabel menyala dan mengalir ikut arah bila port berjalan.</div>
+ </div>
+</div>
+<div class="mask" id="mask"></div>
+<div class="sheet" id="sheet"><div class="sh"><div class="grab"></div>
+ <div class="shh"><span class="chip" id="sP" style="padding:2px 8px">A</span><b id="sN">Motor L</b><button class="btn" id="sX">Tutup</button></div>
+ <div class="big" id="sV">0</div><input type="range" min="-100" max="100" value="0" id="sR">
+ <div class="holds"><button class="hold" id="hR">◀ Tahan undur</button><button class="hold" id="hF">Tahan maju ▶</button></div>
+ <div class="types" id="sT"></div><button class="btn rm" id="sRm">Cabut part</button>
+</div></div>
+<div class="toast" id="toast"></div>
+<script>
+var G='#1D9E75',Y='#EF9F27',R='#E24B4A',K='#ffd84a',OFF='rgba(150,160,175,.28)';
+function col(f){return f<=.55?G:f<=.8?Y:R}
+var $=function(q){return document.querySelector(q)},$$=function(q){return [].slice.call(document.querySelectorAll(q))};
+
+var TOP=['B','D','F'],BOT=['A','C','E'];
+var DEFS='<defs>'+
+ '<radialGradient id="gMetal" cx="35%" cy="30%"><stop offset="0" stop-color="#f4f6f8"/><stop offset=".45" stop-color="#8d939c"/><stop offset="1" stop-color="#3a4049"/></radialGradient>'+
+ '<radialGradient id="gMetalL" cx="35%" cy="30%"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#a3aab3"/></radialGradient>'+
+ '<radialGradient id="gOrange" cx="40%" cy="35%"><stop offset="0" stop-color="#ffc27a"/><stop offset=".6" stop-color="#e0861f"/><stop offset="1" stop-color="#9a5208"/></radialGradient>'+
+ '<linearGradient id="gBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#eceef1"/><stop offset="1" stop-color="#c9ced5"/></linearGradient>'+
+ '<linearGradient id="gCap" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a919b"/><stop offset=".35" stop-color="#d9dde2"/><stop offset=".55" stop-color="#6b727c"/><stop offset="1" stop-color="#3e444d"/></linearGradient>'+
+ '<radialGradient id="gCapF" cx="40%" cy="35%"><stop offset="0" stop-color="#7a818b"/><stop offset="1" stop-color="#3a4049"/></radialGradient>'+
+ '<linearGradient id="gTop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f5f7"/><stop offset=".55" stop-color="#d9dce1"/><stop offset="1" stop-color="#b9bec6"/></linearGradient>'+
+ '<linearGradient id="gSide" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7d838d"/><stop offset="1" stop-color="#3e434b"/></linearGradient>'+
+ '<radialGradient id="gStud" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#f7f8fa"/><stop offset=".6" stop-color="#cfd3d9"/><stop offset="1" stop-color="#9ea4ad"/></radialGradient>'+
+ '<radialGradient id="gHole" cx="50%" cy="60%"><stop offset="0" stop-color="#4b515a"/><stop offset="1" stop-color="#8f959e"/></radialGradient>'+
+ '<linearGradient id="gPin" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8d939c"/><stop offset=".5" stop-color="#f4f6f8"/><stop offset="1" stop-color="#7a808a"/></linearGradient>'+
+ '<linearGradient id="gMot" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0f2f5"/><stop offset=".55" stop-color="#c3c8cf"/><stop offset="1" stop-color="#868d97"/></linearGradient>'+
+ '<linearGradient id="gMotD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a909a"/><stop offset="1" stop-color="#4a4f57"/></linearGradient>'+
+ '<radialGradient id="gKnob" cx="40%" cy="35%"><stop offset="0" stop-color="#5a6376"/><stop offset=".6" stop-color="#2a303b"/><stop offset="1" stop-color="#14181f"/></radialGradient>'+
+ '<filter id="fGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'+
+ '<filter id="fSoft" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity=".55"/></filter>'+
+ '</defs>';
+
+
+function hubSvg(flat){var s='',INK=flat?'#0b0c0e':'#1f2533',SW=flat?11:5;
+ s+='<defs><linearGradient id="gPlate" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef0f2"/><stop offset=".6" stop-color="#e1e4e8"/><stop offset="1" stop-color="#d2d6dc"/></linearGradient>'+
+  '<filter id="fPlate" x="-5%" y="-5%" width="110%" height="115%"><feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#000" flood-opacity=".55"/></filter></defs>';
+ // plate + frame (as in the diagram)
+ s+=flat?'<rect x="215" y="140" width="1403" height="745" rx="10" fill="url(#hTop)" stroke="'+INK+'" stroke-width="'+SW+'"/>':'<rect x="215" y="88" width="1455" height="797" rx="14" fill="url(#gPlate)" stroke="'+INK+'" stroke-width="'+SW+'" filter="url(#fPlate)"/>';
+ // pairing button, micro-USB, LED dot
+ s+='<g id="pBtnG"><circle id="pRing" cx="400" cy="335" r="44" fill="none" stroke="#ffd84a" stroke-width="5" opacity="0"/><circle id="pBtn" cx="400" cy="335" r="38" fill="url(#btnBlk)" stroke="'+INK+'" stroke-width="'+SW+'"/></g>';
+ s+='<path d="M374 490 H430 V660 H374 L356 642 V508 Z" fill="#e6e8eb" stroke="'+INK+'" stroke-width="'+SW+'" stroke-linejoin="round"/>'+
+    '<path d="M378 500 H420 V650 H378 L366 638 V512 Z" fill="none" stroke="'+INK+'" stroke-width="2.5" stroke-linejoin="round"/>'+
+    '<rect x="396" y="540" width="9" height="72" rx="2" fill="'+INK+'"/>';
+ s+='<circle id="pLed" cx="403" cy="688" r="7" fill="#59606c" stroke="'+INK+'" stroke-width="2.5"/>';
+ // studs: 2 rows x 6, double rings
+ if(!flat) [550,715,878,1037,1195,1350].forEach(function(x){[400,555].forEach(function(y){
+  s+='<circle cx="'+x+'" cy="'+y+'" r="50" fill="#e9ebee" stroke="'+INK+'" stroke-width="'+SW+'"/><circle cx="'+x+'" cy="'+y+'" r="37" fill="#dde0e4" stroke="'+INK+'" stroke-width="'+SW+'"/>'+
+     '<path d="M'+(x-33)+' '+(y-14)+' a36 36 0 0 1 22 -20" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity=".8"/>'})});
+ // logo badge (double border, text turned 90 deg)
+ s+='<rect x="1438" y="410" width="127" height="130" fill="#e6e8eb" stroke="'+INK+'" stroke-width="'+SW+'"/><rect x="1448" y="420" width="107" height="110" fill="none" stroke="'+INK+'" stroke-width="2.5"/>'+
+    '<g transform="translate(1501 475) rotate(90)"><text x="0" y="-5" font-size="29" font-weight="900" text-anchor="middle" fill="'+INK+'" font-family="Inter,Arial">MOULD</text><text x="0" y="27" font-size="29" font-weight="900" text-anchor="middle" fill="'+INK+'" font-family="Inter,Arial" letter-spacing="4">KING</text></g>';
+ // port: arch with two tabs, 3 pins on the inner edge, separate pin strip below (top orientation; bottom ports are the same turned 180 deg)
+ var ARCH='M-134 118 Q-142 34 -100 20 H-80 V0 H-52 V20 H50 V0 H78 V20 H100 Q142 34 134 118 H108 Q114 54 94 47 H-94 Q-114 54 -108 118 Z';
+ var OPEN='M-94 47 H94 Q114 54 108 118 H-108 Q-114 54 -94 47 Z';
+ function port(k,cx,top){var tr=top?'translate('+cx+' 175)':'translate('+cx+' 785) rotate(180)';
+  var g='<g class="sock" id="sk'+k+'" data-p="'+k+'"><g transform="'+tr+'">';
+  g+='<path d="'+OPEN+'" fill="#cfd3d9"/><path class="glow" d="'+OPEN+'" fill="#1D9E75" opacity="0" filter="url(#fGlow)"/>';
+  g+='<path class="frm" d="'+ARCH+'" fill="#eef0f2" stroke="'+INK+'" stroke-width="'+SW+'" stroke-linejoin="round"/>';
+  [-72,-14,44].forEach(function(px){g+='<rect x="'+(px-9)+'" y="'+(47-9)+'" width="18" height="18" rx="3" fill="#f4f5f7" stroke="'+INK+'" stroke-width="4"/>'});
+  g+='<rect x="-75" y="113" width="155" height="35" fill="#e6e8eb" stroke="'+INK+'" stroke-width="'+SW+'"/>';
+  [-47,12,70].forEach(function(px){g+='<rect x="'+(px-9)+'" y="'+(113-9)+'" width="18" height="18" rx="3" fill="#f4f5f7" stroke="'+INK+'" stroke-width="4"/>'});
+  g+='<rect class="hit" x="-145" y="-10" width="290" height="165" fill="transparent"/></g>';
+  // hollow letter label: above the top ports (turned 180 deg like the print), below the bottom ports
+  var ly=top?130:830;
+  g+='<text x="'+cx+'" y="'+(ly+30)+'" font-size="78" font-weight="800" text-anchor="middle" fill="#3a404b" stroke="#f4f5f7" stroke-width="3" paint-order="stroke" letter-spacing="1" font-family="Inter,Roboto,Arial,sans-serif"'+(top?' transform="rotate(180 '+cx+' '+ly+')"':'')+'>'+k+'</text>';
+  // wire anchor on the plate edge
+  g+='<rect class="anc" x="'+(cx-2)+'" y="'+(top?86:883)+'" width="4" height="4" fill="none"/>';
+  return g+'</g>'}
+ [632,957,1270].forEach(function(x,j){s+=port(TOP[j],x,true)+port(BOT[j],x,false)});
+ return s}
+
+// orange axle disc, ellipse fitted to the picture pixels (cv2.fitEllipse): centre x,y, semi-axes rx,ry (px), rotation (deg); picture size
+var IMG={m:{e:[94.33,440.16,21.95,57.7,162.05],W:900,H:677},l:{e:[83.4,459.65,18.81,50.01,162.03],W:900,H:676},xl:{e:[140.93,452.66,18.83,49.42,162.23],W:900,H:721},sv:{e:[82.9,595.64,18.94,49.24,161.34],W:900,H:757},lt:{lamps:[[0.012,0.66],[0.152,0.867]],W:408,H:286}};
+var TAU={m:.12,l:.2,xl:.35,sv:.15,lt:.1},LAY=6;
+function mul(a,b){return [a[0]*b[0]+a[2]*b[1],a[1]*b[0]+a[3]*b[1],a[0]*b[2]+a[2]*b[3],a[1]*b[2]+a[3]*b[3],a[0]*b[4]+a[2]*b[5]+a[4],a[1]*b[4]+a[3]*b[5]+a[5]]}
+function rotM(d){var r=d*Math.PI/180,c=Math.cos(r),s=Math.sin(r);return [c,s,-s,c,0,0]}
+// matrix that maps the unit circle (rotated by theta) onto the fitted ellipse of the orange disc: exact rotation in the disc's plane
+function discMatrix(e,theta){var A=mul(rotM(e[4]),[e[2],0,0,e[3],0,0]);var M=mul([1,0,0,1,e[0],e[1]],mul(A,rotM(theta)));return 'matrix('+M.map(function(v){return v.toFixed(5)}).join(' ')+')'}
+// axle hole (cross) in unit-circle coordinates, drawn like the source pictures: flat orange disc with a thick black rim,
+// cross hole with a heavy black border and a lit orange centre (light stays fixed while the cross turns)
+function crossPath(w,l){return 'M'+(-w)+' '+(-l)+'H'+w+'V'+(-w)+'H'+l+'V'+w+'H'+w+'V'+l+'H'+(-w)+'V'+w+'H'+(-l)+'V'+(-w)+'H'+(-w)+'Z'}
+var CR_OUT=crossPath(.35,.82),CR_IN=crossPath(.23,.62);
+
+var $=function(q){return document.querySelector(q)},$$=function(q){return [].slice.call(document.querySelectorAll(q))};
+var PARTS={m:'Motor M',l:'Motor L',xl:'Motor XL',sv:'Servo',lt:'Lampu LED'};
+var RPM={m:405,l:390,xl:220,sv:0,lt:0};
+// cable exit point on each picture (fraction of picture)
+var EXIT={m:[.93,.30],l:[.97,.40],xl:[.92,.32],sv:[.96,.40],lt:[.99,.46]};
+// scene layout
+// true scale: U scene units = 1 stud (8 mm). Hub drawing: 162 px per stud (stud pitch in the drawing).
+var U=54,HS=.38,HX=680-942.5*HS,HY=770-70*HS;   // hub 9 x 5 studs (162 px per stud in the hub drawing)    // hub drawing placed with translate(HX,HY) scale(HS)
+// part length in studs (BrickArchitect sizes: Med 3x3x6, Lg 3x4x7, XL 5x5x6, Servo 3x5x7); the picture is scaled so its width spans that length
+var LEN={m:6,l:7,xl:6,sv:7};
+function hx(x){return HX+x*HS}function hy(y){return HY+y*HS}
+var PX={B:632,D:957,F:1270,A:632,C:957,E:1270};
+var POS={},POS0={},SLOT={},SXS=[40,470,900];['E','C','A'].forEach(function(k,j){SLOT[k]={x:SXS[j],y:20,w:420,h:330,top:true}});['F','D','B'].forEach(function(k,j){SLOT[k]={x:SXS[j],y:1130,w:420,h:330,top:false}});
+var ST={};['A','B','C','D','E','F'].forEach(function(k){ST[k]={t:null,tgt:0,v:0,w:0,ang:0}});
+ST.A.t='l';ST.B.t='m';ST.C.t='sv';ST.D.t='lt';ST.F.t='xl';
+var pick=null;
+
+Object.keys(SLOT).forEach(function(k){var sl=SLOT[k];POS0[k]=[sl.x+sl.w/2,sl.y+sl.h/2+(sl.top?-20:20)]});
+try{var sp=JSON.parse(localStorage.getItem('w3d.pos')||'{}');Object.keys(SLOT).forEach(function(k){POS[k]=Array.isArray(sp[k])?sp[k]:POS0[k].slice()})}catch(_){Object.keys(SLOT).forEach(function(k){POS[k]=POS0[k].slice()})}
+function savePos(){try{localStorage.setItem('w3d.pos',JSON.stringify(POS))}catch(_){}}
+// part picture box, centred on POS[k]
+function fit(t,k){if(typeof k!=='string') k=Object.keys(SLOT).filter(function(q){return SLOT[q]===k})[0];var d=IMG[t],sc=t==='lt'?1.15:LEN[t]*U/d.W,w=d.W*sc,h=d.H*sc,c=POS[k];return {k:sc,x:c[0]-w/2,y:c[1]-h/2,w:w,h:h}}
+function plugPos(k){var top=SLOT[k].top;return {x:hx(PX[k]),y:top?hy(175+52):hy(785-52),top:top}}
+function partSvg(k){var s=ST[k],t=s.t;if(!t) return '';var f=fit(t,k),d=IMG[t],o='';
+ o+='<g class="pt" data-p="'+k+'" style="cursor:pointer" id="pt'+k+'" transform="translate('+f.x.toFixed(1)+' '+f.y.toFixed(1)+') scale('+f.k.toFixed(5)+')"><image href="img/'+t+'.webp" width="'+d.W+'" height="'+d.H+'"/>';
+ if(d.e){var e=d.e,M0=discMatrix(e,0);
+  o+='<defs><linearGradient id="od'+k+'" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9e5d22"/><stop offset=".55" stop-color="#95571e"/><stop offset="1" stop-color="#8a4e19"/></linearGradient>'+
+   '<radialGradient id="ol'+k+'" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fcc87f"/><stop offset=".45" stop-color="#f6b062"/><stop offset=".8" stop-color="#de8238"/><stop offset="1" stop-color="#b8692a"/></radialGradient>'+
+   '<clipPath id="cp'+k+'"><circle r=".97" transform="'+M0+'"/></clipPath>';
+  for(var j=0;j<LAY;j++) o+='<clipPath id="ic'+k+'_'+j+'"><path id="icp'+k+'_'+j+'" d="'+CR_IN+'" transform="'+M0+'"/></clipPath>';
+  o+='</defs><circle id="gl'+k+'" r="1.22" fill="none" stroke-width="1.4" vector-effect="non-scaling-stroke" filter="url(#fGlow)" opacity="0" transform="'+M0+'"/>'+
+   '<circle r="1.03" fill="url(#od'+k+')" stroke="#050505" stroke-width=".9" vector-effect="non-scaling-stroke" transform="'+M0+'"/><g clip-path="url(#cp'+k+')">';
+  for(var j=0;j<LAY;j++) o+='<g id="ly'+k+'_'+j+'" opacity="'+(j?0:1)+'"><path id="cro'+k+'_'+j+'" d="'+CR_OUT+'" fill="#050505" stroke="#050505" stroke-width=".5" stroke-linejoin="round" vector-effect="non-scaling-stroke" transform="'+M0+'"/><g clip-path="url(#ic'+k+'_'+j+')"><ellipse cx="'+e[0]+'" cy="'+e[1]+'" rx="'+(e[2]*.72)+'" ry="'+(e[3]*.72)+'" transform="rotate('+e[4]+' '+e[0]+' '+e[1]+')" fill="url(#ol'+k+')"/></g></g>';
+  o+='</g>'}
+ if(d.lamps) d.lamps.forEach(function(q,j){o+='<circle id="lg'+k+'_'+j+'" cx="'+(q[0]*d.W)+'" cy="'+(q[1]*d.H)+'" r="70" fill="url(#lampG)" opacity="0"/>'});
+ o+='</g>';return o}
+// PF plug seen from above, in hub-drawing coordinates (top ports; bottom ports are the same turned 180 deg about the port column).
+// 2x2 footprint: contact half sits over the port, stud half clutches the hub's two studs next to the port; cable leaves from the contact end toward the hub edge.
+// PF plug, top view, drawn after the user's reference diagram (no lettering). Picture units: body 602..895 x 198..465, cable tab to x=527.
+// Placed with the cable tab toward the hub edge, the contact half over the port and the stud half over the hub's two studs.
+// ---- 3D hub, drawn in the same line-and-flat-shade style as the motor pictures ----
+// World: x,y in the hub drawing's own px (162 px = 1 stud; plate 215..1670 x 88..885), z in studs from the hub's base.
+// Screen axes per stud: along the hub (A/B end at right, E/F end at lower left), toward the back (A/C/E row), and up.
+var SS=U,AX=[-.84*SS,.40*SS],AY=[-.66*SS,-.42*SS],AZ=[0,-.84*SS],HZ=3.4,CZ=2.25,PZ=.72,O3=[0,0];
+// the hub is the real picture (redrawn in the motor style); its top plane maps hub-drawing px onto picture px with this affine fit
+// (least squares on the 12 stud centres, rms 5 px); HK scales the picture so one stud matches U
+var HM=[[-0.53579,-0.46667,1307.89668],[0.25023,-0.3043,143.12769]],HK=.6,HWH=[1125,962],HP=[0,0];
+function W(x,y,z){return [HP[0]+HK*(HM[0][0]*x+HM[0][1]*y+HM[0][2])+(z-HZ)*AZ[0],HP[1]+HK*(HM[1][0]*x+HM[1][1]*y+HM[1][2])+(z-HZ)*AZ[1]]}
+function pt(q){return q[0].toFixed(1)+','+q[1].toFixed(1)}
+function poly(ps,fill,extra){return '<polygon points="'+ps.map(pt).join(' ')+'" fill="'+fill+'" stroke="#0b0c0e" stroke-width="4.5" stroke-linejoin="round"'+(extra||'')+'/>'}
+// matrix that draws hub-drawing px onto the plane z (top face of the hub or of a plug)
+function topM(z){var a=HK*HM[0][0],b=HK*HM[1][0],c=HK*HM[0][1],d=HK*HM[1][1],o=W(0,0,z);return 'matrix('+[a,b,c,d,o[0],o[1]].map(function(v){return v.toFixed(5)}).join(' ')+')'}
+// a stud (cylinder) standing on plane z at hub px (x,y), radius r px, height h studs
+function stud3(x,y,z,r,h,cs,ct){var o='',n=7;for(var i=0;i<=n;i++){var zz=z+h*i/n;o+='<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="'+cs+'" '+(i===0?'stroke="#0b0c0e" stroke-width="13"':'')+' transform="'+topM(zz)+'"/>'}
+ return o+'<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="'+ct+'" stroke="#0b0c0e" stroke-width="12" transform="'+topM(z+h)+'"/>'+
+  '<circle cx="'+x+'" cy="'+y+'" r="'+(r*.62)+'" fill="none" stroke="#0b0c0e" stroke-width="5" opacity=".35" transform="'+topM(z+h)+'"/>'+
+  '<path d="M'+(x-r*.7)+' '+(y-r*.25)+' a'+(r*.75)+' '+(r*.75)+' 0 0 1 '+(r*.45)+' '+(-r*.5)+'" stroke="#fff" stroke-width="10" fill="none" stroke-linecap="round" opacity=".9" transform="'+topM(z+h)+'"/>'}
+// a hole on a vertical face: face spanned by axis e1 (screen per unit) and up; centre c (screen), radius in face units
+function hole(c,e1,r,dark){var M='matrix('+e1[0]+' '+e1[1]+' '+AZ[0]+' '+AZ[1]+' '+c[0].toFixed(1)+' '+c[1].toFixed(1)+')';
+ return '<g transform="'+M+'"><circle r="'+r+'" fill="url(#'+(dark?'holeD':'holeL')+')" stroke="#0b0c0e" stroke-width="0.075"/><circle r="'+(r*.64)+'" fill="url(#holeIn)" stroke="#0b0c0e" stroke-width="0.055"/>'+
+  '<path d="M'+(-r*.5)+' '+(r*.1)+' a'+(r*.55)+' '+(r*.55)+' 0 0 1 '+(r*.42)+' '+(-r*.48)+'" stroke="#fff" stroke-width="0.035" fill="none" stroke-linecap="round" opacity=".85"/></g>'}
+function cross(c,e1,r){var M='matrix('+e1[0]+' '+e1[1]+' '+AZ[0]+' '+AZ[1]+' '+c[0].toFixed(1)+' '+c[1].toFixed(1)+')',w=r*.36;
+ return '<path d="M'+(-w)+' '+(-r)+'H'+w+'V'+(-w)+'H'+r+'V'+w+'H'+w+'V'+r+'H'+(-w)+'V'+w+'H'+(-r)+'V'+(-w)+'H'+(-w)+'Z" fill="#1b1d21" stroke="#0b0c0e" stroke-width="0.04" transform="'+M+'"/>'}
+function hub3d(){var c=[HP[0]+HWH[0]*HK*.5,HP[1]+HWH[1]*HK*.93];
+ return '<ellipse cx="'+c[0]+'" cy="'+c[1]+'" rx="'+(HWH[0]*HK*.46)+'" ry="'+(HWH[1]*HK*.09)+'" fill="#000" opacity=".55" filter="url(#soft)"/>'+
+  '<image href="img/hubs.webp" x="'+HP[0].toFixed(1)+'" y="'+HP[1].toFixed(1)+'" width="'+(HWH[0]*HK)+'" height="'+(HWH[1]*HK)+'"/>'}
+// plug footprint: 2 x 2 studs, width = port pitch so plugs touch; contact half over the port, stud half over the two hub studs
+var PX2={B:632,D:957,F:1270,A:632,C:957,E:1270};
+function plugBox(k){var top=TOP.indexOf(k)>=0,x=PX2[k];return {x0:x-162.5,x1:x+162.5,y0:top?150:480,y1:top?480:810,top:top,x:x}}
+function plugExit(k){var b=plugBox(k),y=b.top?b.y0:b.y1,p=W(b.x,y,HZ+PZ*.32),l=Math.hypot(AY[0],AY[1]),d=b.top?[-AY[0]/l,-AY[1]/l]:[AY[0]/l,AY[1]/l];return {x:p[0],y:p[1],top:!b.top,ox:d[0],oy:d[1],front:b.top}}
+function plugSvg(k){var b=plugBox(k),z0=HZ,z1=HZ+PZ,o='';
+ // visible sides: the face toward the viewer (y0) and the face toward the E/F end (x1)
+ o+=poly([W(b.x0,b.y0,z0),W(b.x1,b.y0,z0),W(b.x1,b.y0,z1),W(b.x0,b.y0,z1)],'url(#plF)');
+ o+=poly([W(b.x1,b.y0,z0),W(b.x1,b.y1,z0),W(b.x1,b.y1,z1),W(b.x1,b.y0,z1)],'url(#plE)');
+ // slots in the sides, like the real plug
+ var fy=b.y0,ex=[AX[0],AX[1]],ey=[AY[0],AY[1]];
+ [-.5,.5].forEach(function(f){var c=W(b.x+f*162.5,fy,z0+PZ*.42);o+='<rect x="-.2" y="-.11" width=".4" height=".22" rx=".03" fill="#26292e" stroke="#0b0c0e" stroke-width="0.04" transform="matrix('+ex[0]+' '+ex[1]+' '+AZ[0]+' '+AZ[1]+' '+c[0].toFixed(1)+' '+c[1].toFixed(1)+')"/>'});
+ [.25,.75].forEach(function(f){var c=W(b.x1,b.y0+(b.y1-b.y0)*f,z0+PZ*.42);o+='<rect x="-.18" y="-.11" width=".36" height=".22" rx=".03" fill="#1f2226" stroke="#0b0c0e" stroke-width="0.04" transform="matrix('+ey[0]+' '+ey[1]+' '+AZ[0]+' '+AZ[1]+' '+c[0].toFixed(1)+' '+c[1].toFixed(1)+')"/>'});
+ // top face, drawn in hub px on the plane z1
+ var cy0=b.top?b.y0:b.y1-165,cy1=b.top?b.y0+165:b.y1,sy=b.top?400:560;
+ o+='<g transform="'+topM(z1)+'"><rect x="'+b.x0+'" y="'+b.y0+'" width="325" height="330" fill="url(#plT)" stroke="#0b0c0e" stroke-width="9.0"/>'+
+  '<rect x="'+(b.x-118)+'" y="'+(cy0+20)+'" width="236" height="125" rx="26" fill="#b4b8be" stroke="#0b0c0e" stroke-width="9.0"/>'+
+  '<rect x="'+(b.x-92)+'" y="'+(cy0+40)+'" width="184" height="85" rx="10" fill="#26292e" stroke="#0b0c0e" stroke-width="7.5"/>';
+ [[-55,1],[-18,0],[18,1],[55,0]].forEach(function(q){o+='<rect x="'+(b.x+q[0]-9)+'" y="'+(cy0+(q[1]?52:76))+'" width="18" height="30" rx="3" fill="#eceef0" stroke="#0b0c0e" stroke-width="4.5"/>'});
+ o+='</g>';
+ [-82.5,82.5].forEach(function(dx){o+=stud3(b.x+dx,sy,z1,46,.2,'#6d7178','#a2a6ac')});
+ o+='<polygon id="pg'+k+'" points="'+[W(b.x0,b.y0,z1),W(b.x1,b.y0,z1),W(b.x1,b.y1,z1),W(b.x0,b.y1,z1)].map(pt).join(' ')+'" fill="none" stroke="#1D9E75" stroke-width="5" stroke-linejoin="round" opacity="0" filter="url(#fGlow)"/>';
+ o+='<polygon class="sock" data-p="'+k+'" points="'+[W(b.x0,b.y0,z1),W(b.x1,b.y0,z1),W(b.x1,b.y1,z1),W(b.x0,b.y1,z1)].map(pt).join(' ')+'" fill="transparent" style="cursor:pointer"/>';
+ return o}
+function portHit(k){var b=plugBox(k),c=W(b.x,b.top?240:720,HZ);return '<circle class="sock" data-p="'+k+'" cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" r="44" fill="transparent" style="cursor:pointer"/>'}
+var CW=SS*.42;   // cable width taken from the diagram: four cores fill the plug's cable tab
+function bez(p0,p1,p2,p3,t){var u=1-t;return [u*u*u*p0[0]+3*u*u*t*p1[0]+3*u*t*t*p2[0]+t*t*t*p3[0],u*u*u*p0[1]+3*u*u*t*p1[1]+3*u*t*t*p2[1]+t*t*t*p3[1]]}
+function roundRun(P,r){var out=[P[0]];
+ for(var i=1;i<P.length-1;i++){var a=P[i-1],c=P[i],b=P[i+1],d1=Math.hypot(c[0]-a[0],c[1]-a[1]),d2=Math.hypot(b[0]-c[0],b[1]-c[1]),rr=Math.min(r,d1/2,d2/2);
+  if(rr<1){out.push(c);continue}var p=[c[0]+(a[0]-c[0])/d1*rr,c[1]+(a[1]-c[1])/d1*rr],q=[c[0]+(b[0]-c[0])/d2*rr,c[1]+(b[1]-c[1])/d2*rr];
+  for(var t=0;t<=12;t++){var u=t/12,v=1-u;out.push([v*v*p[0]+2*v*u*c[0]+u*u*q[0],v*v*p[1]+2*v*u*c[1]+u*u*q[1]])}}
+ out.push(P[P.length-1]);
+ // even spacing so the core offsets stay smooth
+ var res=[out[0]],acc=0;for(var i=1;i<out.length;i++){var a=out[i-1],b=out[i],l=Math.hypot(b[0]-a[0],b[1]-a[1]);if(l<.01) continue;var n=Math.max(1,Math.round(l/6));for(var j=1;j<=n;j++) res.push([a[0]+(b[0]-a[0])*j/n,a[1]+(b[1]-a[1])*j/n])}
+ return res}
+var LANES={};
+// obstacle-aware orthogonal router: leave the plug straight out, then take the cheapest of a few square routes that keep clear of the hub and the motors
+function segHit(a,b,r){var x0=r[0],y0=r[1],x1=r[2],y1=r[3],t0=0,t1=1,dx=b[0]-a[0],dy=b[1]-a[1],P=[-dx,dx,-dy,dy],Q=[a[0]-x0,x1-a[0],a[1]-y0,y1-a[1]];
+ for(var i=0;i<4;i++){if(P[i]===0){if(Q[i]<0) return false}else{var t=Q[i]/P[i];if(P[i]<0){if(t>t1) return false;if(t>t0) t0=t}else{if(t<t0) return false;if(t<t1) t1=t}}}return t1-t0>.02}
+function routeOf(k,off){var t=ST[k].t,f=fit(t,k),ex=EXIT[t],e=plugExit(k),A=[e.x,e.y],B=[f.x+ex[0]*f.w,f.y+ex[1]*f.h],G=SS*.5;
+ var p1=[A[0]+e.ox*SS*.75,A[1]+e.oy*SS*.75],Bq=[B[0]+SS*.7,B[1]],H=HUBR,back=!!e.top;
+ var L=back?H[1]-SS*.6-off*G:H[3]+SS*.6+off*G,Lo=back?H[3]+SS*.6+off*G:H[1]-SS*.6-off*G,xl=H[0]-SS*.6-off*G,xr=H[2]+SS*.6+off*G;
+ var C=[[p1,[p1[0],Bq[1]],Bq],[p1,[p1[0],L],[Bq[0],L],Bq]];
+ [xl,xr].forEach(function(xs){C.push([p1,[p1[0],L],[xs,L],[xs,Bq[1]],Bq]);C.push([p1,[p1[0],L],[xs,L],[xs,Lo],[Bq[0],Lo],Bq])});
+ var best=null,bs=1e18;
+ C.forEach(function(P){var len=0,hit=0;for(var i=0;i<P.length-1;i++){len+=Math.abs(P[i+1][0]-P[i][0])+Math.abs(P[i+1][1]-P[i][1]);
+   if(i===1){var dy=P[2]?P[2][1]-P[1][1]:0;if(back?dy>1:dy<-1) hit+=1}else if(i>1&&segHit(P[i],P[i+1],H)) hit+=1;
+   Object.keys(ST).forEach(function(q){if(!ST[q].t) return;var g=fit(ST[q].t,q),r=[g.x+g.w*.08,g.y+g.h*.12,g.x+g.w*.92,g.y+g.h*.88];if(segHit(P[i],P[i+1],r)) hit+=q===k?.6:.35})}
+  var sc=len+hit*4000+P.length*25;if(sc<bs){bs=sc;best=P}});
+ return [A].concat(best,[B])}
+function cableGeom(k){var pts=roundRun(ROUTES[k],SS*.75);
+ function off(o){var out=[];for(var i=0;i<pts.length;i++){var a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)],tx=b[0]-a[0],ty=b[1]-a[1],l=Math.hypot(tx,ty)||1;out.push([pts[i][0]-ty/l*o,pts[i][1]+tx/l*o])}return 'M'+out.map(function(q){return q[0].toFixed(1)+' '+q[1].toFixed(1)}).join(' L')}
+ var c=[],h=[],step=CW/4;for(var n=0;n<4;n++){var o=(n-1.5)*step;c.push(off(o));h.push(off(o-step*.25))}
+ return {d:off(0),cores:c,hi:h}}
+var ROUTES={},HUBR=[0,0,0,0];
+function routeAll(){
+ function X(a,b,c,d){function o(p,q,r){return (q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0])}return o(a,b,c)*o(a,b,d)<0&&o(c,d,a)*o(c,d,b)<0}
+ function cross(Rr){var n=0,ks=Object.keys(Rr);for(var i=0;i<ks.length;i++)for(var j=i+1;j<ks.length;j++){var P=Rr[ks[i]],Q=Rr[ks[j]];for(var a=0;a<P.length-1;a++)for(var b=0;b<Q.length-1;b++) if(X(P[a],P[a+1],Q[b],Q[b+1])) n++}return n}
+ var perms=[[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];ROUTES={};
+ [['A','C','E'],['F','D','B']].forEach(function(g){var ks=g.filter(function(k){return ST[k].t}),best=null,bn=1e9;
+  perms.forEach(function(pm){var Rr={};ks.forEach(function(k,i){Rr[k]=routeOf(k,pm[i])});var all={};for(var q in ROUTES) all[q]=ROUTES[q];for(var q2 in Rr) all[q2]=Rr[q2];var n=cross(all)*1000;ks.forEach(function(k){var P=Rr[k];for(var i=0;i<P.length-1;i++) n+=(Math.abs(P[i+1][0]-P[i][0])+Math.abs(P[i+1][1]-P[i][1]))/1000});if(n<bn){bn=n;best=Rr}});
+  if(best) for(var k in best) ROUTES[k]=best[k]})}
+var GR3='<linearGradient id="hTop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#eef0f2"/><stop offset="1" stop-color="#dcdfe3"/></linearGradient>'+
+ '<linearGradient id="hbC" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8d9299"/><stop offset="1" stop-color="#4b5056"/></linearGradient>'+
+ '<linearGradient id="hcC" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#eef0f2"/><stop offset="1" stop-color="#b9bec4"/></linearGradient>'+
+ '<linearGradient id="hvF" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e3e6e9"/></linearGradient>'+
+ '<linearGradient id="hvE" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#cfd3d8"/><stop offset="1" stop-color="#e8eaed"/></linearGradient>'+
+ '<radialGradient id="holeL" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#c3c7cc"/><stop offset="1" stop-color="#8a9097"/></radialGradient>'+
+ '<radialGradient id="holeD" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#b8bdc4"/><stop offset=".55" stop-color="#6c7178"/><stop offset="1" stop-color="#34383d"/></radialGradient>'+
+ '<radialGradient id="holeIn" cx="60%" cy="65%" r="70%"><stop offset="0" stop-color="#5c6168"/><stop offset=".7" stop-color="#202327"/><stop offset="1" stop-color="#0f1113"/></radialGradient>'+'<linearGradient id="hbF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3f4349"/><stop offset=".22" stop-color="#7b8087"/><stop offset=".38" stop-color="#a8adb3"/><stop offset=".55" stop-color="#5d6268"/><stop offset="1" stop-color="#383c41"/></linearGradient>'+
+ '<linearGradient id="hbE" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34383d"/><stop offset=".3" stop-color="#5f646b"/><stop offset=".45" stop-color="#7f848b"/><stop offset=".65" stop-color="#474b51"/><stop offset="1" stop-color="#2c2f33"/></linearGradient>'+
+ '<linearGradient id="hcF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#eceef1"/><stop offset=".55" stop-color="#ffffff"/><stop offset="1" stop-color="#cdd1d6"/></linearGradient>'+
+ '<linearGradient id="hcE" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d7dbe0"/><stop offset=".45" stop-color="#bfc4ca"/><stop offset="1" stop-color="#9fa5ac"/></linearGradient>'+
+ '<linearGradient id="plF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a8e94"/><stop offset="1" stop-color="#63676d"/></linearGradient>'+
+ '<linearGradient id="plE" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5b5f65"/><stop offset="1" stop-color="#44474c"/></linearGradient>'+
+ '<linearGradient id="plT" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a6aab0"/><stop offset="1" stop-color="#8b8f96"/></linearGradient>';
+function cabSvg(k){if(!ST[k].t||!ROUTES[k]) return '';var g=cableGeom(k),core=['#13233a','#172a45','#13233a','#172a45'],s='';
+ s+='<path d="'+g.d+'" stroke="#03060a" stroke-width="'+(CW+5)+'" fill="none" stroke-linecap="butt" stroke-linejoin="round" opacity=".6" transform="translate(3 5)"/>'+
+  '<path d="'+g.d+'" stroke="#05080d" stroke-width="'+(CW+4)+'" fill="none" stroke-linecap="butt" stroke-linejoin="round"/>';
+ g.cores.forEach(function(c,n){s+='<path d="'+c+'" stroke="'+core[n]+'" stroke-width="'+(CW/4-.4)+'" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'});
+ g.hi.forEach(function(c){s+='<path d="'+c+'" stroke="#5f86b8" stroke-width="1.3" fill="none" opacity=".8"/>'});
+ return s+'<path id="cf'+k+'" d="'+g.d+'" stroke="#1D9E75" stroke-width="'+(CW*.2)+'" fill="none" stroke-linecap="round" stroke-dasharray="6 22" opacity="0" filter="url(#fGlow)"/>'}
+function layout(){
+ AX=[HK*HM[0][0]*162,HK*HM[1][0]*162];AY=[HK*HM[0][1]*162,HK*HM[1][1]*162];
+ HP=[680-HWH[0]*HK/2,745-HWH[1]*HK/2];var xs=[HP[0],HP[0]+HWH[0]*HK],ys=[HP[1]-PZ*SS,HP[1]+HWH[1]*HK];
+ var top=Math.min.apply(0,ys)+O3[1],bot=Math.max.apply(0,ys)+O3[1];
+ HUBR=[Math.min.apply(0,xs)+O3[0],top,Math.max.apply(0,xs)+O3[0],bot];
+ routeAll();
+}
+function render(){layout();var s='<defs>'+DEFS.replace(/^<defs>|<\/defs>$/g,'')+'<radialGradient id="lampG"><stop offset="0" stop-color="#fff8d0" stop-opacity="1"/><stop offset=".35" stop-color="#ffd84a" stop-opacity=".6"/><stop offset="1" stop-color="#ffd84a" stop-opacity="0"/></radialGradient></defs>';
+ // LEGO baseplate background (1 stud pitch = U) so the true scale reads at a glance
+ s+='<rect x="0" y="0" width="1360" height="1560" fill="url(#plate)"/>';
+ // empty ports: a dashed spot where a part can be dropped; filled ports: a soft floor shadow under the part
+ Object.keys(SLOT).forEach(function(k){var has=!!ST[k].t,c=POS[k];
+  if(has){var f=fit(ST[k].t,k);s+='<g id="sh'+k+'"><ellipse cx="'+(f.x+f.w/2)+'" cy="'+(f.y+f.h*.9)+'" rx="'+(f.w*.48)+'" ry="'+(f.h*.13)+'" fill="#000" opacity=".45" filter="url(#soft)"/></g>'}
+  else s+='<g class="slot" data-p="'+k+'"><rect class="dz" x="'+(c[0]-170)+'" y="'+(c[1]-110)+'" width="340" height="220" rx="28" fill="rgba(255,255,255,.02)" stroke="#3a414d" stroke-width="2.5" stroke-dasharray="10 10"/>'+
+   '<circle cx="'+c[0]+'" cy="'+c[1]+'" r="46" fill="#1a1e26" stroke="#3a414d" stroke-width="2.5"/><text x="'+c[0]+'" y="'+(c[1]+18)+'" font-size="54" text-anchor="middle" fill="#59606c" font-family="Inter,Arial">+</text>'+
+   '<text x="'+c[0]+'" y="'+(c[1]+90)+'" font-size="26" font-weight="800" text-anchor="middle" fill="#59606c" font-family="Inter,Arial">'+k+' · Kosong</text></g>'});
+ // hub: drawn in 3D
+ s+=hub3d();
+ // cables: flat 4-core PF cable, drawn as four parallel cores along the cable centre line
+ function cab(k){s+=cabSvg(k)}
+ function _old(k){if(!ST[k].t) return;var g=cableGeom(k),core=['#13233a','#172a45','#13233a','#172a45'];
+  s+='<path d="'+g.d+'" stroke="#03060a" stroke-width="'+(CW+5)+'" fill="none" stroke-linecap="butt" stroke-linejoin="round" opacity=".6" transform="translate(3 5)"/>'+
+   '<path d="'+g.d+'" stroke="#05080d" stroke-width="'+(CW+4)+'" fill="none" stroke-linecap="butt" stroke-linejoin="round"/>';
+  g.cores.forEach(function(c,n){s+='<path d="'+c+'" stroke="'+core[n]+'" stroke-width="'+(CW/4-.4)+'" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'});
+  g.hi.forEach(function(c){s+='<path d="'+c+'" stroke="#5f86b8" stroke-width="1.3" fill="none" opacity=".8"/>'});
+  s+='<path id="cf'+k+'" d="'+g.d+'" stroke="#1D9E75" stroke-width="'+(CW*.2)+'" fill="none" stroke-linecap="round" stroke-dasharray="6 22" opacity="0" filter="url(#fGlow)"/>'}
+ // back row first (cables leave behind the plugs), then the front row with its cables on top
+ s+='<g id="cabB">';['A','C','E'].forEach(function(k){cab(k)});s+='</g>';['A','C','E','B','D','F'].forEach(function(k){s+=ST[k].t?plugSvg(k):portHit(k)});s+='<g id="cabF">';['B','D','F'].forEach(function(k){cab(k)});s+='</g>';
+ // scale bar: 5 studs = 4 cm
+ s+='<g transform="translate(40 1085)"><path d="M0 0h'+(5*U)+'M0 -8v16M'+(5*U)+' -8v16" stroke="#8a93a0" stroke-width="2"/>';for(var q=1;q<5;q++) s+='<path d="M'+(q*U)+' -4v8" stroke="#8a93a0" stroke-width="1.5"/>';
+ s+='<text x="0" y="-16" font-size="24" fill="#8a93a0" font-family="Inter,Arial" font-weight="700">5 stud = 4 cm</text></g>';
+ // parts, each with its × and its label; these three move together while a part is dragged
+ Object.keys(SLOT).forEach(function(k){if(!ST[k].t) return;var f=fit(ST[k].t,k);
+  s+='<g id="mvP'+k+'">'+partSvg(k)+'</g>';
+  s+='<g id="mvX'+k+'" class="xb" data-x="'+k+'"><circle cx="'+(f.x+f.w+4)+'" cy="'+(f.y+10)+'" r="22" fill="#262b34" stroke="#3a414d" stroke-width="2"/><text x="'+(f.x+f.w+4)+'" y="'+(f.y+19)+'" font-size="28" text-anchor="middle" fill="#c9ced6" font-family="Inter,Arial">×</text></g>'});
+ Object.keys(SLOT).forEach(function(k){var t=ST[k].t;if(!t) return;var txt=PARTS[t],fs=26,w=58+txt.length*fs*.56,x,y;
+  if(t){var f=fit(t,k);x=f.x+f.w/2-w/2;y=f.y+f.h+4}else{x=POS[k][0]-160;y=POS[k][1]+60}
+  s+='<g id="mvL'+k+'" pointer-events="none"><rect x="'+x+'" y="'+y+'" width="'+w.toFixed(0)+'" height="42" rx="21" fill="#0d1014" fill-opacity=".86" stroke="'+(t?'#3a414d':'#2b303a')+'" stroke-width="2"/>'+
+   '<text x="'+(x+16)+'" y="'+(y+30)+'" font-size="'+fs+'" font-weight="900" fill="'+(t?'#ffd84a':'#59606c')+'" font-family="Inter,Arial">'+k+'</text>'+
+   '<text x="'+(x+46)+'" y="'+(y+30)+'" font-size="'+(fs-2)+'" font-weight="700" fill="'+(t?'#e8e8ea':'#59606c')+'" font-family="Inter,Arial">'+txt+'</text></g>'});
+ s=s.replace('<defs>','<defs>'+GR3+'<radialGradient id="btnBlk" cx="38%" cy="32%" r="70%"><stop offset="0" stop-color="#4a4e55"/><stop offset=".55" stop-color="#1a1c20"/><stop offset="1" stop-color="#08090b"/></radialGradient><pattern id="plate" width="'+U+'" height="'+U+'" patternUnits="userSpaceOnUse" x="'+(HX%U)+'" y="'+(HY%U)+'"><rect width="'+U+'" height="'+U+'" fill="#151920"/><circle cx="'+U/2+'" cy="'+(U/2+2)+'" r="'+(U*.3)+'" fill="#0e1116"/><circle cx="'+U/2+'" cy="'+U/2+'" r="'+(U*.3)+'" fill="#1a1f27" stroke="#20262f" stroke-width="1.5"/></pattern><filter id="soft" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="10"/></filter><linearGradient id="plugTop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6a7079"/><stop offset=".5" stop-color="#50555d"/><stop offset="1" stop-color="#3a3e45"/></linearGradient><radialGradient id="studD" cx="38%" cy="32%" r="70%"><stop offset="0" stop-color="#8a919b"/><stop offset=".6" stop-color="#555a62"/><stop offset="1" stop-color="#34383e"/></radialGradient><linearGradient id="plugG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a818b"/><stop offset=".5" stop-color="#4b5059"/><stop offset="1" stop-color="#2e3238"/></linearGradient>');
+ $('#sc').innerHTML=s;
+ $$('#sc .slot').forEach(function(g){g.addEventListener('click',function(){if(pick){place(g.dataset.p,pick);setPick(null)}else if(ST[g.dataset.p].t) openSheet(g.dataset.p);else toast('Pilih part di bawah, kemudian ketik port ini')})});
+ $$('#sc .pt').forEach(function(g){bindDrag(g,g.dataset.p)});
+ $$('#sc .sock').forEach(function(g){g.addEventListener('click',function(){var k=g.dataset.p;if(pick){place(k,pick);setPick(null)}else if(ST[k].t) openSheet(k)})});
+ $$('#sc .xb').forEach(function(g){g.addEventListener('click',function(ev){ev.stopPropagation();var k=g.dataset.x;toast(PARTS[ST[k].t]+' dicabut dari port '+k);ST[k].t=null;ST[k].tgt=ST[k].v=ST[k].w=0;render();ctl()})});
+ if(hubOn) hubLed();}
+// drag a part anywhere; cables re-route live, the rest of the scene stays put
+function svgPt(e){var sv=$('#sc'),p=sv.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(sv.getScreenCTM().inverse())}
+function bindDrag(g,k){var st=null;
+ g.addEventListener('pointerdown',function(e){if(pick){place(k,pick);setPick(null);return}e.preventDefault();try{g.setPointerCapture(e.pointerId)}catch(_){}var q=svgPt(e);st={x:q.x,y:q.y,p:POS[k].slice(),moved:false}});
+ g.addEventListener('pointermove',function(e){if(!st) return;var q=svgPt(e),dx=q.x-st.x,dy=q.y-st.y;if(!st.moved&&Math.hypot(dx,dy)<10) return;st.moved=true;
+  POS[k]=[Math.max(120,Math.min(1240,st.p[0]+dx)),Math.max(80,Math.min(1460,st.p[1]+dy))];var mx=POS[k][0]-st.p[0],my=POS[k][1]-st.p[1];
+  ['mvP','mvX','mvL','sh'].forEach(function(id){var el=document.getElementById(id+k);if(el) el.setAttribute('transform','translate('+mx.toFixed(1)+' '+my.toFixed(1)+')')});
+  var gp=document.getElementById('mvP'+k);if(gp) gp.style.filter='drop-shadow(0 18px 16px rgba(0,0,0,.6))';
+  routeAll();var b=$('#cabB'),f=$('#cabF');if(b) b.innerHTML=['A','C','E'].map(cabSvg).join('');if(f) f.innerHTML=['B','D','F'].map(cabSvg).join('')});
+ // a part dropped on the hub slides off it to the nearest free side, so its cable can still reach it
+ function clear(){var f=fit(ST[k].t,k),H=HUBR,m=12;if(f.x>H[2]+m||f.x+f.w<H[0]-m||f.y>H[3]+m||f.y+f.h<H[1]-m) return;
+  var d=[[H[0]-m-(f.x+f.w),0],[H[2]+m-f.x,0],[0,H[1]-m-(f.y+f.h)],[0,H[3]+m-f.y]].sort(function(a,b){return Math.abs(a[0]+a[1])-Math.abs(b[0]+b[1])})[0];
+  POS[k]=[POS[k][0]+d[0],POS[k][1]+d[1]];toast('Part dialih keluar dari atas hub')}
+ function end(){if(!st) return;var m=st.moved;st=null;if(m){clear();savePos();render()}else openSheet(k)}
+ g.addEventListener('pointerup',end);g.addEventListener('pointercancel',function(){if(st&&st.moved){clear();savePos();render()}st=null})}
+function place(k,t){var had=ST[k].t;if(cur===k&&!t) closeSheet();ST[k]={t:t,tgt:0,v:0,w:0,ang:0};render();ctl();toast(PARTS[t]+(had?' menggantikan '+PARTS[had]:' disambung')+' pada port '+k);
+ var g=document.getElementById('pt'+k);if(g&&g.animate) g.animate([{opacity:0},{opacity:1}],{duration:350})}
+function ctl(){$('#ctl').innerHTML=['B','D','F','A','C','E'].map(function(k){var t=ST[k].t;
+  return '<div class="row"><span class="chip'+(t?'':' off')+'">'+k+'</span><div><small>'+(t?PARTS[t]:'Tiada part')+'</small><input type="range" min="-100" max="100" value="'+ST[k].tgt+'" data-k="'+k+'"'+(t?'':' disabled')+'></div><output id="o'+k+'">0</output></div>'}).join('');
+ $$('#ctl input').forEach(function(r){r.oninput=function(){ST[r.dataset.k].tgt=+r.value}})}
+function pal(){$('#pal').innerHTML=Object.keys(PARTS).map(function(t){return '<div class="pi" data-t="'+t+'"><img src="img/'+t+'.webp" alt="">'+PARTS[t]+'</div>'}).join('');
+ $$('#pal .pi').forEach(function(el){var gh=null,sx,sy,moved=false;
+  el.addEventListener('pointerdown',function(e){sx=e.clientX;sy=e.clientY;moved=false;el.setPointerCapture(e.pointerId)});
+  el.addEventListener('pointermove',function(e){if(!el.hasPointerCapture(e.pointerId)) return;if(!moved&&Math.hypot(e.clientX-sx,e.clientY-sy)<8) return;
+   if(!moved){moved=true;gh=document.createElement('img');gh.src='img/'+el.dataset.t+'.webp';gh.className='ghost';document.body.appendChild(gh)}
+   gh.style.left=e.clientX+'px';gh.style.top=e.clientY+'px';var k=slotAt(e.clientX,e.clientY);$$('#sc .slot').forEach(function(g){g.classList.toggle('hot',g.dataset.p===k)})});
+  el.addEventListener('pointerup',function(e){if(moved){var k=slotAt(e.clientX,e.clientY);if(gh) gh.remove();gh=null;$$('#sc .slot').forEach(function(g){g.classList.remove('hot')});dropAt(e.clientX,e.clientY,el.dataset.t)}
+   else setPick(pick===el.dataset.t?null:el.dataset.t)});
+ })}
+function setPick(t){pick=t;$$('#pal .pi').forEach(function(x){x.classList.toggle('sel',x.dataset.t===t)});if(t) toast('Ketik port untuk letak '+PARTS[t])}
+function dropAt(cx,cy,t){var el=document.elementFromPoint(cx,cy),h=el&&el.closest&&el.closest('[data-p]');if(h&&$('#sc').contains(h)){place(h.getAttribute('data-p'),t);return}
+ var sv=$('#sc'),r=sv.getBoundingClientRect();if(cx<r.left||cx>r.right||cy<r.top||cy>r.bottom) return;
+ var free=['A','B','C','D','E','F'].filter(function(k){return !ST[k].t})[0];if(!free){toast('Semua port sudah ada part');return}
+ var q=svgPt({clientX:cx,clientY:cy});POS[free]=[q.x,q.y];savePos();place(free,t)}
+function slotAt(cx,cy){var sv=$('#sc'),pt=sv.createSVGPoint();pt.x=cx;pt.y=cy;var m=sv.getScreenCTM();if(!m) return null;var q=pt.matrixTransform(m.inverse()),hit=null;
+ Object.keys(SLOT).forEach(function(k){var s=SLOT[k];if(q.x>=s.x&&q.x<=s.x+s.w&&q.y>=s.y&&q.y<=s.y+s.h) hit=k});return hit}
+function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(function(){t.classList.remove('show')},1800)}
+var hubOn=false;function hubLed(){}
+$('#run').onclick=function(){Object.keys(ST).forEach(function(k){if(ST[k].t) ST[k].tgt=60});ctlSync()};
+$('#stop').onclick=function(){Object.keys(ST).forEach(function(k){ST[k].tgt=0});ctlSync()};
+$('#lay').onclick=function(){Object.keys(SLOT).forEach(function(k){POS[k]=POS0[k].slice()});savePos();render();toast('Susun atur asal')};
+$('#clr').onclick=function(){Object.keys(ST).forEach(function(k){ST[k]={t:null,tgt:0,v:0,w:0,ang:0}});render();ctl();toast('Semua port dikosongkan')};
+function ctlSync(){$$('#ctl input').forEach(function(r){r.value=ST[r.dataset.k].tgt})}
+var last=0;
+function frame(ts){var dt=Math.min(.05,(ts-(last||ts))/1000);last=ts;var any=false;
+ Object.keys(ST).forEach(function(k){var x=ST[k],t=x.t;if(!t) return;var d=IMG[t];
+  x.v+=(x.tgt-x.v)*Math.min(1,dt*(t==='lt'?14:4));if(Math.abs(x.v)<.3&&!x.tgt) x.v=0;var f=Math.abs(x.v)/100;if(f>.01) any=true;
+  // idle port: paint the stopped state once, then leave the DOM alone
+  var idle=!x.v&&!x.w&&(t!=='sv'||Math.abs(x.ang)<.05);if(idle&&x.idle) return;x.idle=idle;
+  var trav=0;
+  if(t==='sv'){var goal=x.v*.9,step=Math.max(-300*dt,Math.min(300*dt,goal-x.ang));x.ang+=step;trav=step}
+  else if(t!=='lt'){var wt=RPM[t]*6*x.v/100;x.w+=(wt-x.w)*Math.min(1,dt/TAU[t]);if(Math.abs(x.w)<12&&!wt) x.w=0;trav=x.w/60;x.ang=(x.ang+x.w*dt)%360}
+  if(d.e){var n=Math.max(1,Math.min(LAY,Math.ceil(Math.abs(trav)/6)));
+   for(var j=0;j<LAY;j++){var el=document.getElementById('ly'+k+'_'+j);if(!el) continue;
+    if(j<n){var m=discMatrix(d.e,x.ang-(n>1?trav*(n-1-j)/(n-1):0));document.getElementById('cro'+k+'_'+j).setAttribute('transform',m);document.getElementById('icp'+k+'_'+j).setAttribute('transform',m);el.setAttribute('opacity',(1/(j+1)).toFixed(3))}
+    else el.setAttribute('opacity',0)}
+   var gl=document.getElementById('gl'+k);if(gl){gl.setAttribute('stroke',f>.01?col(f):'none');gl.setAttribute('opacity',f>.01?(.35+f*.5):0)}}
+  if(d.lamps) d.lamps.forEach(function(q,j){var lg=document.getElementById('lg'+k+'_'+j);if(lg){lg.setAttribute('opacity',f);lg.setAttribute('r',40+f*60)}});
+  var cf=document.getElementById('cf'+k),pg=document.getElementById('pg'+k),sk=document.querySelector('#sk'+k+' .glow');
+  if(cf){cf.setAttribute('opacity',f>.01?(.4+f*.6):0);cf.setAttribute('stroke',col(f));x.flow=((x.flow||0)+(x.v>0?-1:1)*dt*(40+f*160))%26;cf.setAttribute('stroke-dashoffset',x.flow)}
+  if(pg){pg.setAttribute('opacity',f>.01?(.4+f*.6):0);pg.setAttribute('stroke',col(f))}
+  if(sk){sk.setAttribute('fill',col(f));sk.setAttribute('opacity',f>.01?(.3+f*.45):0)}
+  var o=document.getElementById('o'+k),txt=t==='sv'?Math.round(x.ang)+'°':String(Math.round(x.v));if(o&&o.textContent!==txt) o.textContent=txt;if(cur===k){var sv=$('#sV');if(sv.textContent!==txt) sv.textContent=txt}
+ });
+ var led=document.getElementById('pLed');if(led){var tt=ts/1000;led.setAttribute('fill',any?(Math.sin(tt*6)>0?'#3dffb0':'#1D9E75'):'#3b9cff')}
+ requestAnimationFrame(frame)}
+var cur=null,hold=null;
+function openSheet(k){cur=k;var t=ST[k].t;$('#sP').textContent=k;$('#sN').textContent=PARTS[t];$('#sR').value=ST[k].tgt;
+ $('#sT').innerHTML=Object.keys(PARTS).map(function(q){return '<button data-t="'+q+'" class="'+(q===t?'sel':'')+'"><img src="img/'+q+'.webp" alt="">'+PARTS[q]+'</button>'}).join('');
+ $$('#sT button').forEach(function(b){b.onclick=function(){var keep=ST[k].tgt;place(k,b.dataset.t);ST[k].tgt=keep;openSheet(k)}});
+ $('#sheet').classList.add('open');$('#mask').classList.add('open')}
+function closeSheet(){$('#sheet').classList.remove('open');$('#mask').classList.remove('open');if(hold){ST[hold.k].tgt=hold.prev;hold=null}cur=null}
+$('#sX').onclick=closeSheet;$('#mask').onclick=closeSheet;
+$('#sR').oninput=function(){if(cur){ST[cur].tgt=+this.value;ctlSync()}};
+$('#sRm').onclick=function(){var k=cur;closeSheet();toast(PARTS[ST[k].t]+' dicabut dari port '+k);ST[k]={t:null,tgt:0,v:0,w:0,ang:0};render();ctl()};
+[['#hF',100],['#hR',-100]].forEach(function(q){var b=$(q[0]);
+ b.addEventListener('pointerdown',function(e){if(!cur) return;b.setPointerCapture(e.pointerId);hold={k:cur,prev:ST[cur].tgt};ST[cur].tgt=q[1];b.classList.add('down')});
+ ['pointerup','pointercancel'].forEach(function(ev){b.addEventListener(ev,function(){if(hold){ST[hold.k].tgt=hold.prev;hold=null}b.classList.remove('down')})})});
+pal();render();ctl();requestAnimationFrame(frame);
+</script></body></html>
