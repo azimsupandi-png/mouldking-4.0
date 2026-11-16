@@ -1,0 +1,174 @@
+<!DOCTYPE html><html lang="ms"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MK6 · Galeri motor</title><style>
+:root{--k:#ffd84a;--mu:#8a93a0;--off:rgba(150,160,175,.28);--metal:linear-gradient(145deg,#e6e9ef,#6b7280 40%,#2b303a 70%,#9aa3b0);--gold:linear-gradient(145deg,#fff1b0,#d9a400 40%,#5a4300 70%,#ffd84a)}
+*{box-sizing:border-box}body{margin:0;color:#e8e8ea;font-family:Inter,Roboto,system-ui,sans-serif;background:repeating-linear-gradient(45deg,#11151a 0 6px,#0d1014 6px 12px),#0d1014;min-height:100vh;user-select:none}
+.top{display:flex;align-items:center;gap:10px;padding:12px 16px;background:linear-gradient(180deg,#171b22,#12151b);border-bottom:1px solid #232933;position:sticky;top:0;z-index:5;flex-wrap:wrap}
+h1{margin:0;font-size:15px;color:#ffc400;letter-spacing:.06em;text-transform:uppercase;border-left:4px solid #ffc400;padding-left:8px}
+.grow{flex:1}.btn{background:#1a1e26;border:1.5px solid #2b303a;color:#e8e8ea;border-radius:999px;padding:8px 14px;font:700 12.5px Inter,system-ui;cursor:pointer}.btn.sel{border-color:var(--k);color:var(--k)}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;padding:18px;max-width:1150px;margin:auto}
+.card{border-radius:24px;padding:2.5px;background:var(--metal);transition:box-shadow .3s}.card.live{background:var(--gold);box-shadow:0 0 24px rgba(255,216,74,.25)}
+.ci{border-radius:21.5px;background:linear-gradient(180deg,#1d222b,#12151b);padding:14px 16px}
+.hd{display:flex;align-items:baseline;gap:8px}.hd b{font-size:16px}.hd small{color:var(--mu);font-size:11.5px}.hd .v{margin-left:auto;font-weight:900;font-size:22px;color:var(--k);font-variant-numeric:tabular-nums}
+.stage{height:190px;display:grid;place-items:center;border-radius:16px;margin:10px 0;background:radial-gradient(240px 140px at 50% 55%,rgba(255,255,255,.07),transparent 70%)}
+.stage svg{width:100%;max-width:280px;height:190px}
+.pic{position:relative;max-width:100%;max-height:178px}
+.pic img{display:block;max-width:100%;max-height:178px;width:auto;height:auto}
+.pic .rotor{position:absolute;inset:0;width:100%;height:100%;max-width:none;pointer-events:none;overflow:visible}
+.pic .ax svg{width:100%;height:100%;max-width:none;display:block;overflow:visible}
+.pic .lg{position:absolute;width:60px;height:60px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,240,170,.95),rgba(255,216,74,.45) 40%,transparent 70%);opacity:0;pointer-events:none;mix-blend-mode:screen}
+.leds{display:flex;gap:2px;height:7px;margin:4px 0 10px}.leds i{flex:1;border-radius:2px;background:var(--off)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:4px;background:linear-gradient(90deg,#E24B4A,#EF9F27 20%,#1D9E75 40%,#2b303a 50%,#1D9E75 60%,#EF9F27 80%,#E24B4A);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff6c2,#ffd84a 45%,#c79400);box-shadow:0 0 12px rgba(255,216,74,.7);border:1px solid #a87c00}
+.row{display:flex;gap:6px;margin-top:10px}.row .btn{flex:1;padding:8px 4px}
+.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}.meta div{background:#161a21;border:1px solid #262c36;border-radius:12px;padding:6px 8px;font-size:11px;color:var(--mu)}.meta b{display:block;color:#e8e8ea;font-size:13px}
+.note{max-width:1150px;margin:0 auto 26px;padding:0 18px;color:var(--mu);font-size:12px}
+</style></head><body>
+<div class="top"><h1>Galeri motor</h1><span class="grow"></span><button class="btn" id="all">▶ Uji semua</button><button class="btn" id="stop">■ Henti semua</button></div>
+<div class="g" id="g"></div>
+<div class="note">Seret gelangsar ke kiri untuk undur, ke kanan untuk maju. Tekan 〰 untuk goyang. Gambar motor ikut gambar rujukan yang diberi.</div>
+<script>
+var G='#1D9E75',Y='#EF9F27',R='#E24B4A',K='#ffd84a',OFF='rgba(150,160,175,.28)';
+function col(f){return f<=.55?G:f<=.8?Y:R}
+var $=function(q){return document.querySelector(q)},$$=function(q){return [].slice.call(document.querySelectorAll(q))};
+
+var DEFS='<defs>'+
+ '<radialGradient id="gMetal" cx="35%" cy="30%"><stop offset="0" stop-color="#f4f6f8"/><stop offset=".45" stop-color="#8d939c"/><stop offset="1" stop-color="#3a4049"/></radialGradient>'+
+ '<radialGradient id="gMetalL" cx="35%" cy="30%"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#a3aab3"/></radialGradient>'+
+ '<radialGradient id="gOrange" cx="40%" cy="35%"><stop offset="0" stop-color="#ffc27a"/><stop offset=".6" stop-color="#e0861f"/><stop offset="1" stop-color="#9a5208"/></radialGradient>'+
+ '<linearGradient id="gBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#eceef1"/><stop offset="1" stop-color="#c9ced5"/></linearGradient>'+
+ '<linearGradient id="gCap" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a919b"/><stop offset=".35" stop-color="#d9dde2"/><stop offset=".55" stop-color="#6b727c"/><stop offset="1" stop-color="#3e444d"/></linearGradient>'+
+ '<radialGradient id="gCapF" cx="40%" cy="35%"><stop offset="0" stop-color="#7a818b"/><stop offset="1" stop-color="#3a4049"/></radialGradient>'+
+ '<linearGradient id="gTop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f5f7"/><stop offset=".55" stop-color="#d9dce1"/><stop offset="1" stop-color="#b9bec6"/></linearGradient>'+
+ '<linearGradient id="gSide" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7d838d"/><stop offset="1" stop-color="#3e434b"/></linearGradient>'+
+ '<radialGradient id="gStud" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#f7f8fa"/><stop offset=".6" stop-color="#cfd3d9"/><stop offset="1" stop-color="#9ea4ad"/></radialGradient>'+
+ '<radialGradient id="gHole" cx="50%" cy="60%"><stop offset="0" stop-color="#4b515a"/><stop offset="1" stop-color="#8f959e"/></radialGradient>'+
+ '<linearGradient id="gPin" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8d939c"/><stop offset=".5" stop-color="#f4f6f8"/><stop offset="1" stop-color="#7a808a"/></linearGradient>'+
+ '<linearGradient id="gMot" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0f2f5"/><stop offset=".55" stop-color="#c3c8cf"/><stop offset="1" stop-color="#868d97"/></linearGradient>'+
+ '<linearGradient id="gMotD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a909a"/><stop offset="1" stop-color="#4a4f57"/></linearGradient>'+
+ '<radialGradient id="gKnob" cx="40%" cy="35%"><stop offset="0" stop-color="#5a6376"/><stop offset=".6" stop-color="#2a303b"/><stop offset="1" stop-color="#14181f"/></radialGradient>'+
+ '<filter id="fGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'+
+ '<filter id="fSoft" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity=".55"/></filter>'+
+ '</defs>';
+
+
+/* Power Functions part drawings: own vector art, cylinder body + dark front cap with pin-hole star and orange axle */
+var INK2='#111418';
+function P(o,u,p,a,b){return [o[0]+u[0]*a+p[0]*b,o[1]+u[1]*a+p[1]*b]}
+function pts(arr){return arr.map(function(q){return q[0].toFixed(1)+','+q[1].toFixed(1)}).join(' ')}
+function face(F,u,p,R,sq,inner){return '<g transform="matrix('+(u[0]*sq)+','+(u[1]*sq)+','+p[0]+','+p[1]+','+F[0]+','+F[1]+')">'+inner+'</g>'}
+function pinHole(x,y,r){return '<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="url(#gMetal)" stroke="'+INK2+'" stroke-width="1"/><circle cx="'+x+'" cy="'+y+'" r="'+(r*.62)+'" fill="#2a2f37" stroke="'+INK2+'" stroke-width=".8"/>'}
+function axleO(r,ang,f){var c=f>.02?col(f):null;
+ return (c?'<circle r="'+(r+3)+'" fill="none" stroke="'+c+'" stroke-width="2" stroke-dasharray="'+(3+f*12)+' 40" transform="rotate('+ang+')" filter="url(#fGlow)"/>':'')+
+  '<circle r="'+r+'" fill="url(#gOrange)" stroke="'+INK2+'" stroke-width="1"/><g transform="rotate('+ang+')"><path d="M0 '+(-r*.62)+'v'+(r*1.24)+'M'+(-r*.62)+' 0h'+(r*1.24)+'" stroke="'+INK2+'" stroke-width="'+(r*.5)+'" stroke-linecap="square"/><path d="M0 '+(-r*.5)+'v'+(r)+'M'+(-r*.5)+' 0h'+(r)+'" stroke="#c96a12" stroke-width="'+(r*.22)+'"/></g>'}
+function cyl(o){ // o: F,L,R,cap,holes,flutes,ang,f,sq
+ var u=[.94,-.34],p=[.34,.94],F=o.F,R=o.R,L=o.L,B=P(F,u,p,L,0),C=P(F,u,p,o.cap,0),sq=o.sq||.55,s='';
+ // back cap
+ s+=face(B,u,p,R,sq,'<circle r="'+R+'" fill="#e9ebee" stroke="'+INK2+'" stroke-width="1.6"/>');
+ // white body
+ s+='<polygon points="'+pts([P(F,u,p,0,-R),P(B,u,p,0,-R),P(B,u,p,0,R),P(F,u,p,0,R)])+'" fill="url(#gBody)" stroke="'+INK2+'" stroke-width="1.6" stroke-linejoin="round"/>';
+ for(var k=0;k<o.flutes;k++){var b=-R*.75+k*(R*1.5/(o.flutes-1));if(b>R*.45) continue;s+='<path d="M'+pts([P(C,u,p,4,b)])+' L'+pts([P(B,u,p,-2,b)])+'" stroke="'+INK2+'" stroke-width="1.3"/>'}
+ // dark cap band
+ s+='<polygon points="'+pts([P(F,u,p,0,-R),P(C,u,p,0,-R),P(C,u,p,0,R),P(F,u,p,0,R)])+'" fill="url(#gCap)" stroke="'+INK2+'" stroke-width="1.6" stroke-linejoin="round"/>';
+ s+=face(C,u,p,R,sq,'<path d="M0 '+(-R)+' A'+R+' '+R+' 0 0 1 0 '+R+'" fill="none" stroke="'+INK2+'" stroke-width="1.2" opacity=".6"/>');
+ if(o.extra) s+=o.extra(F,u,p,B,C);
+ // front face with star of pin holes + orange axle
+ var inner='<circle r="'+R+'" fill="url(#gCapF)" stroke="'+INK2+'" stroke-width="1.8"/><circle r="'+(R*.86)+'" fill="none" stroke="'+INK2+'" stroke-width=".9" opacity=".7"/>';
+ for(var h=0;h<o.holes;h++){var a=(h/o.holes)*Math.PI*2-Math.PI/2+(o.rot||0);inner+=pinHole(Math.cos(a)*R*.58,Math.sin(a)*R*.58,R*.2)}
+ inner+=axleO(R*.24,o.ang,o.f);
+ s+=face(F,u,p,R,sq,inner);
+ return s}
+function lug(Q,u,p,r){return face(Q,[1,0],[0,1],r,1,'<rect x="'+(-r)+'" y="'+(-r*1.6)+'" width="'+(r*2)+'" height="'+(r*1.6)+'" fill="#e9ebee" stroke="'+INK2+'" stroke-width="1.3"/><circle r="'+r+'" fill="#f1f2f4" stroke="'+INK2+'" stroke-width="1.4"/><circle r="'+(r*.6)+'" fill="url(#gMetalL)" stroke="'+INK2+'" stroke-width="1"/>')}
+function micon(t,ang,f){var s='<svg class="mic" viewBox="0 0 120 84">';
+ if(t==='m') s+=cyl({F:[28,52],L:60,R:21,cap:20,holes:4,flutes:5,ang:ang,f:f});
+ else if(t==='l') s+=cyl({F:[24,48],L:70,R:20,cap:16,holes:5,flutes:5,ang:ang,f:f,extra:function(F,u,p){return lug(P(F,u,p,40,26),u,p,6)+lug(P(F,u,p,60,26),u,p,6)}});
+ else if(t==='xl') s+=cyl({F:[34,52],L:48,R:28,cap:16,holes:5,flutes:6,ang:ang,f:f,sq:.55,extra:function(F,u,p,B){return lug(P(B,u,p,-4,14),u,p,6)}});
+ else if(t==='sv') s+=cyl({F:[28,52],L:66,R:19,cap:30,holes:4,flutes:4,ang:ang*.0+Math.max(-90,Math.min(90,ang)),f:f,rot:Math.PI/4,
+   extra:function(F,u,p,B){var a=P(F,u,p,14,-21),b=P(F,u,p,10,22);
+    return '<circle cx="'+a[0]+'" cy="'+a[1]+'" r="8" fill="url(#gCap)" stroke="'+INK2+'" stroke-width="1.4"/><circle cx="'+a[0]+'" cy="'+a[1]+'" r="4" fill="#2a2f37"/>'+
+     '<circle cx="'+b[0]+'" cy="'+b[1]+'" r="8" fill="url(#gCap)" stroke="'+INK2+'" stroke-width="1.4"/><circle cx="'+b[0]+'" cy="'+b[1]+'" r="4" fill="#2a2f37"/>'+
+     lug(P(B,u,p,-8,24),u,p,6)+lug(P(B,u,p,-24,24),u,p,6)+
+     '<polygon points="'+pts([P(F,u,p,48,-2),P(F,u,p,62,-2),P(F,u,p,62,12),P(F,u,p,48,12)])+'" fill="#dfe2e6" stroke="'+INK2+'" stroke-width="1.3"/>'}});
+ else if(t==='tr'){var x=8,y=30,w=86,h=18,dx=16,dy=10;
+  s+='<path d="M'+x+' '+y+' h'+w+' v'+h+' h'+(-w)+'Z" fill="url(#gCap)" stroke="'+INK2+'" stroke-width="1.5"/><path d="M'+x+' '+y+' l'+dx+' '+(-dy)+' h'+w+' l'+(-dx)+' '+dy+'Z" fill="#8a919b" stroke="'+INK2+'" stroke-width="1.5"/><path d="M'+(x+w)+' '+y+' l'+dx+' '+(-dy)+' v'+h+' l'+(-dx)+' '+dy+'Z" fill="#3e444d" stroke="'+INK2+'" stroke-width="1.5"/>';
+  [x+20,x+66].forEach(function(cx){var cy=y+h+8;s+='<circle cx="'+cx+'" cy="'+cy+'" r="12" fill="#1b1e23" stroke="'+INK2+'" stroke-width="1.5"/><circle cx="'+cx+'" cy="'+cy+'" r="7" fill="url(#gMetal)" stroke="'+INK2+'"/><g transform="translate('+cx+' '+cy+')">'+axleO(3.4,ang,f)+'</g>'})}
+ else { // 2-LED lights: clear lamp heads, cable, white 2x2 brick, dark plug
+  var g=f>.02;
+  s+='<path d="M34 42 C44 32 50 64 64 50 S88 30 100 40" stroke="#14233a" stroke-width="3" fill="none"/><path d="M34 60 C42 62 52 70 64 58" stroke="#14233a" stroke-width="3" fill="none"/>';
+  s+='<polygon points="54,40 74,32 82,38 82,52 62,60 54,54" fill="#f1f2f4" stroke="'+INK2+'" stroke-width="1.3"/><path d="M54 40 L62 46 L82 38 M62 46 V60" stroke="'+INK2+'" stroke-width="1.1" fill="none"/>'+
+    '<ellipse cx="64" cy="38" rx="4" ry="2.4" fill="#fff" stroke="'+INK2+'"/><ellipse cx="73" cy="35" rx="4" ry="2.4" fill="#fff" stroke="'+INK2+'"/>';
+  s+='<polygon points="96,34 110,28 116,32 116,44 102,50 96,46" fill="url(#gCap)" stroke="'+INK2+'" stroke-width="1.3"/><ellipse cx="108" cy="31" rx="3.6" ry="2" fill="#8a919b" stroke="'+INK2+'"/>';
+  [[22,40],[22,58]].forEach(function(q){var x=q[0],y=q[1];
+   s+='<circle cx="'+(x-4)+'" cy="'+y+'" r="'+(6+f*12)+'" fill="'+K+'" opacity="'+(f*.5)+'" filter="url(#fGlow)"/>'+
+    '<rect x="'+x+'" y="'+(y-5)+'" width="12" height="10" rx="2" fill="#d9dde2" stroke="'+INK2+'" stroke-width="1.1" opacity=".95"/>'+
+    '<ellipse cx="'+x+'" cy="'+y+'" rx="3" ry="5" fill="'+(g?'#fff6c2':'#c9ced6')+'" stroke="'+INK2+'" stroke-width="1.1"/><ellipse cx="'+x+'" cy="'+y+'" rx="1.4" ry="2.4" fill="'+(g?'#fff':'#8a919b')+'"/>'})}
+ return s+'</svg>'}
+
+
+var M=[{t:'m',n:'Motor M',pn:'58120 · 3×3×6',tq:'Rendah',sp:'Laju'},{t:'l',n:'Motor L',pn:'99499 · 3×4×7',tq:'Sederhana',sp:'Sederhana'},{t:'xl',n:'Motor XL',pn:'58121 · 5×5×6',tq:'Tinggi',sp:'Perlahan'},
+ {t:'sv',n:'Servo',pn:'99498 · 3×5×7',tq:'Sederhana',sp:'±90°'},{t:'lt',n:'Lampu LED',pn:'61930 · 2-LED',tq:'—',sp:'Kecerahan'}];
+// orange axle disc, ellipse fitted to the picture pixels (cv2.fitEllipse): centre x,y, semi-axes rx,ry (px), rotation (deg); picture size
+var IMG={m:{e:[94.33,440.16,21.95,57.7,162.05],W:900,H:677},l:{e:[83.4,459.65,18.81,50.01,162.03],W:900,H:676},xl:{e:[140.93,452.66,18.83,49.42,162.23],W:900,H:721},sv:{e:[82.9,595.64,18.94,49.24,161.34],W:900,H:757},lt:{lamps:[[0.002,0.72],[0.069,0.885]]}};
+var TAU={m:.12,l:.2,xl:.35,sv:.15,lt:.1},LAY=6;
+function mul(a,b){return [a[0]*b[0]+a[2]*b[1],a[1]*b[0]+a[3]*b[1],a[0]*b[2]+a[2]*b[3],a[1]*b[2]+a[3]*b[3],a[0]*b[4]+a[2]*b[5]+a[4],a[1]*b[4]+a[3]*b[5]+a[5]]}
+function rotM(d){var r=d*Math.PI/180,c=Math.cos(r),s=Math.sin(r);return [c,s,-s,c,0,0]}
+// matrix that maps the unit circle (rotated by theta) onto the fitted ellipse of the orange disc: exact rotation in the disc's plane
+function discMatrix(e,theta){var A=mul(rotM(e[4]),[e[2],0,0,e[3],0,0]);var M=mul([1,0,0,1,e[0],e[1]],mul(A,rotM(theta)));return 'matrix('+M.map(function(v){return v.toFixed(5)}).join(' ')+')'}
+// axle hole (cross) in unit-circle coordinates, drawn like the source pictures: flat orange disc with a thick black rim,
+// cross hole with a heavy black border and a lit orange centre (light stays fixed while the cross turns)
+function crossPath(w,l){return 'M'+(-w)+' '+(-l)+'H'+w+'V'+(-w)+'H'+l+'V'+w+'H'+w+'V'+l+'H'+(-w)+'V'+w+'H'+(-l)+'V'+(-w)+'H'+(-w)+'Z'}
+var CR_OUT=crossPath(.35,.82),CR_IN=crossPath(.23,.62);
+function buildStage(i,t){var st0=document.getElementById('s'+i),d=IMG[t];if(!d) return false;
+ var h='<div class="pic"><img src="img/'+t+'.webp" alt="">';
+ if(d.e){var e=d.e,M0=discMatrix(e,0);
+  h+='<svg class="rotor" viewBox="0 0 '+d.W+' '+d.H+'" preserveAspectRatio="none"><defs>'+
+   '<linearGradient id="od'+i+'" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9e5d22"/><stop offset=".55" stop-color="#95571e"/><stop offset="1" stop-color="#8a4e19"/></linearGradient>'+
+   '<radialGradient id="ol'+i+'" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fcc87f"/><stop offset=".45" stop-color="#f6b062"/><stop offset=".8" stop-color="#de8238"/><stop offset="1" stop-color="#b8692a"/></radialGradient>'+
+   '<clipPath id="cp'+i+'"><circle r=".97" transform="'+M0+'"/></clipPath>';
+  for(var k=0;k<LAY;k++) h+='<clipPath id="ic'+i+'_'+k+'"><path id="icp'+i+'_'+k+'" d="'+CR_IN+'" transform="'+M0+'"/></clipPath>';
+  h+='</defs><g id="gl'+i+'" opacity="0"><circle r="1.22" fill="none" stroke-width="1.6" vector-effect="non-scaling-stroke" filter="url(#fGlow)" transform="'+M0+'"/></g>'+
+   '<circle r="1.03" fill="url(#od'+i+')" stroke="#050505" stroke-width="1.05" vector-effect="non-scaling-stroke" transform="'+M0+'"/>'+
+   '<g clip-path="url(#cp'+i+')">';
+  for(var k=0;k<LAY;k++) h+='<g id="ly'+i+'_'+k+'" opacity="'+(k?0:1)+'"><path id="cro'+i+'_'+k+'" d="'+CR_OUT+'" fill="#050505" stroke="#050505" stroke-width=".6" stroke-linejoin="round" vector-effect="non-scaling-stroke" transform="'+M0+'"/>'+
+   '<g clip-path="url(#ic'+i+'_'+k+')"><ellipse cx="'+e[0]+'" cy="'+e[1]+'" rx="'+(e[2]*.72)+'" ry="'+(e[3]*.72)+'" transform="rotate('+e[4]+' '+e[0]+' '+e[1]+')" fill="url(#ol'+i+')"/></g></g>';
+  h+='</g></svg>'}
+ if(d.lamps) d.lamps.forEach(function(q,j){h+='<div class="lg" id="lg'+i+'_'+j+'" style="left:'+(q[0]*100)+'%;top:'+(q[1]*100)+'%"></div>'});
+ st0.innerHTML=h+'</div>';return true}
+function paintRotor(i,t,theta,trav,f){var d=IMG[t];if(!d||!d.e) return;
+ // rotational motion blur: n copies spread over the angle travelled in one frame, equal weights
+ var n=Math.max(1,Math.min(LAY,Math.ceil(Math.abs(trav)/6)));
+ for(var k=0;k<LAY;k++){var e=document.getElementById('ly'+i+'_'+k);if(!e) continue;
+  if(k<n){var m=discMatrix(d.e,theta-(n>1?trav*(n-1-k)/(n-1):0));document.getElementById('cro'+i+'_'+k).setAttribute('transform',m);document.getElementById('icp'+i+'_'+k).setAttribute('transform',m);e.setAttribute('opacity',(1/(k+1)).toFixed(3))}
+  else e.setAttribute('opacity',0)}
+ var gl=document.getElementById('gl'+i);if(gl){gl.firstChild.setAttribute('stroke',f>.01?col(f):'none');gl.setAttribute('opacity',f>.01?(.35+f*.5):0)}}
+var RPM={m:405,l:390,xl:220,sv:0,tr:300,lt:0};
+var st=M.map(function(m){return {tgt:0,v:0,ang:0,w:0,wig:null}});
+var HASIMG={};
+document.body.insertAdjacentHTML('beforeend','<svg width="0" height="0" style="position:absolute">'+DEFS+'</svg>');
+document.getElementById('g').innerHTML=M.map(function(m,i){return '<div class="card" id="c'+i+'"><div class="ci"><div class="hd"><b>'+m.n+'</b><small>'+m.pn+'</small><span class="v" id="v'+i+'">0%</span></div><div class="stage" id="s'+i+'"></div><div class="leds" id="l'+i+'">'+'<i></i>'.repeat(20)+'</div>'+
+ '<input type="range" min="-100" max="100" value="0" id="r'+i+'"><div class="row"><button class="btn" data-a="-100" data-i="'+i+'">◀ 100</button><button class="btn" data-a="0" data-i="'+i+'">0</button><button class="btn" data-a="100" data-i="'+i+'">100 ▶</button><button class="btn" data-w="'+i+'">〰</button></div>'+
+ '<div class="meta"><div>Tork<b>'+m.tq+'</b></div><div>Laju<b>'+m.sp+'</b></div><div>Putaran (anggaran)<b id="rp'+i+'">0 rpm</b></div></div></div></div>'}).join('');
+M.forEach(function(m,i){HASIMG[i]=buildStage(i,m.t)});
+M.forEach(function(m,i){var r=document.getElementById('r'+i);r.oninput=function(){st[i].tgt=+r.value}});
+document.querySelectorAll('[data-a]').forEach(function(b){b.onclick=function(){var i=+b.dataset.i;st[i].tgt=+b.dataset.a;document.getElementById('r'+i).value=st[i].tgt}});
+document.querySelectorAll('[data-w]').forEach(function(b){b.onclick=function(){st[+b.dataset.w].wig=performance.now()}});
+document.getElementById('all').onclick=function(){st.forEach(function(x,i){x.tgt=60;document.getElementById('r'+i).value=60})};
+document.getElementById('stop').onclick=function(){st.forEach(function(x,i){x.tgt=0;document.getElementById('r'+i).value=0})};
+var last=0;
+function frame(ts){var dt=Math.min(.05,(ts-(last||ts))/1000);last=ts;
+ M.forEach(function(m,i){var x=st[i],tg=x.tgt;
+  if(x.wig){var ph=Math.floor((ts-x.wig)/220);if(ph>=6) x.wig=null;else tg=(ph%2?-1:1)*55}
+  x.v+=(tg-x.v)*Math.min(1,dt*(m.t==='lt'?14:4));if(Math.abs(x.v)<.3&&!tg) x.v=0;
+  var f=Math.abs(x.v)/100;
+  var trav;
+  if(m.t==='sv'){var goal=x.v*.9,step=Math.max(-300*dt,Math.min(300*dt,goal-x.ang));x.ang+=step;x.w=step/dt||0;trav=step}
+  else{var wt=RPM[m.t]*6*x.v/100;x.w+=(wt-x.w)*Math.min(1,dt/TAU[m.t]);if(Math.abs(x.w)<12&&!wt) x.w=0;trav=x.w/60;x.ang=(x.ang+x.w*dt)%360}
+  if(HASIMG[i]){paintRotor(i,m.t,x.ang,trav,f);
+   for(var j=0;j<2;j++){var lg=document.getElementById('lg'+i+'_'+j);if(lg){lg.style.opacity=f;lg.style.transform='translate(-50%,-50%) scale('+(.6+f*.8)+')'}}}
+  else document.getElementById('s'+i).innerHTML=micon(m.t,x.ang,f).replace('class="mic"','');
+  document.getElementById('v'+i).textContent=(x.v<-.5?'◀ ':x.v>.5?'▶ ':'')+Math.round(Math.abs(x.v))+'%';
+  document.getElementById('rp'+i).textContent=m.t==='sv'?Math.round(x.ang)+'°':m.t==='lt'?Math.round(f*100)+'%':Math.round(Math.abs(x.w)/6)+' rpm';
+  document.querySelectorAll('#l'+i+' i').forEach(function(e,j){var g=j/19;e.style.background=f>.01&&g<=f?col(g):OFF});
+  document.getElementById('c'+i).classList.toggle('live',f>.01)});
+ requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+</script></body></html>
