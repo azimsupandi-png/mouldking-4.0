@@ -1370,10 +1370,33 @@ async def t_edlock(b):
     check('edit lock: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_wire(b):
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'W',cfg:{layout:'board',ch:[{},{},{},{},{},{}],board:[{k:'s',c:0,w:2}],pf:['l','bad','sv','lt','','xl']}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};onHubState('ready');mk6Go('hub')"); await pg.wait_for_timeout(600)
+    r = await pg.evaluate("(function(){var R=document.getElementById('wrHost').shadowRoot;return [!!R,R.querySelectorAll('.pt').length,JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.pf.slice(0,6).join(',')]})()")
+    check('wiring: hub picture with a part on each set port, bad part names dropped', r[0] and r[1] == 4 and r[2] == 'l,,sv,lt,,xl', r)
+    await pg.evaluate("document.getElementById('wrHost').shadowRoot.querySelector('.slot[data-p=B]').dispatchEvent(new MouseEvent('click'));document.querySelector('#wrPanel .wr-types button[data-t=xl]').click()"); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[document.getElementById('wrPanel').hidden,document.querySelector('#wrPanel .chip').textContent,JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.pf[1],document.getElementById('wrHost').shadowRoot.querySelectorAll('.pt').length]")
+    check('wiring: tap an empty port, pick a part, it is saved and drawn', r == [False, 'B', 'xl', 5], r)
+    await pg.evaluate("var b=document.querySelector('#wrPanel .wr-f');b.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:1}))"); await pg.wait_for_timeout(700)
+    r = await pg.evaluate("[Math.round(__t.rt.o[1]),(window.__last||'').split(',')[1]]")
+    check('wiring: hold forward runs that port', r[0] > 0, r)
+    await pg.evaluate("var b=document.querySelector('#wrPanel .wr-f');b.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:1}))"); await pg.wait_for_timeout(900)
+    r = await pg.evaluate("Math.round(__t.rt.o[1])")
+    check('wiring: letting go stops it', r == 0, r)
+    check('wiring: no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

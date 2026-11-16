@@ -1912,6 +1912,18 @@ html[data-ui=light]:not(.dash) .bdw,html[data-ui=light]:not(.dash) .v2-knob{--bg
 html[data-ui=light]:not(.dash) .bdw:not(.v2-ps){background-color:#15181d}
 html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,29,.25)}
 /* landscape dashboard in the light theme: light page, widgets stay dark; with no hub the widget content dims, not the whole card */
+
+#wrHost{margin-top:8px;border-radius:16px;overflow:hidden;background:#12151b}
+.wr-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.wr-tabs .btn.sel{border-color:#ffd84a;color:#ffd84a}
+.wr-panel{margin-top:10px;border:1px solid #2b303a;border-radius:16px;padding:10px 12px;background:#161a21}
+.wr-ph{display:flex;align-items:center;gap:8px}.wr-ph .chip{background:linear-gradient(180deg,#ffe27a,#e9b81d);color:#14181f;border-radius:7px;padding:1px 8px;font-weight:900}
+.wr-pn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.wr-pv{color:#ffd84a;font-variant-numeric:tabular-nums;min-width:48px;text-align:right}
+.wr-lab{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8a93a0;font-weight:700;margin:10px 0 6px}
+.wr-types{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.wr-types button{background:#12151b;border:1.5px solid #2b303a;border-radius:12px;color:#c9ced6;padding:6px 4px;font:700 11px inherit;display:flex;flex-direction:column;align-items:center;gap:2px}
+.wr-types button.sel{border-color:#ffd84a;color:#ffd84a;box-shadow:0 0 10px rgba(255,216,74,.2)}
+.wr-types img{width:100%;height:34px;object-fit:contain}.wr-none{font-style:normal;font-size:22px;height:34px;line-height:34px;color:#59606c}
+.wr-holds{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.wr-holds .btn{height:48px;touch-action:none}.wr-holds .btn.down{border-color:#ffd84a;color:#ffd84a}
 </style>
 </head>
 <body>
@@ -2074,6 +2086,24 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
       <div class="rec-row">
         <button class="btn v2-icbtn" id="hubName" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4.2L19.2 9a2.1 2.1 0 0 0-3-3L5.2 17z"/><path d="M14.5 7.5l3 3"/></svg><span>Rename</span></button>
         <button class="btn v2-icbtn" id="hubOff" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 14.5 7.4 16.6a3 3 0 0 1-4.2-4.2l3-3M14.5 9.5l2.1-2.1a3 3 0 0 1 4.2 4.2l-3 3M8 4.5v2.5M4.5 8H7M16 19.5V17M19.5 16H17"/></svg><span>Disconnect</span></button>
+      </div>
+    </section>
+    <section class="card wr-card" id="wrCard">
+      <h2>Hub wiring <small class="v2-h2s">Tap a port</small></h2>
+      <div class="wr-tabs" id="wrTabs" hidden></div>
+      <div id="wrHost"></div>
+      <div class="wr-panel" id="wrPanel" hidden>
+        <div class="wr-ph"><span class="chip">A</span><b class="wr-pn"></b><b class="wr-pv">0%</b><button class="btn wr-x" type="button">Close</button></div>
+        <div class="wr-lab">What is plugged in</div>
+        <div class="wr-types">
+          <button type="button" data-t=""><i class="wr-none">∅</i><span>Nothing</span></button>
+          <button type="button" data-t="m"><img src="img/pf/m.webp" alt=""><span>Motor M</span></button>
+          <button type="button" data-t="l"><img src="img/pf/l.webp" alt=""><span>Motor L</span></button>
+          <button type="button" data-t="xl"><img src="img/pf/xl.webp" alt=""><span>Motor XL</span></button>
+          <button type="button" data-t="sv"><img src="img/pf/sv.webp" alt=""><span>Servo</span></button>
+          <button type="button" data-t="lt"><img src="img/pf/lt.webp" alt=""><span>LED lights</span></button>
+        </div>
+        <div class="wr-holds"><button class="btn wr-r" type="button">◀ Hold reverse</button><button class="btn wr-f" type="button">Hold forward ▶</button></div>
       </div>
     </section>
     <section class="card">
