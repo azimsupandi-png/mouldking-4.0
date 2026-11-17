@@ -1924,6 +1924,26 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
 .wr-types button.sel{border-color:#ffd84a;color:#ffd84a;box-shadow:0 0 10px rgba(255,216,74,.2)}
 .wr-types img{width:100%;height:34px;object-fit:contain}.wr-none{font-style:normal;font-size:22px;height:34px;line-height:34px;color:#59606c}
 .wr-holds{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.wr-holds .btn{height:48px;touch-action:none}.wr-holds .btn.down{border-color:#ffd84a;color:#ffd84a}
+.wr-all{display:flex;flex-direction:column;gap:10px}@media (orientation:landscape){.wr-all{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}}
+.wr-subh{font-weight:800;font-size:13px;color:#c9ced6;margin:2px 4px 6px}
+.wr-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.wr-acts .btn{flex:1 1 auto;min-height:44px}
+.wr-more .wr-lab small{text-transform:none;letter-spacing:0;font-weight:600}
+.wr-test{width:100%;margin:4px 0 2px}
+.wr-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;font-weight:600}
+.wr-sw{width:52px;height:30px;border-radius:15px;border:1.5px solid #2b303a;background:#2a303b;position:relative;padding:0;flex:none}.wr-sw i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#e8e8ea;transition:left .18s}.wr-sw.on{background:#1D9E75;border-color:#1D9E75}.wr-sw.on i{left:25px}
+.wr-cbs{display:flex;gap:6px}.wr-cbs .btn{padding:6px 10px;min-height:36px}.wr-cbs .btn.sel,.wr-adds .btn.sel{border-color:#ffd84a;color:#ffd84a}
+.wr-cl{color:#1D9E75;font-variant-numeric:tabular-nums}.wr-cl.bad{color:#E24B4A}
+.wr-cw{margin-top:8px;padding:8px 10px;border-radius:12px;border:1px solid #E24B4A;background:rgba(226,75,74,.12);color:#ffb3b3;font-size:12.5px}
+.wr-adds{display:flex;gap:6px;flex-wrap:wrap}.wr-adds .btn{min-height:40px}
+.wr-chk{margin-top:10px;border:1.5px solid #ffd84a;border-radius:16px;padding:10px 12px;background:#161a21}.wr-chk p{margin:4px 0 8px;color:#8a93a0;font-size:13px}
+.wr-ckp{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}.wr-ckp i{font-style:normal;font-size:11px;font-weight:800;padding:2px 6px;border-radius:6px;background:#232933;color:#8a93a0}.wr-ckp i.ok{background:#1D9E75;color:#fff}.wr-ckp i.on{background:#ffd84a;color:#14181f}
+.wr-ckb{display:flex;gap:6px;flex-wrap:wrap}.wr-ckb .btn{min-height:44px;flex:1 1 auto}.wr-ckb .btn.go{background:linear-gradient(180deg,#ffe27a,#e9b81d);color:#14181f;border:0}.wr-ckw{flex-direction:column}
+.wr-bh{margin-top:8px}.wr-bt{display:flex;align-items:baseline;justify-content:space-between;gap:8px}.wr-bt b{font-size:20px;font-variant-numeric:tabular-nums}.wr-bt span{color:#8a93a0;font-size:12px}
+.wr-bseg{display:grid;grid-template-columns:repeat(20,1fr);gap:3px;margin:6px 0}.wr-bseg i{height:14px;border-radius:3px;background:rgba(150,160,175,.28)}
+.wr-bps{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 12px}.wr-bp{display:grid;grid-template-columns:14px 1fr 50px;gap:6px;align-items:center;font-size:12px}.wr-bp span{font-weight:800;color:#ffd84a}.wr-bp.no span{color:#59606c}.wr-bp i{height:8px;border-radius:4px;background:#1a1e26;overflow:hidden}.wr-bp i b{display:block;height:100%}.wr-bp em{font-style:normal;color:#8a93a0;text-align:right;font-variant-numeric:tabular-nums}
+.wr-brt{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px;border-top:1px solid #232933;padding-top:8px}.wr-brt span{color:#8a93a0;font-size:12.5px}.wr-brt b{font-size:18px}
+.wr-bw{margin-top:8px;padding:8px 10px;border-radius:12px;font-size:12.5px}.wr-bw.y{border:1px solid #EF9F27;background:rgba(239,159,39,.12);color:#ffd08a}.wr-bw.r{border:1px solid #E24B4A;background:rgba(226,75,74,.12);color:#ffb3b3}
+.wr-note{color:#8a93a0;font-size:11.5px;margin:8px 0 0}
 .wr-head{display:flex;align-items:center;gap:8px}.wr-head h2{flex:1;min-width:0}.wr-lock,.wr-lock[aria-pressed]{min-width:48px;height:48px;font-size:24px;padding:0;background:none!important;border:0!important;box-shadow:none!important;color:inherit!important}.wr-lock:active{transform:scale(.9)}
 </style>
 </head>
@@ -2093,6 +2113,9 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
       <div class="wr-head"><h2>Hub wiring <small class="v2-h2s">Tap a port</small></h2><button class="btn wr-lock" id="wrLock" type="button" aria-pressed="true" aria-label="Lock layout">🔒</button></div>
       <div class="wr-tabs" id="wrTabs" hidden></div>
       <div id="wrHost"></div>
+      <div class="wr-all" id="wrAll" hidden></div>
+      <div class="wr-acts"><button class="btn" id="wrAuto" type="button">✨ Build board</button><button class="btn" id="wrChk" type="button">✓ Check wiring</button><button class="btn" id="wrTidy" type="button">⇲ Tidy</button></div>
+      <div class="wr-chk" id="wrChkBox" hidden></div>
       <div class="wr-panel" id="wrPanel" hidden>
         <div class="wr-ph"><span class="chip">A</span><b class="wr-pn"></b><b class="wr-pv">0%</b><button class="btn wr-x" type="button">Close</button></div>
         <div class="wr-lab">What is plugged in</div>
@@ -2105,7 +2128,21 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
           <button type="button" data-t="lt"><img src="img/pf/lt.webp" alt=""><span>LED lights</span></button>
         </div>
         <div class="wr-holds"><button class="btn wr-r" type="button">◀ Hold reverse</button><button class="btn wr-f" type="button">Hold forward ▶</button></div>
+        <div class="wr-more" hidden>
+          <div class="wr-lab">Test slider <small>let go = stop</small></div>
+          <input type="range" class="wr-test" min="-100" max="100" step="1" value="0" aria-label="Test slider">
+          <div class="wr-row"><span>Reverse direction</span><button class="wr-sw" type="button" role="switch" aria-checked="false" aria-label="Reverse direction"><i></i></button></div>
+          <div class="wr-row"><span>Cable <b class="wr-cl">0 cm</b></span><span class="wr-cbs"><button class="btn" type="button" data-l="20">20 cm</button><button class="btn" type="button" data-l="50">50 cm</button></span></div>
+          <div class="wr-cw" hidden>The cable does not reach this far. Move the part closer or use a 50 cm cable.</div>
+          <div class="wr-lab">Add to board</div>
+          <div class="wr-adds"><button class="btn" type="button" data-w="ax">Motor axle</button><button class="btn" type="button" data-w="s">Slider</button><button class="btn" type="button" data-w="lv">Lever</button><button class="btn" type="button" data-w="st">Steering wheel</button><button class="btn" type="button" data-w="t">Toggle</button><button class="btn" type="button" data-w="f">Arc meter</button></div>
+        </div>
       </div>
+    </section>
+    <section class="card wr-bud-card" id="wrBudget">
+      <h2>Power budget <small class="v2-h2s">estimate</small></h2>
+      <div id="wrBud"></div>
+      <p class="wr-note">Hubs do not report current: these are estimates from each part and its power. Play time assumes a 1500 mAh battery.</p>
     </section>
     <section class="card">
       <h2>Channel test <small class="v2-h2s">hold to run</small></h2>

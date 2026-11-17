@@ -799,6 +799,63 @@ async def t_axle(b):
     check('Motor axle: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_wire12(b):
+    ctx = await b.new_context(viewport={'width': 390, 'height': 2400})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'W',cfg:{layout:'board',hubs:[0,1,-1],
+      ch:[{name:'Left wheel'},{name:'Right wheel'},{name:'Lights'},{name:'Steer'},{name:'Arm'},{name:'Winch'},{},{},{},{},{},{}],
+      board:[{k:'s',c:1,w:1},{k:'j',c:0,d:1,m:'tank',w:1}],s1:{mode:'tank',a:0,b:1},seq:[{id:'q1',name:'Q',steps:[{ch:0,pwr:50,dur:1}]}],
+      pf:['l','l','lt','sv','xl','m','xl','','','','',''],pfp:{"1":[300,300]}}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};onHubState('ready')"); await pg.wait_for_timeout(700)
+    await pg.evaluate("mk6Go('hub')"); await pg.wait_for_timeout(700)
+    cfg = "JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg"
+    r = await pg.evaluate("[...document.getElementById('wrHost').shadowRoot.querySelectorAll('.lbn')].map(t=>t.textContent).join(',')")
+    check('wiring labels: each part shows its channel name', 'Right wheel' in r and 'Arm' in r, r)
+    tap = """(function(p){var R=document.getElementById('wrHost').shadowRoot,g=R.querySelector('.pt[data-p='+p+']'),r=g.getBoundingClientRect();
+      g.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:3,clientX:r.x+5,clientY:r.y+5}));window.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:3,clientX:r.x+5,clientY:r.y+5}))})"""
+    await pg.evaluate(tap + "('B')"); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[document.querySelector('#wrPanel .wr-more').hidden,document.querySelector('#wrPanel .wr-cl').textContent,[...document.querySelectorAll('#wrPanel .wr-adds button')].filter(b=>!b.hidden).map(b=>b.dataset.w).join(',')]")
+    check('port panel: extras show for a motor (cable length, add to board)', r[0] is False and r[1].endswith(' cm') and r[2] == 'ax,s,f', r)
+    await pg.evaluate("document.querySelector('#wrPanel .wr-cbs button[data-l=\"50\"]').click();document.querySelector('#wrPanel .wr-sw').click();document.querySelector('#wrPanel .wr-adds button[data-w=ax]').click()"); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("(function(){var c=" + cfg + ";return [c.pcl[1],c.ch[1].inv,c.board.map(x=>x.k+x.c).join(',')]})()")
+    check('port panel: 50 cm cable, reverse and Add Motor axle are saved', r[0] == 50 and r[1] is True and r[2].endswith('ax1'), r)
+    await pg.evaluate("document.querySelector('#wrPanel .wr-sw').click()")
+    await pg.evaluate("var t=document.querySelector('#wrPanel .wr-test');t.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));t.value='80';t.dispatchEvent(new Event('input',{bubbles:true}))"); await pg.wait_for_timeout(700)
+    r1 = await pg.evaluate("Math.round(__t.rt.o[1])")
+    await pg.evaluate("var t=document.querySelector('#wrPanel .wr-test');t.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}))"); await pg.wait_for_timeout(900)
+    r2 = await pg.evaluate("[Math.round(__t.rt.o[1]),document.querySelector('#wrPanel .wr-test').value]")
+    check('port panel: test slider runs the port and letting go stops it', r1 > 0 and r2 == [0, '0'], [r1, r2])
+    await pg.evaluate("document.querySelector('#wrPanel .wr-f').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:1}))"); await pg.wait_for_timeout(900)
+    r = await pg.evaluate("document.getElementById('wrBud').textContent")
+    await pg.evaluate("document.querySelector('#wrPanel .wr-f').dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:1}))")
+    check('power budget: a running motor shows its estimated current', '0.0 A' not in r.split('%')[0] and 'B0.' in r.replace(' ', ''), r[:120])
+    r = await pg.evaluate(cfg + ".pfp['1']")
+    await pg.evaluate("document.getElementById('wrTidy').click()"); await pg.wait_for_timeout(900)
+    r2 = await pg.evaluate(cfg + ".pfp['1']===undefined")
+    check('Tidy: moved parts go back to their own place', r == [300, 300] and r2 is True, [r, r2])
+    await pg.evaluate("document.querySelector('#wrTabs .wr-allb').click()"); await pg.wait_for_timeout(700)
+    r = await pg.evaluate("[document.querySelectorAll('#wrAll .wr-sub').length,document.getElementById('wrHost').hidden,document.querySelectorAll('#chTest .v2-knob-b').length,JSON.parse(localStorage.getItem('mk6v2')).prefs.wrall]")
+    check('All hubs: both hub pictures at once, channel test shows every hub, choice kept', r == [2, True, 12, True], r)
+    await pg.evaluate("document.getElementById('wrChk').click()"); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[document.getElementById('wrChkBox').hidden,Math.round(__t.rt.o[0])]")
+    await pg.wait_for_timeout(1400)
+    r2 = await pg.evaluate("[...document.querySelectorAll('#wrChkBox button')].map(b=>b.dataset.a).join(',')")
+    check('wiring check: runs the first port, then asks if it moved', r[0] is False and r[1] > 0 and r2 == 'y,n,r', [r, r2])
+    await pg.evaluate("document.querySelector('#wrChkBox button[data-a=n]').click()"); await pg.wait_for_timeout(200)
+    await pg.evaluate("document.querySelector('#wrChkBox button[data-w=\"4\"]').click()"); await pg.wait_for_timeout(400)
+    r = await pg.evaluate("(function(){var c=" + cfg + ";return [c.ch[0].name,c.ch[4].name,c.pf[0],c.pf[4],c.board.filter(x=>x.k==='j')[0].c,c.s1.a,c.seq[0].steps[0].ch]})()")
+    check('wiring check: "No, that one moved" swaps the two ports with names, parts, widgets, sticks and sequences', r == ['Arm', 'Left wheel', 'xl', 'l', 4, 4, 4], r)
+    await pg.evaluate("document.querySelector('#wrChkBox button[data-a=x]').click()")
+    await pg.evaluate("document.getElementById('wrAuto').click()"); await pg.wait_for_timeout(400)
+    r = await pg.evaluate("(function(){var c=" + cfg + ";return c.board.map(x=>x.k+(x.m==='tank'?'T':'')).join(',')})()")
+    check('Build board: tank joystick, steering wheel, levers, light toggle, slider and E-Stop from the wiring', r.startswith('jT,') and 'st' in r and 'lv' in r and 't' in r.split(',') and r.endswith(',e'), r)
+    check('wiring extras: no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def t_pro(b):
     # P1 live link centre, P3 duplicate + group move, P5 accessibility, P6 what's new + update check
     def mk(seed, w=390, h=844, extra=''):
@@ -1456,7 +1513,7 @@ async def t_wirelock(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
