@@ -788,7 +788,11 @@ async def t_axle(b):
     await pg.wait_for_timeout(300)
     r = await pg.evaluate("""(function(){var s=document.querySelector('%s');var lit=[...s.querySelectorAll('rect[rx="3"]')].filter(x=>/^#/.test(x.getAttribute('fill'))).length;
       return [s.querySelector('path[transform]').getAttribute('transform'),lit,document.querySelector('#boardGrid .bdw[data-k=ax] .bdw-h output').textContent]})()""" % q)
-    check('Motor axle: orange axle turns and the LED bar follows the power', a1 != r[0] and int(r[2]) > 50 and r[1] == round(int(r[2]) / 10), [a1, r])
+    check('Motor axle: orange axle turns and the LED bar follows the power', a1 != r[0] and int(r[2]) > 50 and r[1] == round(int(r[2]) / 5), [a1, r])
+    await pg.evaluate("var r=document.querySelector('#boardGrid .bdw[data-k=s] input[type=range]');r.value='-100';r.dispatchEvent(new Event('input',{bubbles:true}))")
+    await pg.wait_for_timeout(2500)
+    r = await pg.evaluate("""[...document.querySelector('%s').querySelectorAll('rect[rx="3"]')].map(x=>/^#/.test(x.getAttribute('fill'))?1:0).join('')""" % q)
+    check('Motor axle: in reverse the LED display fills from the right', r.endswith('1') and r.startswith('0') and '10' not in r, r)
     await pg.evaluate("__ed()")
     r = await pg.evaluate("(function(){document.getElementById('bdTAX').click();document.getElementById('bdAdd').click();return JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.board.map(x=>x.k).join(',')})()")
     check('Motor axle can be added from the gallery', r.endswith(',ax'), r)
