@@ -34,7 +34,7 @@ try{
   var PAL0={g:'#1D9E75',o:'#EF9F27',r:'#E24B4A',b:'#378ADD'}, PALCB={g:'#56B4E9',o:'#E69F00',r:'#D55E00',b:'#CC79A7'};
   function palSet(cb){var src=cb?PALCB:PAL0;for(var k in src) PAL[k]=src[k];if(typeof MTH!=='undefined'){MTH[0][0]=PAL.g;MTH[0][1]=PAL.o;MTH[0][2]=PAL.r;MTH[0][3]=PAL.b}}
   // Value text for widget heads; with direction marks on, +40 shows as ▲40 and -40 as ▼40
-  var DIRMK=false;
+  var DIRMK=true; // values show ▲/▼ for direction
   function fmtV(n){n=Math.round(+n||0);return DIRMK?(n>0?'\u25B2'+n:n<0?'\u25BC'+(-n):'0'):fmt(n)}
   function fmtTime(ms){var s=Math.floor(ms/1000);return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2)}
   function num(v,lo,hi,d){v=+v;return (v>=lo&&v<=hi)?v:d}
@@ -333,7 +333,7 @@ try{
     d.pfp={};if(c.pfp&&typeof c.pfp==='object') Object.keys(c.pfp).forEach(function(q){var v=c.pfp[q],n=+q;if(n>=0&&n<NMAX+3&&Array.isArray(v)&&isFinite(v[0])&&isFinite(v[1])) d.pfp[n]=[Math.max(0,Math.min(1360,+v[0])),Math.max(0,Math.min(1560,+v[1]))]});
     d.pcl=[];for(var cq=0;cq<NMAX;cq++) d.pcl.push(Array.isArray(c.pcl)&&+c.pcl[cq]===50?50:20);
     d.pf=[];for(var pq=0;pq<NMAX;pq++){var pv=Array.isArray(c.pf)?c.pf[pq]:'';d.pf.push(['m','l','xl','sv','lt'].indexOf(pv)>=0?pv:'')}
-    d.layout=(c.layout==='joy'||c.layout==='dual'||c.layout==='board')?c.layout:'std';
+    d.layout='board';
     // old 'Speed' setting (x0.4 / x0.7) multiplied the power limit; fold it in once and drop it
     if(c.speed==='slow'||c.speed==='normal') d.limit=Math.max(10,Math.round(d.limit*(c.speed==='slow'?0.4:0.7)));
     d.board=cleanBoard(c.board);
@@ -365,21 +365,16 @@ try{
     d.seq=cleanSeqs(c.seq);
     d.tl=cleanTls(c.tl);
     d.rec=cleanRecs(c.rec);
+    // models made with the old Standard / Joystick / Dual stick layouts get a starter board
+    if(c.layout!=='board'&&!d.board.length){var nb=0;for(var bi=0;bi<NMAX&&nb<4;bi++){if(d.hubs[(bi/PER)|0]<0) continue;var bk=d.ch[bi].kind;d.board.push(bk==='light'?{k:'l',c:bi,w:1}:{k:'s',c:bi,w:bk==='hold'?2:1,hold:bk==='hold'});nb++}if(d.board.length) d.board.push({k:'e',w:1})}
     return d;
   }
   function starters(){
-    var car=baseCfg(['Left wheel','Right wheel','Headlights','Channel D','Channel E','Channel F']);
-    car.s1.mode='tank';car.layout='joy';car.ch[2].kind='hold';
-    var exc=baseCfg(['Left track','Right track','Arm','Bucket','Swing','Lights']);
-    exc.s1.mode='tank';exc.layout='dual';exc.ch[4].kind='hold';exc.ch[4].max=60;exc.ch[5].kind='hold';exc.accent=0;
-    car.seq=[{id:uid(),name:'Spin',loop:false,steps:[{ch:0,pwr:60,dur:1.5,par:false},{ch:1,pwr:-60,dur:1.5,par:true},{ch:-1,pwr:0,dur:0.5,par:false}]}];
-    exc.seq=[{id:uid(),name:'Dig cycle',loop:false,steps:[{ch:2,pwr:-60,dur:2,par:false},{ch:3,pwr:60,dur:1.5,par:false},{ch:2,pwr:60,dur:2,par:false},{ch:4,pwr:40,dur:3,par:false}]}];
     var mine=baseCfg(['Drive','Steering','Lights','Winch','Rear lights','Channel F']);
     mine.ch[2].kind='light';mine.ch[4].kind='light';mine.layout='board';mine.dash=true;
     mine.board=[{k:'s',c:0,w:1,v:true,g:[0,0,12,24]},{k:'l',c:2,w:1,g:[12,0,13,7]},{k:'b',c:0,w:1,g:[12,7,13,7]},
       {k:'t',c:3,y:'dir',w:1,g:[25,0,14,7]},{k:'l',c:4,w:1,g:[25,7,14,7]},{k:'e',w:1,g:[39,0,9,14]},{k:'s',c:1,w:1,g:[12,14,36,10]}];
     mine.board.forEach(function(o){o.gp=o.g.slice()});
-    void car;void exc;
     return [{id:uid(),name:'My model',cfg:sanitizeCfg(mine)}];
   }
   function cleanLim(a){var D=[[40,80],[70,60],[100,40]];return D.map(function(d,i){var x=(Array.isArray(a)&&a[i]&&typeof a[i]==='object')?a[i]:{};return {l:Math.round(num(x.l,10,100,d[0])),r:Math.round(num(x.r,0,100,d[1]))}})}
@@ -392,7 +387,7 @@ try{
     });
     return out;
   }
-  function cleanPrefs(p){p=(p&&typeof p==='object')?p:{};return {practice:p.practice===true,sound:p.sound!==false,haptic:p.haptic!==false,lang:p.lang==='ms'?'ms':'en',seen:p.seen===true,lock:p.lock===true,kidLimit:pickOf(p.kidLimit,[100,70,50,30],50),lim:cleanLim(p.lim),autoBackup:p.autoBackup!==false,full:p.full!==false,relink:p.relink!==false,fx:(p.fx==='full'||p.fx==='lite')?p.fx:'auto',lastBackup:Math.max(0,+p.lastBackup||0),tpls:cleanTpls(p.tpls),ui:p.ui==='light'?'light':'dark',fs:pickOf(p.fs,[100,115,130],100),hc:p.hc===true,cb:p.cb===true,wn:(typeof p.wn==='number'&&p.wn>=0)?Math.floor(p.wn):0,upAt:(typeof p.upAt==='number'&&p.upAt>0)?p.upAt:0,dir:p.dir===true,pin:(typeof p.pin==='string'&&/^\d{4}$/.test(p.pin))?p.pin:'',msort:['f','r','a'].indexOf(p.msort)>=0?p.msort:'f',tour:p.tour===true,linkOn:p.linkOn===true,focus:p.focus===true,playLim:pickOf(p.playLim,[0,10,20,30,45,60],0),lefty:p.lefty===true,meter:p.meter!==false,trail:p.trail!==false,lframe:p.lframe!==false,fine:pickOf(p.fine,[0,20,30,50],30),wrlock:p.wrlock!==false,wrall:p.wrall===true}}
+  function cleanPrefs(p){p=(p&&typeof p==='object')?p:{};return {practice:p.practice===true,sound:p.sound!==false,haptic:p.haptic!==false,lang:p.lang==='ms'?'ms':'en',seen:p.seen===true,lock:p.lock===true,kidLimit:pickOf(p.kidLimit,[100,70,50,30],50),lim:cleanLim(p.lim),autoBackup:p.autoBackup!==false,full:p.full!==false,relink:p.relink!==false,fx:(p.fx==='full'||p.fx==='lite')?p.fx:'auto',lastBackup:Math.max(0,+p.lastBackup||0),tpls:cleanTpls(p.tpls),ui:p.ui==='light'?'light':'dark',fs:pickOf(p.fs,[100,115,130],100),hc:p.hc===true,cb:p.cb===true,wn:(typeof p.wn==='number'&&p.wn>=0)?Math.floor(p.wn):0,upAt:(typeof p.upAt==='number'&&p.upAt>0)?p.upAt:0,pin:(typeof p.pin==='string'&&/^\d{4}$/.test(p.pin))?p.pin:'',msort:['f','r','a'].indexOf(p.msort)>=0?p.msort:'f',tour:p.tour===true,linkOn:p.linkOn===true,focus:p.focus===true,playLim:pickOf(p.playLim,[0,10,20,30,45,60],0),lefty:p.lefty===true,trail:p.trail!==false,lframe:p.lframe!==false,fine:pickOf(p.fine,[0,20,30,50],30),wrlock:p.wrlock!==false,wrall:p.wrall===true}}
   var store={active:null,profiles:[],prefs:cleanPrefs()};
   try{
     var raw=localStorage.getItem('mk6v2');
@@ -581,13 +576,13 @@ try{
     }
     var t=crzT(i);
     var m=powerFor(Math.abs(t),C.ch[i]);
-    var tb=!!S.turbo[i]||!!cal||testOn();
+    var tb=!!S.turbo[i]||!!cal;
     var f=((S.kid&&store.prefs.kidLimit)?store.prefs.kidLimit/100:1)*PLAY.f;
     var out=(t<0?-m:m)*(tb?100:C.limit)/100*f;
     // steering eases at speed (set per model)
-    if(C.ss&&C.ss.on&&i===C.ss.st&&C.ss.th!==i&&!cal&&!testOn()) out*=1-(1-C.ss.min/100)*Math.min(1,Math.abs(rt.o[C.ss.th]||0)/100);
+    if(C.ss&&C.ss.on&&i===C.ss.st&&C.ss.th!==i&&!cal) out*=1-(1-C.ss.min/100)*Math.min(1,Math.abs(rt.o[C.ss.th]||0)/100);
     // trim: a small fixed offset so the model runs straight (never while E-Stop is on)
-    var tr0=C.ch[i].trim||0;if(tr0&&!S.estop&&!cal&&!testOn()) out=Math.max(-100,Math.min(100,out+tr0*PLAY.f));
+    var tr0=C.ch[i].trim||0;if(tr0&&!S.estop&&!cal) out=Math.max(-100,Math.min(100,out+tr0*PLAY.f));
     return swLim(i,out);
   }
 
@@ -600,7 +595,7 @@ try{
   // What the hub sends at a full 100% request (the power limit, speed and channel max); meters mark it with a tick
   function hubMax(i){
     if(C.ch[i].kind==='light') return 100;
-    var tb=!!S.turbo[i]||!!cal||testOn();
+    var tb=!!S.turbo[i]||!!cal;
     var f=(S.kid&&store.prefs.kidLimit)?store.prefs.kidLimit/100:1;
     return Math.min(100,powerFor(100,C.ch[i])*(tb?100:C.limit)/100*f);
   }
@@ -1912,7 +1907,6 @@ try{
   }
 
   /* ---------- Sticks ---------- */
-  var sticks=[];
   var TILT={g:[0,0],has:false,zero:null,ang:null,deg:0}, BD_TILT={cur:null};
   window.onTilt=function(x,y,ang){TILT.g=[+x||0,+y||0];TILT.has=true;TILT.ang=ang;};
   function gyroAny(){return !!(C.board&&C.board.some(function(o){return o.k==='st'&&o.gy}))}
@@ -1952,8 +1946,7 @@ try{
     return av<=dd?0:(v<0?-1:1)*(av-dd)/(1-dd);
   }
   function tiltStep(){
-    var st=sticks[0], held=false;
-    if(st&&st.id!==null&&tiltActive()){applyStick(0,tiltVal(),st.y||0);held=true}
+    var held=false;
     if(BD_TILT.cur&&(BD_TILT.cur.st?TILT.has:tiltActive())){
       var bt=BD_TILT.cur, tv=bt.st?tiltVal(bt.it.gs||undefined,bt.it.gz===undefined?3:bt.it.gz):tiltVal();
       if(bt.st){
@@ -1988,115 +1981,22 @@ try{
     va*=(C.zone||100)/100;vb*=(C.zone||100)/100;
     if(cf.a>=0) setT(cf.a,va*100,false);
     if(cf.b>=0) setT(cf.b,vb*100,false);
-    axbPaint(k,va*100,vb*100);
   }
-  // Axis bars under the pad: current value from the centre
-  function axbPaint(k,a,b){
-    var st=sticks[k];if(!st||!st.axb) return;
-    [a,b].forEach(function(v,q){
-      var r=st.axb[q],m=Math.abs(v);v=Math.round(v);
-      var lo=Math.min(0,v),w=Math.abs(v)/2;
-      r.f.style.left=(50+lo/2)+'%';r.f.style.width=w+'%';
-      r.f.style.background=m>=90?PAL.r:m>=60?PAL.o:PAL.g;
-      var tx=(v>0?'+':'')+v;if(r.o.textContent!==tx) r.o.textContent=tx;
-    });
-  }
-  function buildStick(k){
-    var box=document.createElement('div');box.className='padbox';
-    box.innerHTML='<h3 class="pb-title"></h3>'+
-      '<div class="seg" role="group" aria-label="Stick mode"><button class="btn mA" type="button" aria-pressed="true">Axis</button><button class="btn mT" type="button" aria-pressed="false">Tank</button></div>'+
-      '<div class="pad"><div class="knob rest"></div></div>'+
-      '<div class="axb"><div class="ab"><span class="abl"></span><span class="abt"><i class="abf"></i><i class="abz"></i></span><output>0</output></div><div class="ab"><span class="abl"></span><span class="abt"><i class="abf"></i><i class="abz"></i></span><output>0</output></div></div>'+
-      '<div class="maprow"><label><span class="la"></span><select class="selA"></select></label><label><span class="lb"></span><select class="selB"></select></label></div>'+
-      '<label class="check spr-row"><input class="spr" type="checkbox" checked><span>Return to 0 when released</span></label>';
-    $('#pads').appendChild(box);
-    var st={box:box,title:$('.pb-title',box),mA:$('.mA',box),mT:$('.mT',box),pad:$('.pad',box),knob:$('.knob',box),
-      spr:$('.spr',box),y:0,la:$('.la',box),lb:$('.lb',box),selA:$('.selA',box),selB:$('.selB',box),id:null};
-    st.axb=[].map.call(box.querySelectorAll('.ab'),function(e){return {l:$('.abl',e),f:$('.abf',e),o:$('output',e)}});
-    sticks.push(st);
-    st.spr.addEventListener('change',function(){
-      cfgOf(k).hold=!st.spr.checked;save();
-      if(!cfgOf(k).hold&&st.id===null){st.knob.classList.add('rest');st.knob.style.transform='translate(0,0)';st.pad.style.setProperty('--m','0');applyStick(k,0,0)}
-    });
-    st.mA.addEventListener('click',function(){cfgOf(k).mode='axis';syncSticks();save()});
-    st.mT.addEventListener('click',function(){cfgOf(k).mode='tank';syncSticks();save()});
-    st.selA.addEventListener('change',function(){cfgOf(k).a=+st.selA.value;syncLayout();save()});
-    st.selB.addEventListener('change',function(){cfgOf(k).b=+st.selB.value;syncLayout();save()});
-    var sgeo=null, sq=null, sraf=0;
-    function move(e){
-      if(e&&e.type==='pointermove'){sq={clientX:e.clientX,clientY:e.clientY};if(!sraf) sraf=requestAnimationFrame(function(){sraf=0;if(sq&&st.id!==null){var q=sq;sq=null;mstep(q)}});return}
-      mstep(e);
-    }
-    function mstep(e){
-      if(!sgeo){var r=st.pad.getBoundingClientRect();sgeo={cx:r.left+r.width/2,cy:r.top+r.height/2,R:Math.max(8,(r.width-st.knob.offsetWidth*0.6)/2-7)}}
-      var R=sgeo.R, dx=e.clientX-sgeo.cx, dy=e.clientY-sgeo.cy, m=Math.hypot(dx,dy);
-      if(m>R){dx*=R/m;dy*=R/m}
-      st.knob.style.transform='translate('+dx+'px,'+dy+'px)';
-      st.y=-dy/R;
-      applyStick(k,(k===0&&tiltActive())?tiltVal():dx/R,-dy/R);
-    }
-    st.pad.addEventListener('pointerdown',function(e){
-      st.id=e.pointerId;sgeo=null;
-      if(k===0) TILT.zero=null;
-      try{st.pad.setPointerCapture(e.pointerId)}catch(_){}
-      st.knob.classList.remove('rest');move(e);
-    });
-    st.pad.addEventListener('pointermove',function(e){if(e.pointerId===st.id)move(e)});
-    function end(e){
-      if(e.pointerId!==st.id)return;
-      if(sq){var q0=sq;sq=null;mstep(q0)}
-      st.id=null;if(cfgOf(k).hold)return;st.knob.classList.add('rest');st.knob.style.transform='translate(0,0)';st.pad.style.setProperty('--m','0');applyStick(k,0,0);
-    }
-    st.pad.addEventListener('pointerup',end);
-    st.pad.addEventListener('pointercancel',end);
-  }
-  buildStick(0);buildStick(1);
-
+  // the gamepad drives stick 1 and 2 (when the board has no joysticks): keep their channels valid
   function syncSticks(){
     var idxs=activeIdx();
-    sticks.forEach(function(st,k){
-      var cf=cfgOf(k);
-      st.spr.checked=!cf.hold;
-      st.mA.setAttribute('aria-pressed',String(cf.mode==='axis'));
-      st.mT.setAttribute('aria-pressed',String(cf.mode==='tank'));
-      st.la.textContent=cf.mode==='axis'?'Drive (up/down)':'Left motor';
-      st.lb.textContent=cf.mode==='axis'?'Steer (left/right)':'Right motor';
-      st.title.textContent=k?'Right stick':'Left stick';
-      st.axb[0].l.textContent=cf.mode==='axis'?'Drive':'Left';st.axb[1].l.textContent=cf.mode==='axis'?'Steer':'Right';
-      [st.selA,st.selB].forEach(function(sel,q){
-        var key=q?'b':'a';
-        sel.innerHTML='';
-        if(k===1){var none=document.createElement('option');none.value='-1';none.textContent='None';sel.appendChild(none)}
-        idxs.forEach(function(i){var o=document.createElement('option');o.value=String(i);o.textContent=tagOf(i)+' · '+C.ch[i].name;sel.appendChild(o)});
-        var cur=cf[key];
-        if(!(k===1&&cur===-1)&&idxs.indexOf(cur)<0){cur=idxs[Math.min(q+k*2,idxs.length-1)];cf[key]=cur}
-        sel.value=String(cur);
-      });
-    });
+    [0,1].forEach(function(k){var cf=cfgOf(k);['a','b'].forEach(function(key,q){var cur=cf[key];
+      if(!(k===1&&cur===-1)&&idxs.indexOf(cur)<0) cf[key]=idxs.length?idxs[Math.min(q+k*2,idxs.length-1)]:-1})});
   }
   function syncTiltUi(){
     if(!tlOn||!C.tilt) return;
     tlOn.checked=C.tilt.on;tlOpt.hidden=!C.tilt.on;tlSens.value=String(C.tilt.sens);tlInv.checked=C.tilt.inv;tlAll.checked=C.tilt.all;
     tiltNative();
   }
-  function mappedSet(){
-    var m={};
-    if(C.layout==='joy'||C.layout==='dual'){m[C.s1.a]=1;m[C.s1.b]=1}
-    if(C.layout==='dual'){if(C.s2.a>=0)m[C.s2.a]=1;if(C.s2.b>=0)m[C.s2.b]=1}
-    return m;
-  }
   function syncLayout(){
-    cols.classList.toggle('joy',C.layout==='joy');
-    cols.classList.toggle('dual',C.layout==='dual');
-    cols.classList.toggle('board',C.layout==='board');
-    $('#lBoard').setAttribute('aria-pressed',String(C.layout==='board'));
+    cols.classList.add('board');
     syncBoard();
-    $('#lStd').setAttribute('aria-pressed',String(C.layout==='std'));
-    $('#lJoy').setAttribute('aria-pressed',String(C.layout==='joy'));
-    $('#lDual').setAttribute('aria-pressed',String(C.layout==='dual'));
-    sticks[1].box.hidden=C.layout!=='dual';
-    $('#joyTitle').textContent=C.layout==='dual'?'Sticks':'Joystick';
-    var mapped=mappedSet(), multi=activeSlots().length>1, first=false, visible=[0,0,0];
+    var mapped={}, multi=activeSlots().length>1, first=false, visible=[0,0,0];
     refs.forEach(function(r,i){
       var hid=!isActive(i)||!!mapped[i];
       r.el.hidden=hid;
@@ -2182,11 +2082,6 @@ try{
     $('#note').textContent='Frames are broadcast over Bluetooth straight to the Mould King hubs. Put each hub in Bluetooth mode, tap Connect hub and wait until it says Hub active. With several hubs each one is updated in turn, so expect slightly slower response.';
   }
 
-  /* ---------- Layout buttons ---------- */
-  ['Std','Joy','Dual','Board'].forEach(function(n){
-    $('#l'+n).addEventListener('click',function(){C.layout=n.toLowerCase();if(C.layout==='board'&&!C.board.length) prefillBoard();syncLayout();save()});
-  });
-
   /* ---------- Model bar ---------- */
   var prof=$('#prof'), profName=$('#profName'), profDel=$('#profDel'), delArmed=0;
   function profLbl(p){return p.label||p.name||'(unnamed)'}
@@ -2255,76 +2150,6 @@ try{
     store.profiles.push(p);
     switchProfile(p.id);
     live.textContent='New model created from the current settings';
-  });
-  /* Setup wizard: builds a ready-made model from a vehicle type. */
-  var wizPanel=$('#wizPanel'), wizType=$('#wizType');
-  var WIZ={
-    tank:{name:'Tracked vehicle',ch:['Left track','Right track'],mode:'tank',layout:'joy',note:'Channel A and B drive the tracks. Use the Joystick layout: push forward to drive, sideways to turn.'},
-    car:{name:'Car with steering',ch:['Drive','Steering'],mode:'axis',layout:'joy',note:'Channel A drives and channel B steers. Use the Joystick layout: up and down drives, left and right steers.'},
-    digger:{name:'Digger',ch:['Left track','Right track','Arm','Bucket','Swing'],mode:'tank',layout:'dual',note:'Channels A and B drive the tracks, C, D and E move the arm, bucket and swing. Uses the Dual stick layout.'}
-  };
-  function wizSync(){var w=WIZ[wizType.value]||WIZ.tank;$('#wizNote').textContent=w.note}
-  wizType.addEventListener('change',wizSync);
-  $('#profWiz').addEventListener('click',function(){wizPanel.hidden=!wizPanel.hidden;if(!wizPanel.hidden) wizSync()});
-  // ---- Test hub: move every active channel briefly at low power ----
-  var TEST_ID='__test', testBtn=$('#profTest'), testNote=$('#testNote'), testPlan=[];
-  function testOn(){return !!(S.play&&S.play.seq===TEST_ID)}
-  function buildTest(){
-    var steps=[];testPlan=[];
-    activeIdx().forEach(function(i){
-      var d;
-      if(C.ch[i].kind==='light'){steps.push({ch:i,pwr:100,dur:0.8});d=0.8}
-      else{steps.push({ch:i,pwr:C.testPwr,dur:0.7});steps.push({ch:i,pwr:-C.testPwr,dur:0.7});d=1.4}
-      steps.push({ch:-1,pwr:0,dur:0.3});d+=0.3;
-      testPlan.push({i:i,d:d*1000});
-    });
-    return {id:TEST_ID,name:'Test',speed:1,steps:steps};
-  }
-  function testPaint(){
-    if(!testBtn) return;
-    var on=testOn();
-    testBtn.textContent=on?'Stop test':'Test hub';
-    testBtn.setAttribute('aria-pressed',String(on));
-    testBtn.disabled=!on&&(S.estop||!!S.play||!!S.rec);
-    if(on){
-      var el=Math.max(0,performance.now()-S.play.start), n=0, acc=0;
-      for(;n<testPlan.length-1;n++){acc+=testPlan[n].d;if(el<acc) break}
-      testNote.textContent='Testing '+tagOf(testPlan[n].i)+' ('+(n+1)+'/'+testPlan.length+'). Keep the model clear.';
-      testNote.hidden=false;
-    }else if(!testNote.hidden){testNote.hidden=true;testNote.textContent=''}
-  }
-  if(testBtn){
-    testBtn.addEventListener('click',function(){
-      if(testOn()){stopPlay(true);testPaint();return}
-      if(S.estop){toast('Release the E-Stop first.');return}
-      if(RH()&&!S.connected){toast('Connect the hub first.');return}
-      if(S.play||S.rec){toast('Stop the current playback first.');return}
-      var sq=buildTest();
-      if(!sq.steps.length) return;
-      noteInput();
-      startPlay(compileSeq(sq),{seq:TEST_ID,loop:false,reps:1});
-      testPaint();
-    });
-    setInterval(testPaint,150);
-  }
-  $('#wizCancel').addEventListener('click',function(){wizPanel.hidden=true});
-  $('#wizGo').addEventListener('click',function(){
-    if(store.profiles.length>=MAX_MODELS){live.textContent='Model list is full.';return}
-    var w=WIZ[wizType.value]||WIZ.tank, names=w.ch.slice();
-    var lights=$('#wizLights').checked, winch=$('#wizWinch').checked;
-    var all=names.slice();while(all.length<PER) all.push('Channel '+L[all.length]);
-    var cfg=baseCfg(all);
-    cfg.s1.mode=w.mode;cfg.layout=w.layout;cfg.limit=70;cfg.ramp=60;
-    if(w.mode==='axis'){cfg.ch[1].max=70}
-    var n=names.length;
-    if(lights&&n<PER){cfg.ch[n].name='Lights';cfg.ch[n].kind='light';n++}
-    if(winch&&n<PER){cfg.ch[n].name='Winch';cfg.ch[n].kind='hold';n++}
-    var prof={id:uid(),name:w.name,cfg:sanitizeCfg(cfg)};
-    store.profiles.push(prof);
-    wizPanel.hidden=true;
-    switchProfile(prof.id);
-    live.textContent='Model created: '+w.name;
-    toast('Model created. Rename the channels or change the layout any time.',4000);
   });
   profDel.addEventListener('click',function(){
     if(store.profiles.length<=1)return;
@@ -3224,10 +3049,6 @@ try{
   var bdRat=(typeof document.querySelectorAll==='function')?[].slice.call(document.querySelectorAll('.bdRat')):[$('.bdRat'),$('.bdRat'),$('.bdRat'),$('.bdRat')], bdMixRow=$('#bdMixRow');
   bdRat.forEach(function(sel){[100,75,50,25,-25,-50,-75,-100].forEach(function(v){bdOpt(sel,String(v),(v>0?'+':'')+v+'%')});sel.value='100'});
   var BPRE={bdTFN:{nd:1},bdTXmx:{t:'mx'},bdTXeq:{t:'eq'},bdTXts:{t:'ts'},bdTXgi:{t:'gi'},bdTXlp:{t:'lp'},bdTXtk:{t:'tk'}}, bdBtn=null, bdK='s', bdEditing=false, bdPick=null, bdPickAt=0, bdW=[], dashAdd=false;
-  function prefillBoard(){
-    var n=0;
-    activeIdx().forEach(function(i){if(n<4){C.board.push({k:'s',c:i,w:C.ch[i].kind==='hold'?2:1,hold:C.ch[i].kind==='hold'});n++}});
-  }
   function bdOpt(sel,v,t){var o=document.createElement('option');o.value=v;o.textContent=t;sel.appendChild(o)}
   function bdFill(){
     if(!bdSel[0]) return;
@@ -5613,16 +5434,9 @@ try{
     return null;
   }
   function padDz(v,d){var a=Math.abs(+v||0);return a<d?0:(v<0?-1:1)*Math.min(1,(a-d)/(1-d))}
-  function showKnob(k,x,y){
-    var st=sticks[k];if(!st) return;
-    var R=Math.max(8,(st.pad.getBoundingClientRect().width-st.knob.getBoundingClientRect().width*0.6)/2-7);
-    st.knob.classList.toggle('rest',x===0&&y===0);
-    st.knob.style.transform='translate('+(x*R)+'px,'+(-y*R)+'px)';
-    st.pad.style.setProperty('--m',Math.min(1,Math.hypot(x,y)).toFixed(2));
-  }
   function releasePad(){
     var bp=(C.layout==='board'&&typeof BD_PADS!=='undefined')?BD_PADS.filter(function(p){return p.jp.isConnected}):[];
-    for(var k=0;k<2;k++) if(GP.on[k]){GP.on[k]=false;if(bp[k]) applyJoy(bp[k].it,0,0); else{showKnob(k,0,0);applyStick(k,0,0)}}
+    for(var k=0;k<2;k++) if(GP.on[k]){GP.on[k]=false;if(bp[k]) applyJoy(bp[k].it,0,0); else applyStick(k,0,0)}
     if(GP.tb) Object.keys(GP.tb).forEach(function(b){var q=GP.tb[b];setT(q.c,q.p,false);S.turbo[q.c]=false;delete GP.tb[b]});
     if(GP.trig){GP.trig=false;if(C.pad.trig>=0) setT(C.pad.trig,0,false)}
     Object.keys(GP.hold).forEach(function(b){setT(GP.hold[b],0,false);delete GP.hold[b]});
@@ -5688,13 +5502,13 @@ try{
     var d=C.pad.dead/100, ax=g.axes||[];
     var xs=[[padDz(ax[0],d),padDz(ax[1],d)],[padDz(ax[2],d),padDz(ax[3],d)]];
     var bp=C.layout==='board'?BD_PADS.filter(function(p){return p.jp.isConnected}):[];
-    var n=(C.layout==='dual'||bp.length>1)?2:1;
+    var n=bp.length>1?2:1;
     for(var k=0;k<n;k++){
       var x=xs[k][0],y=-xs[k][1],act=x!==0||y!==0;
       if(act) noteInput();
       if(act||GP.on[k]){
         if(bp[k]){if(!bp[k].busy()) applyJoy(bp[k].it,x,y)}
-        else{applyStick(k,x,y);showKnob(k,x,y)}
+        else applyStick(k,x,y)
       }
       GP.on[k]=act;
     }
@@ -5937,7 +5751,7 @@ try{
   var V2MS3={"Eco": "Eco", "Sport": "Sport", "Drive mode": "Mod pandu", "Live output (tap for the big view)": "Keluaran langsung (ketik untuk paparan besar)", "Play time limit (a day)": "Had masa main (sehari)", "2 minutes of play time left.": "Tinggal 2 minit masa main.", "Play time is up. Motors are slowing down.": "Masa main tamat. Motor sedang perlahan.", "Hold for 2 seconds to change (parents).": "Tahan 2 saat untuk tukar (ibu bapa).", "Play time limit off.": "Had masa main dimatikan.", "5 more minutes.": "Tambah 5 minit.", "Play time is up": "Masa main tamat", "Come back tomorrow, or a parent can add 5 minutes": "Main lagi esok, atau ibu bapa boleh tambah 5 minit", "+5 min (hold 2 s)": "+5 minit (tahan 2 s)", "Live output meter": "Meter keluaran langsung", "Left-handed (landscape)": "Mod kidal (landskap)", "Model colour": "Warna model", "Yellow": "Kuning", "Red": "Merah", "Blue": "Biru", "Green": "Hijau", "Purple": "Ungu", "White": "Putih", "Trim (runs straight)": "Trim (jalan lurus)", "Trim buttons on the widget": "Butang trim pada widget", "Trim left": "Trim kiri", "Trim right": "Trim kanan", "Trim reset to 0.": "Trim diset semula ke 0.", "Trim · tap to reset": "Trim · ketik untuk set semula", "Size": "Saiz", "Widget type": "Jenis widget", "All": "Semua", "Lights & buttons": "Lampu & butang", "Meters": "Meter", "Tap a button on the picture, or press it on the gamepad.": "Ketik butang pada gambar, atau tekan pada gamepad.", "Quick settings": "Tetapan pantas", "Unlock": "Buka kunci", "Dark theme": "Tema gelap", "Light theme": "Tema cerah", "hold 2 s": "tahan 2 s", "Release E-Stop (hold 1 s)": "Lepas E-Stop (tahan 1 s)", "Drive up to three Mould King 6.0 hubs from your phone. This guide shows the real buttons, step by step.": "Pandu sehingga tiga hub Mould King 6.0 dari telefon anda. Panduan ini menunjukkan butang sebenar, langkah demi langkah.", "Start": "Mula", "Turn the hub on, then hold START for half a second. The ring turns yellow when the hub answers.": "Hidupkan hub, kemudian tahan START selama setengah saat. Cincin bertukar kuning bila hub menjawab.", "Move the controls to drive. Lift your finger and they go back to 0.": "Gerakkan kawalan untuk memandu. Angkat jari dan ia kembali ke 0.", "E-Stop stops every motor at once. Tap it again to release.": "E-Stop menghentikan semua motor serta-merta. Ketik sekali lagi untuk lepas.", "Your models": "Model anda", "Make your own board, start from a template, or share a model with a friend.": "Buat papan sendiri, mula daripada templat, atau kongsi model dengan kawan.", "Welcome to MK6 Console": "Selamat datang ke MK6 Console", "Lock settings": "Kunci tetapan", "Disconnect": "Putuskan"};
   for(var v2k3 in V2MS3) if(!MS[v2k3]) MS[v2k3]=V2MS3[v2k3];
   var CHMS={"Motor axle: full-width LED display, it fills left to right going forward and right to left in reverse":"Paksi motor: paparan LED penuh, terisi dari kiri ke kanan bila maju dan kanan ke kiri bila undur","New meter widget Motor axle: the orange axle spins with the power and an LED bar shows forward and reverse":"Widget meter baharu Paksi motor: paksi oren berpusing ikut kuasa dan bar LED tunjuk maju dan undur","Hub wiring: LED cable joins the white connector cleanly, no stray black cable":"Pendawaian hub: kabel LED bersambung kemas pada connector putih, tiada lebihan kabel hitam","Hub wiring: the lock button is just the 🔒/🔓 symbol, no box":"Pendawaian hub: butang kunci hanya simbol 🔒/🔓, tanpa kotak","Channel test shows only the hub picked in Hub wiring":"Uji saluran hanya menunjukkan hub yang dipilih dalam Pendawaian hub","Hub wiring: lock button (on by default) so a stray touch cannot move the hub or parts; unlock to rearrange":"Pendawaian hub: butang kunci (hidup secara lalai) supaya sentuhan tersilap tidak mengalihkan hub atau part; buka kunci untuk susun semula","Layout locked.":"Susun atur dikunci.","Layout unlocked: drag the hub and parts.":"Susun atur dibuka: seret hub dan part.","Layout locked":"Susun atur dikunci","Layout unlocked":"Susun atur dibuka","Hub wiring: drag the hub too; its plugs stay locked on it and the cables follow":"Pendawaian hub: hub juga boleh diseret; palam kekal terkunci padanya dan kabel ikut","Hub wiring: no more light edge under the hub":"Pendawaian hub: tiada lagi garis cerah di bawah hub","Hub wiring: the hub is now the real picture of the hub, sharper and unchanged in shape and look":"Pendawaian hub: hub kini gambar sebenar hub, lebih tajam dan tidak diubah bentuk atau rupanya","Hub wiring in 3D: the real hub shape drawn in the motor style, 3D plugs and 4-core cables. Drag any motor anywhere on the board; cables re-route themselves around the hub and the other parts":"Pendawaian hub 3D: bentuk hub sebenar dilukis dalam gaya motor, palam 3D dan kabel 4 teras. Seret mana-mana motor ke mana sahaja atas papan; kabel mencari laluan sendiri mengelilingi hub dan part lain","Tap a port or drag a part":"Ketik port atau seret part","Hub wiring: LED lights are shown without the grey plug and its cable; the hub cable goes straight to the white connector":"Pendawaian hub: Lampu LED dipapar tanpa palam kelabu dan kabelnya; kabel hub terus ke penyambung putih","Hub wiring: the glow around a running plug is now a full frame (neighbouring plugs no longer cover it)":"Pendawaian hub: cahaya keliling palam yang berjalan kini bingkai penuh (palam jiran tidak lagi menutupnya)","Hub wiring": "Pendawaian hub", "Tap a port": "Ketik port", "Empty · tap to add a part": "Kosong · ketik untuk tambah part", "5 studs = 4 cm": "5 stud = 4 cm", "LED lights": "Lampu LED", "What is plugged in": "Apa yang dipasang", "Nothing": "Tiada", "Hold reverse": "Tahan undur", "Hold forward": "Tahan maju", "Close": "Tutup", "Hub wiring: the Hub screen now shows your Mould King hub with its six ports. Tap a port to say what is plugged in (Motor M, L, XL, Servo or LED lights); plugs, cables and parts light up and turn with the real output, and you can hold to test each port": "Pendawaian hub: skrin Hub kini menunjukkan hub Mould King anda dengan enam port. Ketik port untuk pilih apa yang dipasang (Motor M, L, XL, Servo atau Lampu LED); palam, kabel dan part menyala serta berpusing ikut output sebenar, dan anda boleh tahan untuk uji setiap port","Stop the hub to edit the board": "Hentikan hub untuk edit papan", "Stop the hub to edit the board.": "Hentikan hub untuk edit papan.", "Hub started: board editing ended.": "Hub dimulakan: edit papan ditamatkan.", "Upright board: editing is only available while the hub is stopped; starting the hub ends editing": "Papan menegak: edit hanya boleh bila hub dihentikan; memulakan hub menamatkan edit","Smoother and lighter: fewer layout reads in the paint loop, the frame log only updates while on screen, the effects monitor sleeps off the sideways board, and the swing angle pictures are 5× smaller": "Lebih lancar dan ringan: kurang bacaan susun atur dalam gelung lukisan, log bingkai hanya dikemas kini bila kelihatan, pemantau kesan tidur bila bukan papan landskap, dan gambar sudut pusingan 5× lebih kecil","Arc meter: the 5-second mini graph now shows on the sideways board too, whenever it fits": "Meter arka: graf mini 5 saat kini dipapar juga pada papan landskap, bila ada ruang","Edit mode upright: tap a widget to show its tools as round buttons over its corner, like the sideways board (no more cramped rows)": "Mod edit menegak: ketik widget untuk tunjuk alatnya sebagai butang bulat di penjurunya, seperti papan landskap (tiada lagi baris sesak)", "Tap a widget to show its tools.": "Ketik widget untuk tunjuk alatnya.","Dial comet tail: the LED ring segments the dial just passed glow and fade in 0.4 s (with Light trails in Settings)": "Ekor komet dail: segmen cincin LED yang baru dilalui dail menyala dan pudar dalam 0.4 s (bersama Jejak cahaya dalam Tetapan)", "Swap widgets: in dashboard edit mode, drop a widget on another and they swap places and sizes (Back undoes it)": "Tukar tempat widget: dalam mod edit papan landskap, lepaskan widget di atas widget lain dan kedua-duanya bertukar tempat serta saiz (Back membatalkan)", "Match size: pick a widget, tap ▣ and then tap others to give them the same size where there is room": "Samakan saiz: pilih widget, ketik ▣ kemudian ketik widget lain untuk beri saiz yang sama bila ada ruang", "Double tap to 0: double tap the knob of a slider, dial or lever and it glides back to 0 (lever: to N)": "Ketik dua kali ke 0: ketik dua kali tombol slider, dail atau lever dan ia meluncur kembali ke 0 (lever: ke N)", "E-Stop black box: the last 10 s of every channel are kept when E-Stop goes on; see them in Settings (last 3 stops)": "Kotak hitam E-Stop: 10 s terakhir setiap saluran disimpan bila E-Stop ditekan; lihat dalam Tetapan (3 henti terakhir)", "Match size": "Samakan saiz", "Tap widgets to give them this size:": "Ketik widget untuk beri saiz ini:", "Too small for this widget.": "Terlalu kecil untuk widget ini.", "No room for that size here.": "Tiada ruang untuk saiz itu di sini.", "Swap undone.": "Tukar tempat dibatalkan.", "Too small to swap there.": "Terlalu kecil untuk bertukar tempat di situ.", "E-Stop black box": "Kotak hitam E-Stop", "None yet": "Belum ada", "Nothing recorded yet. When E-Stop goes on, the last 10 seconds of every channel are kept here.": "Belum ada rakaman. Bila E-Stop ditekan, 10 saat terakhir setiap saluran disimpan di sini.", "The last 10 seconds before E-Stop. The red line is the moment it stopped.": "10 saat terakhir sebelum E-Stop. Garis merah ialah saat ia berhenti.", "Clear": "Kosongkan", "Close": "Tutup", "Black box cleared.": "Kotak hitam dikosongkan.", "Light trails (joystick and dial)": "Jejak cahaya (joystik dan dail)","Joystick light trail: a short yellow tail follows the knob and fades in 0.4 s (Settings → Experience)": "Jejak cahaya joystik: ekor kuning pendek mengikut tombol dan pudar dalam 0.4 s (Tetapan → Pengalaman)", "Live frames: the widget rim turns green while its motor runs, red at full stroke, and blinks red on E-Stop": "Bingkai hidup: bingkai widget bertukar hijau bila motornya berjalan, merah pada hujung gerakan, dan berkelip merah semasa E-Stop", "Pinch to resize: in dashboard edit mode, pinch a widget with two fingers to resize it in grid steps (Back undoes it)": "Cubit untuk ubah saiz: dalam mod edit papan landskap, cubit widget dengan dua jari untuk ubah saiz ikut petak grid (Back membatalkan)", "Two-finger fine control: rest a second finger on empty board space and sliders and joysticks move only 30% of your finger (20 / 30 / 50% or off in Settings)": "Kawalan halus dua jari: letak jari kedua di ruang kosong papan dan slider serta joystik hanya bergerak 30% daripada jari (20 / 30 / 50% atau tutup dalam Tetapan)", "Joystick light trail": "Jejak cahaya joystik", "Live frames (green = running, red = full)": "Bingkai hidup (hijau = berjalan, merah = penuh)", "Two-finger fine control": "Kawalan halus dua jari", "Fine": "Halus", "Two-finger fine control off": "Kawalan halus dua jari ditutup","Joystick glow as bright as the sliders: it no longer shrinks with the joystick size, and it is drawn above the knob shadow":"Cahaya joystik kini seterang slider: tidak lagi mengecil ikut saiz joystik, dan dilukis di atas bayang tombol","One glow for every knob: sliders (flat and upright), joysticks and the ON switch now light up the same way; flat sliders draw their knob like the upright ones, so the glow is no longer cut off":"Satu cahaya untuk semua tombol: slider (mendatar dan tegak), joystik dan suis ON kini bercahaya sama; slider mendatar dilukis seperti slider tegak, jadi cahaya tidak lagi terpotong","Channel letter: tap it any time, even while driving with the hub on; every widget with channels has one (double stick too). Cleaner chip look, ⇄ button removed":"Huruf saluran: ketik bila-bila masa, walaupun semasa memandu dengan hub aktif; setiap widget bersaluran ada huruf ini (stik berkembar juga). Rupa cip lebih kemas, butang ⇄ dibuang","Change channel": "Tukar saluran", "Channel change undone.": "Tukar saluran dibatalkan.", "This channel is already used": "Saluran ini sudah digunakan", "Also used by:": "Turut digunakan oleh:", "Both widgets will drive the same channel. The last one you touch wins.": "Kedua-dua widget akan mengawal saluran yang sama. Yang terakhir disentuh menang.", "Share channel": "Kongsi saluran", "Channels": "Saluran", "Names ›": "Nama ›", "● used by another widget": "● digunakan widget lain", "✓ this widget": "✓ widget ini", "free": "bebas", "Channel settings (name, reverse, limit) stay with each channel.": "Tetapan saluran (nama, terbalik, had) kekal pada setiap saluran.", "Up / down": "Atas / bawah", "Left / right": "Kiri / kanan", "Left motor": "Motor kiri", "Right motor": "Motor kanan", "Left stick: left motor": "Stik kiri: motor kiri", "Left stick: right motor": "Stik kiri: motor kanan", "Right stick: left motor": "Stik kanan: motor kiri", "Right stick: right motor": "Stik kanan: motor kanan", "Left stick: up / down": "Stik kiri: atas / bawah", "Left stick: left / right": "Stik kiri: kiri / kanan", "Right stick: up / down": "Stik kanan: atas / bawah", "Right stick: left / right": "Stik kanan: kiri / kanan", "Left side": "Sebelah kiri", "Right side": "Sebelah kanan", "X (left / right)": "X (kiri / kanan)", "Y (up / down)": "Y (atas / bawah)", "Channel 1": "Saluran 1", "Channel 2": "Saluran 2", "Channel 3": "Saluran 3", "Channel 4": "Saluran 4", "Slider": "Peluncur", "Joystick": "Joystik", "Double stick": "Stik berkembar", "Light": "Lampu", "Turbo": "Turbo", "Toggle": "Togol", "Mix": "Campur", "Switch": "Suis", "Auto-stop": "Henti auto", "Ramp": "Naik perlahan", "Meter": "Meter", "Bar meter": "Meter bar", "Graph": "Graf", "Dial": "Dail", "Gear": "Gear", "Lever": "Tuas", "Steering wheel": "Stereng", "XY pad": "Pad XY", "Crossfader": "Crossfader", "Rotor": "Rotor", "Swing angle": "Sudut pusingan", "D-pad": "Pad arah", "LED widget": "Widget LED", "Widget": "Widget", "Hub": "Hub", "None": "Tiada", "Steer": "Pusing", "Drive": "Pandu", "Output A": "Output A", "Output B": "Output B", "Swing channel": "Saluran pusing", "Light channel": "Saluran lampu", "Channel": "Saluran", "Channels, every widget: tap the yellow channel letter while editing (or ⇄) to move a widget to another channel or hub; the named list shows who uses each channel": "Saluran, semua widget: ketik huruf saluran kuning semasa edit (atau ⇄) untuk pindah widget ke saluran atau hub lain; senarai bernama menunjukkan siapa guna setiap saluran"};for(var chk in CHMS) if(!MS[chk]) MS[chk]=CHMS[chk];
-  var WRMS={"Hub wiring: the port panel floats above the page, with Hold and the test slider at the top, so a motor can be tested while the wiring stays in view": "Pendawaian hub: panel port terapung di atas halaman, dengan Tahan dan gelangsar ujian di atas, jadi motor boleh diuji sambil pendawaian kekal kelihatan", "Hub wiring: with Reverse direction on, the motor picture, the cable pulses and the panel value now show the reversed direction the hub really gets": "Pendawaian hub: bila Terbalikkan arah dihidupkan, gambar motor, denyut kabel dan nilai panel kini menunjukkan arah terbalik yang sebenarnya diterima hub", "Hub wiring: a port panel left open from another model or from All hubs closes instead of showing the wrong hub": "Pendawaian hub: panel port yang tertinggal dari model lain atau dari Semua hub ditutup, bukan menunjukkan hub yang salah","◀ Hold reverse":"◀ Tahan undur","Hold forward ▶":"Tahan maju ▶","All hubs": "Semua hub", "✨ Build board": "✨ Bina papan", "✓ Check wiring": "✓ Semak pendawaian", "⇲ Tidy": "⇲ Kemas", "Test slider": "Gelangsar ujian", "let go = stop": "lepas = berhenti", "Reverse direction": "Terbalikkan arah", "Cable": "Kabel", "The cable does not reach this far. Move the part closer or use a 50 cm cable.": "Kabel tidak sampai sejauh ini. Dekatkan part atau guna kabel 50 cm.", "Add to board": "Tambah ke papan", "Power budget": "Bajet kuasa", "estimate": "anggaran", "Hubs do not report current: these are estimates from each part and its power. Play time assumes a 1500 mAh battery.": "Hub tidak menghantar data arus: ini anggaran dari setiap part dan kuasanya. Masa main andaikan bateri 1500 mAh.", "Board built from the wiring": "Papan dibina dari pendawaian", "widgets": "widget", "Back on the board undoes it.": "Back pada papan membatalkannya.", "Wiring check done": "Semakan pendawaian selesai", "right": "betul", "swapped": "ditukar", "to check": "perlu disemak", "Running for a moment… watch which part moves.": "Berjalan sekejap… perhatikan part mana yang bergerak.", "Stop check": "Henti semakan", "Which part moved?": "Part mana yang bergerak?", "The app swaps the two ports: names, settings and widgets follow the motors.": "App menukar kedua-dua port: nama, tetapan dan widget ikut motor.", "Nothing moved": "Tiada yang bergerak", "Did this part move?": "Adakah part ini bergerak?", "Yes": "Ya", "No": "Bukan", "Again": "Ulang", "Check the plug and cable on port": "Semak palam dan kabel pada port", "Ports swapped": "Port ditukar", "of the hub budget": "daripada bajet hub", "Play time left": "Baki masa main", "over 4 hours": "lebih 4 jam", "Over the hub budget: the hub may cut out on a climb. Move a heavy motor to another hub.": "Melebihi bajet hub: hub mungkin mati ketika mendaki. Pindahkan motor berat ke hub lain.", "High load: the hub may limit power or get warm.": "Beban tinggi: hub mungkin hadkan kuasa atau jadi suam.", "Direction reversed for": "Arah diterbalikkan untuk", "Normal direction for": "Arah biasa untuk", "Pick what is plugged into each port first.": "Pilih dahulu apa yang dipasang pada setiap port.", "Added to the board.": "Ditambah ke papan.", "Added. Switch the layout to Board to see it.": "Ditambah. Tukar susun atur ke Papan untuk melihatnya.", "Tidied: each part back on its side of the hub.": "Dikemas: setiap part kembali ke sisinya pada hub.", "Previous board back.": "Papan sebelum ini dikembalikan.", "Hub wiring: Build board makes a board from what is plugged in (two drive motors become a tank joystick, servo a steering wheel, XL a lever, lights a toggle, plus E-Stop). Back on the board undoes it": "Pendawaian hub: Bina papan menghasilkan papan dari apa yang dipasang (dua motor pemanduan jadi joystik tank, servo jadi stereng, XL jadi tuas, lampu jadi togol, serta E-Stop). Back pada papan membatalkannya", "Power budget under the hub wiring: estimated current per port and per hub, warnings at high load and an estimate of play time left": "Bajet kuasa di bawah pendawaian hub: anggaran arus setiap port dan setiap hub, amaran bila beban tinggi dan anggaran baki masa main", "Check wiring: each port runs for a moment and the app asks if the right part moved; if not, pick the part that did and the two ports swap with their names, settings and widgets": "Semak pendawaian: setiap port berjalan sekejap dan app bertanya sama ada part yang betul bergerak; jika tidak, pilih part yang bergerak dan kedua-dua port ditukar bersama nama, tetapan dan widget", "Hub wiring cables come alive: bright pulses run along a cable while its port has power, faster with more power and backwards in reverse": "Kabel pendawaian hub hidup: denyut cahaya mengalir sepanjang kabel bila port berkuasa, lebih laju dengan kuasa lebih dan berundur bila undur", "Hub wiring labels show the channel name under the part": "Label pendawaian hub menunjukkan nama saluran di bawah part", "Port panel: test slider (let go = stop), reverse direction switch, cable length (20 or 50 cm) and Add to board for that port": "Panel port: gelangsar ujian (lepas = berhenti), suis terbalikkan arah, panjang kabel (20 atau 50 cm) dan Tambah ke papan untuk port itu", "Tidy: parts glide back to their own side of the hub so the cables are short and do not cross": "Kemas: part meluncur kembali ke sisinya pada hub supaya kabel pendek dan tidak bersilang", "Cable length: a cable turns red when the part sits further away than its cable reaches (5 studs = 4 cm)": "Panjang kabel: kabel jadi merah bila part diletak lebih jauh daripada jangkauan kabelnya (5 stud = 4 cm)", "All hubs: see every hub's wiring at once (side by side when the phone is sideways); the channel test then shows every hub": "Semua hub: lihat pendawaian setiap hub sekali gus (bersebelahan bila telefon mengiring); uji saluran kemudian tunjuk setiap hub"};for(var wk in WRMS) if(!MS[wk]) MS[wk]=WRMS[wk];
+  var WRMS={"Model settings: the Advanced part is gone (Standard / Joystick / Dual stick layouts, Setup wizard and Test hub). Every model drives with the Board; older models get a starter board": "Tetapan model: bahagian Lanjutan dibuang (susun atur Standard / Joystick / Dual stick, Wizard persediaan dan Uji hub). Setiap model dipandu dengan Papan; model lama mendapat papan permulaan", "Settings: the Live output meter is gone, and values always show ▲/▼ for direction (the switch is gone)": "Tetapan: Meter output langsung dibuang, dan nilai sentiasa menunjukkan ▲/▼ untuk arah (suisnya dibuang)", "Model icons are now detailed pictures: car, excavator, crane, truck, tractor and boat": "Ikon model kini gambar terperinci: kereta, jengkaut, kren, trak, traktor dan bot", "The left and right sticks move the joysticks on the board. Back = E-Stop, Start = release.": "Stik kiri dan kanan menggerakkan joystik pada papan. Back = E-Stop, Start = lepas.", "Used by Calibration and the hub wiring tests.": "Digunakan oleh Kalibrasi dan ujian pendawaian hub.","Hub wiring: the port panel floats above the page, with Hold and the test slider at the top, so a motor can be tested while the wiring stays in view": "Pendawaian hub: panel port terapung di atas halaman, dengan Tahan dan gelangsar ujian di atas, jadi motor boleh diuji sambil pendawaian kekal kelihatan", "Hub wiring: with Reverse direction on, the motor picture, the cable pulses and the panel value now show the reversed direction the hub really gets": "Pendawaian hub: bila Terbalikkan arah dihidupkan, gambar motor, denyut kabel dan nilai panel kini menunjukkan arah terbalik yang sebenarnya diterima hub", "Hub wiring: a port panel left open from another model or from All hubs closes instead of showing the wrong hub": "Pendawaian hub: panel port yang tertinggal dari model lain atau dari Semua hub ditutup, bukan menunjukkan hub yang salah","◀ Hold reverse":"◀ Tahan undur","Hold forward ▶":"Tahan maju ▶","All hubs": "Semua hub", "✨ Build board": "✨ Bina papan", "✓ Check wiring": "✓ Semak pendawaian", "⇲ Tidy": "⇲ Kemas", "Test slider": "Gelangsar ujian", "let go = stop": "lepas = berhenti", "Reverse direction": "Terbalikkan arah", "Cable": "Kabel", "The cable does not reach this far. Move the part closer or use a 50 cm cable.": "Kabel tidak sampai sejauh ini. Dekatkan part atau guna kabel 50 cm.", "Add to board": "Tambah ke papan", "Power budget": "Bajet kuasa", "estimate": "anggaran", "Hubs do not report current: these are estimates from each part and its power. Play time assumes a 1500 mAh battery.": "Hub tidak menghantar data arus: ini anggaran dari setiap part dan kuasanya. Masa main andaikan bateri 1500 mAh.", "Board built from the wiring": "Papan dibina dari pendawaian", "widgets": "widget", "Back on the board undoes it.": "Back pada papan membatalkannya.", "Wiring check done": "Semakan pendawaian selesai", "right": "betul", "swapped": "ditukar", "to check": "perlu disemak", "Running for a moment… watch which part moves.": "Berjalan sekejap… perhatikan part mana yang bergerak.", "Stop check": "Henti semakan", "Which part moved?": "Part mana yang bergerak?", "The app swaps the two ports: names, settings and widgets follow the motors.": "App menukar kedua-dua port: nama, tetapan dan widget ikut motor.", "Nothing moved": "Tiada yang bergerak", "Did this part move?": "Adakah part ini bergerak?", "Yes": "Ya", "No": "Bukan", "Again": "Ulang", "Check the plug and cable on port": "Semak palam dan kabel pada port", "Ports swapped": "Port ditukar", "of the hub budget": "daripada bajet hub", "Play time left": "Baki masa main", "over 4 hours": "lebih 4 jam", "Over the hub budget: the hub may cut out on a climb. Move a heavy motor to another hub.": "Melebihi bajet hub: hub mungkin mati ketika mendaki. Pindahkan motor berat ke hub lain.", "High load: the hub may limit power or get warm.": "Beban tinggi: hub mungkin hadkan kuasa atau jadi suam.", "Direction reversed for": "Arah diterbalikkan untuk", "Normal direction for": "Arah biasa untuk", "Pick what is plugged into each port first.": "Pilih dahulu apa yang dipasang pada setiap port.", "Added to the board.": "Ditambah ke papan.", "Added. Switch the layout to Board to see it.": "Ditambah. Tukar susun atur ke Papan untuk melihatnya.", "Tidied: each part back on its side of the hub.": "Dikemas: setiap part kembali ke sisinya pada hub.", "Previous board back.": "Papan sebelum ini dikembalikan.", "Hub wiring: Build board makes a board from what is plugged in (two drive motors become a tank joystick, servo a steering wheel, XL a lever, lights a toggle, plus E-Stop). Back on the board undoes it": "Pendawaian hub: Bina papan menghasilkan papan dari apa yang dipasang (dua motor pemanduan jadi joystik tank, servo jadi stereng, XL jadi tuas, lampu jadi togol, serta E-Stop). Back pada papan membatalkannya", "Power budget under the hub wiring: estimated current per port and per hub, warnings at high load and an estimate of play time left": "Bajet kuasa di bawah pendawaian hub: anggaran arus setiap port dan setiap hub, amaran bila beban tinggi dan anggaran baki masa main", "Check wiring: each port runs for a moment and the app asks if the right part moved; if not, pick the part that did and the two ports swap with their names, settings and widgets": "Semak pendawaian: setiap port berjalan sekejap dan app bertanya sama ada part yang betul bergerak; jika tidak, pilih part yang bergerak dan kedua-dua port ditukar bersama nama, tetapan dan widget", "Hub wiring cables come alive: bright pulses run along a cable while its port has power, faster with more power and backwards in reverse": "Kabel pendawaian hub hidup: denyut cahaya mengalir sepanjang kabel bila port berkuasa, lebih laju dengan kuasa lebih dan berundur bila undur", "Hub wiring labels show the channel name under the part": "Label pendawaian hub menunjukkan nama saluran di bawah part", "Port panel: test slider (let go = stop), reverse direction switch, cable length (20 or 50 cm) and Add to board for that port": "Panel port: gelangsar ujian (lepas = berhenti), suis terbalikkan arah, panjang kabel (20 atau 50 cm) dan Tambah ke papan untuk port itu", "Tidy: parts glide back to their own side of the hub so the cables are short and do not cross": "Kemas: part meluncur kembali ke sisinya pada hub supaya kabel pendek dan tidak bersilang", "Cable length: a cable turns red when the part sits further away than its cable reaches (5 studs = 4 cm)": "Panjang kabel: kabel jadi merah bila part diletak lebih jauh daripada jangkauan kabelnya (5 stud = 4 cm)", "All hubs: see every hub's wiring at once (side by side when the phone is sideways); the channel test then shows every hub": "Semua hub: lihat pendawaian setiap hub sekali gus (bersebelahan bila telefon mengiring); uji saluran kemudian tunjuk setiap hub"};for(var wk in WRMS) if(!MS[wk]) MS[wk]=WRMS[wk];
 
   var V2MS4={"Cruise": "Cruise", "Connect the hub first.": "Sambungkan hub dahulu.", "Cruise off. Held controls go back to 0.": "Cruise dimatikan. Kawalan yang ditahan kembali ke 0.", "Cruise on: a control you let go of keeps its value. Bring it back to the middle to stop it. Steering and lights still return.": "Cruise hidup: kawalan yang dilepaskan kekal pada nilainya. Bawa kembali ke tengah untuk berhenti. Stereng dan lampu tetap kembali.", "Cruise on": "Cruise hidup", "Steering eases at speed": "Stereng ikut kelajuan", "Steering": "Stereng", "Throttle": "Pendikit", "Steering at full speed": "Stereng pada kelajuan penuh", "At full throttle the steering turns only this much, so the model does not tip over in fast turns.": "Pada pendikit penuh, stereng hanya berpusing setakat ini supaya model tidak terbalik semasa membelok laju.", "Bluetooth is back. Reconnecting the hub. Motors are at zero.": "Bluetooth hidup semula. Menyambung semula hub. Motor pada sifar.", "Reconnect automatically (back in the app, Bluetooth on again, or app opened)": "Sambung semula automatik (kembali ke app, Bluetooth hidup semula, atau app dibuka)", "Reconnecting the hub from last time. Motors are at zero.": "Menyambung semula hub seperti kali lepas. Motor pada sifar.", "Icon & photo": "Ikon & foto", "Model icon": "Ikon model", "Choose photo": "Pilih foto", "Remove photo": "Buang foto", "No icon": "Tiada ikon", "Car": "Kereta", "Excavator": "Jengkaut", "Crane": "Kren", "Truck": "Lori", "Tractor": "Traktor", "Boat": "Bot", "Photo set for this model.": "Foto ditetapkan untuk model ini.", "Photo removed.": "Foto dibuang.", "That image could not be read.": "Imej itu tidak dapat dibaca.", "No image was chosen.": "Tiada imej dipilih.", "Practice: virtual model": "Latihan: model maya", "tap to put the model back in the middle": "ketik untuk letak model di tengah semula", "Undo": "Batal", "Redo": "Ulang", "Focus mode": "Mod fokus", "Focus mode. Tap the focus button at the top to leave.": "Mod fokus. Ketik butang fokus di atas untuk keluar."};
   for(var v2k4 in V2MS4) if(!MS[v2k4]) MS[v2k4]=V2MS4[v2k4];
@@ -6221,20 +6035,6 @@ try{
   v2Click('#hRec',function(){v2OpenFold($('#recCard'),'fRec')});
   v2Click('#hSeq',function(){v2OpenFold($('#seqCard'),'fSeq')});
 
-  // Model settings: layout choice, wizard and hub test go under Advanced (Board is the normal way to drive)
-  (function(){
-    var card=document.querySelector('section.model');if(!card) return;
-    var d=document.createElement('details');d.className='adv';var sm=document.createElement('summary');sm.textContent='Advanced';d.appendChild(sm);
-    var inner=document.createElement('div');inner.className='rec-row v2-advrow';d.appendChild(inner);
-    var lay=card.querySelector('.seg[aria-label="Layout"]');
-    var lbl=document.createElement('div');lbl.className='seglbl';lbl.textContent='Control layout';
-    if(lay){d.insertBefore(lbl,inner);d.insertBefore(lay,inner)}
-    ['#profWiz','#profTest'].forEach(function(q){var e=$(q);if(e) inner.appendChild(e)});
-    var note=$('#testNote'),wiz=$('#wizPanel');
-    var after=card.querySelector('.model-row:last-of-type')||card.lastChild;
-    card.insertBefore(d,after.nextSibling);
-    if(note) d.appendChild(note);if(wiz) d.appendChild(wiz);
-  })();
   // Hub module numbers and names (existing rows) sit on the Hub screen under "Hub numbers & names"
   (function(){var box=$('#hubRows');['#hub0','#hubN0'].forEach(function(q){var el=$(q);var row=el&&el.closest('.set-row');if(row&&box) box.appendChild(row)})})();
   v2Click('#hubName',function(){var d=$('#hubAdv');if(d) d.open=true;var n=$('#hubN0');if(n){try{n.scrollIntoView({block:'center'});n.focus()}catch(_){}}});
@@ -7054,8 +6854,7 @@ return API;
     $('#sLefty').setAttribute('aria-checked',String(!!store.prefs.lefty));
     $('#sTrail').setAttribute('aria-checked',String(store.prefs.trail!==false));$('#sLframe').setAttribute('aria-checked',String(store.prefs.lframe!==false));
     v2T($('#sFineV'),store.prefs.fine?store.prefs.fine+'%':'Off');
-    var bbl=bbLoad();v2T($('#sBbV'),bbl.length?new Date(bbl[0].at).toTimeString().slice(0,5):'None yet');$('#sMeter').setAttribute('aria-checked',String(!!store.prefs.meter));
-    var mt=$('#dMeter');if(mt&&mt.hidden===!!store.prefs.meter) mt.hidden=!store.prefs.meter;
+    var bbl=bbLoad();v2T($('#sBbV'),bbl.length?new Date(bbl[0].at).toTimeString().slice(0,5):'None yet');
   }
 
   // ---- Hub link diagnostics (numbers from the native Bluetooth side) ----
@@ -7188,14 +6987,13 @@ return API;
     var sh=$('#sHC');if(sh) sh.setAttribute('aria-checked',String(hc));
     var cb=!!store.prefs.cb;if(R2.hasAttribute('data-cb')!==cb){if(cb) R2.setAttribute('data-cb','');else R2.removeAttribute('data-cb')}
     var sc0=$('#sCB');if(sc0) sc0.setAttribute('aria-checked',String(cb));
-    var dm=!!store.prefs.dir;var sd0=$('#sDir');if(sd0) sd0.setAttribute('aria-checked',String(dm));
+    var dm=true;
     if(PAL.g!==(cb?PALCB.g:PAL0.g)||DIRMK!==dm){palSet(cb);DIRMK=dm;if(typeof syncBoard==='function'&&R2._pal!==undefined) syncBoard()}R2._pal=1;
     var fs=store.prefs.fs||100;if(R2._fs!==fs){R2._fs=fs;try{if(NB&&NB.textZoom) NB.textZoom(fs)}catch(_){}}
     v2T($('#sTextV'),fs>=130?'Largest':fs>=115?'Large':'Normal');
   }
   v2Click('#sHC',function(){store.prefs.hc=!store.prefs.hc;save();v2Theme();});
   v2Click('#sCB',function(){store.prefs.cb=!store.prefs.cb;save();v2Theme();toast(store.prefs.cb?'Colour-blind colours on: blue, orange and vermillion.':'Normal colours.')});
-  v2Click('#sDir',function(){store.prefs.dir=!store.prefs.dir;save();v2Theme();});
   v2Click('#sText',function(){var f=store.prefs.fs||100;store.prefs.fs=f>=130?100:f>=115?130:115;save();v2Theme();feedback('ok');
     if(!(NB&&NB.textZoom)) toast('Text size works in the Android app.')});
 
@@ -7319,6 +7117,7 @@ return API;
 
   // ---- What's new, version and update check ----
   var CHANGES=[
+    {b:91,items:[["better", "Model settings: the Advanced part is gone (Standard / Joystick / Dual stick layouts, Setup wizard and Test hub). Every model drives with the Board; older models get a starter board"], ["better", "Settings: the Live output meter is gone, and values always show ▲/▼ for direction (the switch is gone)"], ["better", "Model icons are now detailed pictures: car, excavator, crane, truck, tractor and boat"]]},
     {b:90,items:[["better", "Hub wiring: the port panel floats above the page, with Hold and the test slider at the top, so a motor can be tested while the wiring stays in view"], ["fix", "Hub wiring: with Reverse direction on, the motor picture, the cable pulses and the panel value now show the reversed direction the hub really gets"], ["fix", "Hub wiring: a port panel left open from another model or from All hubs closes instead of showing the wrong hub"]]},
     {b:89,items:[['new', 'Hub wiring: Build board makes a board from what is plugged in (two drive motors become a tank joystick, servo a steering wheel, XL a lever, lights a toggle, plus E-Stop). Back on the board undoes it'], ['new', 'Power budget under the hub wiring: estimated current per port and per hub, warnings at high load and an estimate of play time left'], ['new', 'Check wiring: each port runs for a moment and the app asks if the right part moved; if not, pick the part that did and the two ports swap with their names, settings and widgets'], ['new', 'Hub wiring cables come alive: bright pulses run along a cable while its port has power, faster with more power and backwards in reverse'], ['new', 'Hub wiring labels show the channel name under the part'], ['new', 'Port panel: test slider (let go = stop), reverse direction switch, cable length (20 or 50 cm) and Add to board for that port'], ['new', 'Tidy: parts glide back to their own side of the hub so the cables are short and do not cross'], ['new', 'Cable length: a cable turns red when the part sits further away than its cable reaches (5 studs = 4 cm)'], ['new', 'All hubs: see every hub\'s wiring at once (side by side when the phone is sideways); the channel test then shows every hub']]},
     {b:88,items:[['better','Motor axle: full-width LED display, it fills left to right going forward and right to left in reverse']]},
@@ -7516,31 +7315,6 @@ return API;
   v2Click('#sFine',function(){var o=[30,50,0,20],i=o.indexOf(store.prefs.fine);store.prefs.fine=o[(i+1)%o.length];save();fineSet();v2Paint();
     toast(store.prefs.fine?'Two-finger fine control: '+store.prefs.fine+'%':'Two-finger fine control off')});
   v2Click('#sLefty',function(){store.prefs.lefty=!store.prefs.lefty;save();try{syncBoard()}catch(_){}v2Paint();});
-
-  // ---- 7 · Live output meter on the Drive screen (thin; tap for the big view) ----
-  var v2MCols=[],v2MKey='';
-  function v2MeterBuild(){
-    var m=$('#dMeter');if(!m) return;var idx=activeIdx(),key=idx.join(',');if(key===v2MKey) return;v2MKey=key;
-    m.innerHTML='';v2MCols=idx.map(function(i){
-      var c=document.createElement('span');c.className='mc';
-      c.innerHTML='<i class="mt"><i class="mu"></i><i class="md"></i></i><em></em><small></small>';
-      c.querySelector('em').textContent=tagOf(i);m.appendChild(c);
-      return {i:i,u:c.querySelector('.mu'),d:c.querySelector('.md'),v:c.querySelector('small'),k:''};
-    });
-  }
-  (function(){var m=$('#dMeter');if(m) m.addEventListener('click',function(){V2UI.meterBig=!V2UI.meterBig;v2UiSave();m.classList.toggle('big',!!V2UI.meterBig);feedback('ok')});if(m&&V2UI.meterBig) m.classList.add('big')})();
-  function v2MeterPaint(){
-    if(V2.v!=='drive'||document.hidden||!store.prefs.meter) return;
-    v2MeterBuild();
-    v2MCols.forEach(function(c){
-      var o=Math.round(rt.o[c.i]||0),a=Math.min(100,Math.abs(o)),q=Math.round(a/5)*5,lv=S.estop?'x':a<=55?'g':a<=80?'o':'r',k=(o<0?'-':'+')+q+lv;
-      if(k===c.k) return;c.k=k;
-      c.u.style.height=(o>0?q/2:0)+'%';c.d.style.height=(o<0?q/2:0)+'%';c.u.className='mu '+lv;c.d.className='md '+lv;
-      c.v.textContent=o?((o>0?'+':'')+o):'0';
-    });
-  }
-  setInterval(v2MeterPaint,100);
-  v2Click('#sMeter',function(){store.prefs.meter=!store.prefs.meter;save();v2Paint();});
 
   // ---- 10 · Widget gallery: picture cards with categories instead of a list of names ----
   (function(){
@@ -7763,14 +7537,50 @@ return API;
   Array.prototype.forEach.call(document.querySelectorAll('#ssMin .btn'),function(x){x.addEventListener('click',function(){C.ss.min=+x.getAttribute('data-v');save();v2SsPaint()})});
 
   // ---- 8 · Model icon & photo ----
-  var V2MI={car:'M3.5 15.5l2-5.5h13l2 5.5v3h-17z M7 18.5v1.5M17 18.5v1.5 M7.5 10l1.6-3.2h5.8L16.5 10 M6.5 14h2M15.5 14h2',
-    dig:'M2.5 17.5h11v2h-11z M4.5 17.5v-4h6.5v4 M11 14l4.5-6.5 3.5 3 M19 10.5v4.5l-2.2 1.2',
-    crane:'M6 20.5V4h2.2v16.5 M4 20.5h6 M7 5h13 M18 5v6.5 M16.6 11.5h2.8v2h-2.8z M8.2 5l-3 3',
-    truck:'M2.5 7.5h11v9.5h-11z M13.5 10.5h4.2l3.3 3.3v3.2h-7.5z M6 17.5a1.6 1.6 0 1 0 0 .1 M17 17.5a1.6 1.6 0 1 0 0 .1',
-    tractor:'M4 15.5V9.5h7l1.5 3h6v3 M5.5 9.5V6h4v3.5 M7.5 18a3 3 0 1 0 0 .1 M18 18a2 2 0 1 0 0 .1',
-    boat:'M3 15h18l-2.5 4.5h-13z M12 4.5V15 M12 5l5.5 8H12'};
+  // 64×64 cel-shaded pictures (black outline, flat fills, light and shade shapes; no gradients, so copies never break)
+  var V2MI=(function(){var K='#0b0b0b',Y='#ffc400',YD='#d99200',YL='#ffe27a',DK='#2b303a',TY='#17191d',RIM='#a8b0bc',GL='#8fd0ff',GD='#4f9fd8',W='#f4f5f7';
+  function wheel(x,y,r){return '<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="'+TY+'" stroke="'+K+'" stroke-width="2"/><circle cx="'+x+'" cy="'+y+'" r="'+(r*.52)+'" fill="'+RIM+'" stroke="'+K+'" stroke-width="1.6"/><circle cx="'+x+'" cy="'+y+'" r="'+(r*.18)+'" fill="'+DK+'"/><path d="M'+(x-r*.36)+' '+(y-r*.2)+'a'+(r*.42)+' '+(r*.42)+' 0 0 1 '+(r*.5)+' '+(-r*.24)+'" stroke="#fff" stroke-width="1.2" fill="none" opacity=".7"/>'}
+  return {
+  car:'<path d="M5 40c0-5 3-7.5 8-8.5l8.5-7.5c2-1.8 4.5-2.6 7.5-2.6h11c4 0 7 1.6 9.2 4.6l4.3 5.5c4.6 1 7.5 3.2 7.5 7.5v3.3c0 1.3-1 2.2-2.2 2.2H7.2C6 44.5 5 43.6 5 42.4z" fill="'+Y+'" stroke="'+K+'" stroke-width="2.2" stroke-linejoin="round"/>'+
+   '<path d="M6.2 40.5h51.6v1.9c0 .8-.6 1.4-1.4 1.4H7.6c-.8 0-1.4-.6-1.4-1.4z" fill="'+YD+'"/>'+
+   '<path d="M23.5 31l5.6-5.3c1-1 2.2-1.4 3.6-1.4h1.6V31z" fill="'+GL+'" stroke="'+K+'" stroke-width="1.8" stroke-linejoin="round"/><path d="M37.6 24.3h2.6c2.8 0 4.8 1.2 6.4 3.4l2.4 3.3H37.6z" fill="'+GL+'" stroke="'+K+'" stroke-width="1.8" stroke-linejoin="round"/>'+
+   '<path d="M26 30l4.5-4.2M40 26.5l-2 3" stroke="#fff" stroke-width="1.4" opacity=".8"/><path d="M12 34.5h40" stroke="'+YL+'" stroke-width="2" stroke-linecap="round"/>'+
+   '<path d="M55.5 34.5h3" stroke="#fff6c2" stroke-width="2.6" stroke-linecap="round"/><path d="M6.5 35.5h2.5" stroke="#e24b4a" stroke-width="2.4" stroke-linecap="round"/>'+wheel(18,44,7.2)+wheel(47,44,7.2),
+  dig:'<rect x="4" y="44" width="32" height="12" rx="6" fill="'+DK+'" stroke="'+K+'" stroke-width="2.2"/>'+[10,17,24,30].map(function(x){return '<circle cx="'+x+'" cy="50" r="2.6" fill="'+RIM+'" stroke="'+K+'" stroke-width="1.4"/>'}).join('')+
+   '<path d="M5 47.5h30" stroke="#59606c" stroke-width="1.4"/>'+
+   '<path d="M7 43V33.5c0-1.4 1.1-2.5 2.5-2.5H14V26c0-1.1.9-2 2-2h10.5c1.1 0 2 .9 2 2v17z" fill="'+Y+'" stroke="'+K+'" stroke-width="2.2" stroke-linejoin="round"/>'+
+   '<path d="M8.2 39.5h19.3V42H8.2z" fill="'+YD+'"/><rect x="17" y="27" width="8.5" height="8.5" rx="1.4" fill="'+GL+'" stroke="'+K+'" stroke-width="1.6"/><path d="M18.5 33.5l4.5-5" stroke="#fff" stroke-width="1.3" opacity=".8"/>'+
+   '<path d="M27 37l13.5-21.5c.9-1.4 2.8-1.6 4-.5l11 10.2-3.2 3.2-9.3-7.6L31.5 40z" fill="'+Y+'" stroke="'+K+'" stroke-width="2.2" stroke-linejoin="round"/>'+
+   '<path d="M51.5 28.5l3.5 12" stroke="'+K+'" stroke-width="5.6" stroke-linecap="round"/><path d="M51.5 28.5l3.5 12" stroke="'+YD+'" stroke-width="2.6" stroke-linecap="round"/>'+
+   '<path d="M50.5 39.5h9.2l-1.7 8.5c-.3 1.2-1.3 2-2.5 2h-6.3z" fill="'+DK+'" stroke="'+K+'" stroke-width="2" stroke-linejoin="round"/><path d="M50.5 50.2l-1.2 2.5M54 50.2l-.6 2.5M57.4 50l.2 2.5" stroke="'+K+'" stroke-width="1.8" stroke-linecap="round"/>'+
+   '<circle cx="42.8" cy="15.6" r="1.5" fill="'+K+'"/><circle cx="53.3" cy="27.2" r="1.5" fill="'+K+'"/><path d="M33 33l8.5-13.5" stroke="'+YL+'" stroke-width="1.8" stroke-linecap="round"/>',
+  crane:'<path d="M20 58V14h8v44" fill="'+Y+'" stroke="'+K+'" stroke-width="2.2" stroke-linejoin="round"/>'+[18,24,30,36,42,48,54].map(function(y){return '<path d="M20 '+y+'l8 -6M20 '+(y-6)+'l8 6" stroke="'+K+'" stroke-width="1.2" opacity=".7"/>'}).join('')+
+   '<path d="M6 10.5h54v5H6z" fill="'+Y+'" stroke="'+K+'" stroke-width="2.2" stroke-linejoin="round"/>'+[12,18,24,30,36,42,48,54].map(function(x){return '<path d="M'+x+' 10.5l3 5M'+(x+3)+' 10.5l3 5" stroke="'+K+'" stroke-width="1.1" opacity=".7"/>'}).join('')+
+   '<path d="M24 4l-16 6.5M24 4l34 6.5" stroke="'+K+'" stroke-width="1.6"/><path d="M21 4h6v6.5h-6z" fill="'+DK+'" stroke="'+K+'" stroke-width="1.8"/>'+
+   '<rect x="6" y="15.5" width="8" height="7" rx="1" fill="'+DK+'" stroke="'+K+'" stroke-width="1.8"/><rect x="28" y="15.5" width="7" height="6" rx="1.2" fill="'+GL+'" stroke="'+K+'" stroke-width="1.6"/>'+
+   '<path d="M50 15.5v15" stroke="'+K+'" stroke-width="1.6"/><path d="M47 30.5h6v3.5h-6z" fill="'+DK+'" stroke="'+K+'" stroke-width="1.6"/><path d="M50 34v3.5c0 2.2-3.4 2.2-3.4 0" fill="none" stroke="'+K+'" stroke-width="2" stroke-linecap="round"/>'+
+   '<path d="M12 58h24" stroke="'+K+'" stroke-width="3.6" stroke-linecap="round"/><path d="M23 15v42" stroke="'+YL+'" stroke-width="1.4" opacity=".8"/>',
+  truck:'<path d="M4 15.5c0-1.4 1.1-2.5 2.5-2.5h28c1.4 0 2.5 1.1 2.5 2.5V44H4z" fill="'+W+'" stroke="'+K+'" stroke-width="2.2" stroke-linejoin="round"/><path d="M5.2 38.5h30.6V43H5.2z" fill="#c9ced6"/><path d="M8 18h26" stroke="#c9ced6" stroke-width="2" stroke-linecap="round"/>'+
+   '<path d="M37 22h12c1.2 0 2.3.6 3 1.6l6.4 9.4c.4.6.6 1.3.6 2V42c0 1.1-.9 2-2 2H37z" fill="'+Y+'" stroke="'+K+'" stroke-width="2.2" stroke-linejoin="round"/>'+
+   '<path d="M40.5 25.5h8c.8 0 1.5.4 1.9 1l4.6 6.5H40.5z" fill="'+GL+'" stroke="'+K+'" stroke-width="1.8" stroke-linejoin="round"/><path d="M43 31.5l4-4.5" stroke="#fff" stroke-width="1.3" opacity=".8"/>'+
+   '<path d="M38.2 38.5h20.6v2.6c0 .8-.6 1.5-1.4 1.5H38.2z" fill="'+YD+'"/><path d="M57 36h2.4" stroke="#fff6c2" stroke-width="2.6" stroke-linecap="round"/>'+wheel(13,45,6.4)+wheel(27,45,6.4)+wheel(49,45,6.4),
+  tractor:'<path d="M14 36V24c0-1.1.9-2 2-2h11l4.5 9H54c1.1 0 2 .9 2 2v6.5c0 1.1-.9 2-2 2H33z" fill="'+Y+'" stroke="'+K+'" stroke-width="2.2" stroke-linejoin="round"/>'+
+   '<path d="M14 22V9.5c0-1.1.9-2 2-2h11c1.1 0 2 .9 2 2V22" fill="none" stroke="'+K+'" stroke-width="2.6"/><path d="M16.5 10h10v11.5h-10z" fill="'+GL+'" stroke="'+K+'" stroke-width="1.6" opacity=".95"/><path d="M18.5 19l6-7" stroke="#fff" stroke-width="1.3" opacity=".8"/>'+
+   '<path d="M12.5 7.5h18" stroke="'+K+'" stroke-width="3.2" stroke-linecap="round"/><path d="M45 31V22.5" stroke="'+K+'" stroke-width="3" stroke-linecap="round"/><path d="M44 20.5h2.4" stroke="'+K+'" stroke-width="3.4" stroke-linecap="round"/>'+
+   '<path d="M33 36.5h22v2.5c0 .7-.6 1.3-1.3 1.3H33z" fill="'+YD+'"/><path d="M34 34h20" stroke="'+YL+'" stroke-width="1.6" stroke-linecap="round"/>'+
+   '<circle cx="20" cy="44" r="13" fill="'+TY+'" stroke="'+K+'" stroke-width="2.2"/>'+[0,45,90,135,180,225,270,315].map(function(a){var r=a*Math.PI/180;return '<path d="M'+(20+11.5*Math.cos(r)).toFixed(1)+' '+(44+11.5*Math.sin(r)).toFixed(1)+'L'+(20+14*Math.cos(r)).toFixed(1)+' '+(44+14*Math.sin(r)).toFixed(1)+'" stroke="'+TY+'" stroke-width="3.4" stroke-linecap="round"/>'}).join('')+
+   '<circle cx="20" cy="44" r="6.8" fill="'+Y+'" stroke="'+K+'" stroke-width="1.8"/><circle cx="20" cy="44" r="2.2" fill="'+DK+'"/>'+
+   '<circle cx="48" cy="48" r="8" fill="'+TY+'" stroke="'+K+'" stroke-width="2"/><circle cx="48" cy="48" r="4" fill="'+Y+'" stroke="'+K+'" stroke-width="1.6"/><circle cx="48" cy="48" r="1.4" fill="'+DK+'"/>',
+  boat:'<path d="M31 6v40" stroke="'+K+'" stroke-width="2.6" stroke-linecap="round"/>'+
+   '<path d="M33 8.5c8 7 13 18 14.5 31H33z" fill="'+W+'" stroke="'+K+'" stroke-width="2" stroke-linejoin="round"/><path d="M36 14c4.5 5.5 7.5 13 8.6 22" stroke="#c9ced6" stroke-width="1.6" fill="none"/>'+
+   '<path d="M29 12c-5.5 7-9 16-10.5 27.5H29z" fill="'+Y+'" stroke="'+K+'" stroke-width="2" stroke-linejoin="round"/><path d="M27 18c-3 5-5 11-6 17.5" stroke="'+YL+'" stroke-width="1.6" fill="none"/>'+
+   '<path d="M30 6.5l6 2.5-6 2.5" fill="#e24b4a" stroke="'+K+'" stroke-width="1.4" stroke-linejoin="round"/>'+
+   '<path d="M6 42h52l-6.5 9.5c-.6.9-1.6 1.5-2.7 1.5H15.2c-1.1 0-2.1-.6-2.7-1.5z" fill="'+DK+'" stroke="'+K+'" stroke-width="2.2" stroke-linejoin="round"/><path d="M8.5 45.5h47" stroke="'+Y+'" stroke-width="2.4"/>'+
+   '<circle cx="20" cy="48.5" r="1.4" fill="'+GL+'"/><circle cx="26" cy="48.5" r="1.4" fill="'+GL+'"/><circle cx="32" cy="48.5" r="1.4" fill="'+GL+'"/>'+
+   '<path d="M4 57c3-2 6-2 9 0s6 2 9 0 6-2 9 0 6 2 9 0 6-2 9 0 6 2 9 0" fill="none" stroke="'+GD+'" stroke-width="2.4" stroke-linecap="round"/>'};
+  })();
   var V2MIN={car:'Car',dig:'Excavator',crane:'Crane',truck:'Truck',tractor:'Tractor',boat:'Boat'};
-  function v2MiSvg(k,cls){return '<svg class="'+(cls||'ic')+'" viewBox="0 0 24 24" aria-hidden="true"><path d="'+V2MI[k]+'"/></svg>'}
+  function v2MiSvg(k){return '<svg class="mi" viewBox="0 0 64 64" aria-hidden="true">'+V2MI[k]+'</svg>'}
   function v2Avatar(cfg,big){
     if(cfg&&cfg.photo) return '<span class="v2-av'+(big?' big':'')+'"><img alt="" src="'+cfg.photo+'"></span>';
     if(cfg&&cfg.icon&&V2MI[cfg.icon]) return '<span class="v2-av ic'+(big?' big':'')+'">'+v2MiSvg(cfg.icon)+'</span>';

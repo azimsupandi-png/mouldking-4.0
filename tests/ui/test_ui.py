@@ -261,8 +261,8 @@ async def t_twelve(b):
     # 7 live meter follows the output
     await pg.evaluate("document.querySelector('#dMode [data-lp=\"2\"]').click();var r=document.querySelector('#boardGrid input[type=range]');r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=80;r.dispatchEvent(new Event('input',{bubbles:true}))")
     await pg.wait_for_timeout(600)
-    r = await pg.evaluate("parseFloat(document.querySelector('#dMeter .mu').style.height)||0")
-    check('7 live meter shows the output of channel A', r > 10, r)
+    r = await pg.evaluate("[!!document.getElementById('dMeter'),!!document.getElementById('sMeter'),!!document.getElementById('sDir')]")
+    check('7 live output meter and its switches are gone', r == [False, False, False], r)
     await pg.evaluate("var r=document.querySelector('#boardGrid input[type=range]');r.value=0;r.dispatchEvent(new Event('input',{bubbles:true}));r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}))")
     # 9 size button cycles 1x1 -> 2x1
     await pg.evaluate("__ed()")
@@ -867,6 +867,26 @@ async def t_wire12(b):
     check('wiring extras: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_clean91(b):
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'Old',cfg:{layout:'joy',
+      ch:[{name:'Drive'},{name:'Steer'},{name:'Lights',kind:'light'},{},{},{}],board:[]}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    r = await pg.evaluate("(function(){mk6Go('drive');return [__t.C.layout,__t.C.board.map(x=>x.k).join(','),document.querySelectorAll('#boardGrid .bdw').length]})()")
+    check('old Joystick layout model opens as a Board with starter widgets', r[0] == 'board' and r[1].startswith('s,s,l') and r[1].endswith(',e') and r[2] >= 4, r)
+    await pg.evaluate("mk6Go('medit')"); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[!!document.querySelector('section.model details.adv'),!!document.getElementById('lStd'),!!document.getElementById('profWiz'),!!document.getElementById('profTest'),document.querySelectorAll('#mIcons svg.mi').length,document.querySelector('#mIcons [data-ic=car]').getBoundingClientRect().width]")
+    check('model settings: no Advanced (layout, wizard, test hub); 6 picture icons at 56 px', r == [False, False, False, False, 6, 56], r)
+    await pg.evaluate("document.querySelector('#mIcons [data-ic=tractor]').click()"); await pg.wait_for_timeout(200)
+    r = await pg.evaluate("[__t.C.icon,document.querySelectorAll('.v2-av.ic svg.mi').length>0]")
+    check('picked picture icon is saved and shown on the model knob', r == ['tractor', True], r)
+    check('cleanup: no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def t_pro(b):
     # P1 live link centre, P3 duplicate + group move, P5 accessibility, P6 what's new + update check
     def mk(seed, w=390, h=844, extra=''):
@@ -887,14 +907,14 @@ async def t_pro(b):
     r = await pg.evaluate("mk6Go('drive');[...document.querySelectorAll('#boardGrid .bdw')].map(w=>w.getAttribute('role')+'|'+(w.getAttribute('aria-label')||''))")
     check('P5: every widget has a TalkBack label', len(r) == 3 and all(x.startswith('group|') and len(x) > 8 for x in r), r)
     # P5: direction arrows + colour-blind palette
-    await pg.evaluate("document.getElementById('sDir').click();document.getElementById('sCB').click()")
+    await pg.evaluate("document.getElementById('sCB').click()")
     await pg.wait_for_timeout(200)
-    r = await pg.evaluate("[document.documentElement.hasAttribute('data-cb'),getComputedStyle(document.documentElement).getPropertyValue('--ok').trim(),__t.store.prefs.cb,__t.store.prefs.dir]")
-    check('P5: colour-blind palette switches the colours', r[0] and r[1].upper() == '#56B4E9' and r[2] and r[3], r)
+    r = await pg.evaluate("[document.documentElement.hasAttribute('data-cb'),getComputedStyle(document.documentElement).getPropertyValue('--ok').trim(),__t.store.prefs.cb]")
+    check('P5: colour-blind palette switches the colours', r[0] and r[1].upper() == '#56B4E9' and r[2], r)
     await pg.evaluate("document.getElementById('hConn').click();onHubState('ready');mk6Go('drive');__t.rt.t[0]=40;__t.rt.t[1]=-30")
     await pg.wait_for_timeout(800)
     r = await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw[data-k=s] .bdw-h output')].map(o=>o.textContent)")
-    check('P5: values show direction arrows', len(r) == 2 and r[0].startswith('▲') and r[1].startswith('▼'), r)
+    check('P5: values show direction arrows (always on)', len(r) == 2 and r[0].startswith('▲') and r[1].startswith('▼'), r)
     await pg.evaluate("document.getElementById('sHC').click()")
     r = await pg.evaluate("document.documentElement.hasAttribute('data-hc')")
     check('P5: outdoor high contrast turns on', r, r)
@@ -1029,7 +1049,7 @@ async def t_pro2(b):
     r = await pg.evaluate("[__t.store.prefs.msort,__t.store.profiles.map(p=>p.cfg.fav)]")
     check('P4: A-Z sort and star toggle are saved', r == ['a', [True, True]], r)
     # P9
-    await pg.evaluate("window.__calls.length=0;mk6Go('settings');var e=document.getElementById('sNew');e.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));document.getElementById('sDir').click()")
+    await pg.evaluate("window.__calls.length=0;mk6Go('settings');var e=document.getElementById('sNew');e.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));document.getElementById('sHC').click();document.getElementById('sHC').click()")
     await pg.wait_for_timeout(100)
     await pg.evaluate("var w=document.getElementById('wnSheet');w&&w.remove()")
     r = await pg.evaluate("__calls.filter(c=>c.indexOf('haptic:')===0)")
@@ -1524,7 +1544,7 @@ async def t_wirelock(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
