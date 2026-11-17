@@ -1594,12 +1594,12 @@ html[data-ui=light]:not(.dash) .lx-lb.on{background:#fff4c2;border-color:#d9a400
 .v2-ssrow label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}.v2-ssrow .seg,.v2-ssrow .note{grid-column:1/-1}.v2-ssrow .note{margin:0;font-size:12px}
 /* ---------- 8 · model icon & photo ---------- */
 .v2-mico{margin:10px 0 2px}.v2-icons{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 8px}
-.v2-icb{width:56px;height:56px;display:grid;place-items:center;border:1px solid var(--line);border-radius:12px;background:var(--well);color:var(--muted);cursor:pointer}
-.v2-icb .ic,.v2-icb .mi{width:44px;height:44px}.v2-icb[aria-pressed=true]{border-color:var(--acc);color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.v2-icb{width:56px;height:56px;background:#14181f!important;border-color:#2b303a!important;display:grid;place-items:center;border:1px solid var(--line);border-radius:12px;background:var(--well);color:var(--muted);cursor:pointer}
+.v2-icb .ic{width:24px;height:24px}.v2-icb .mi{width:30px;height:30px;fill:#ffc400}.v2-icb[aria-pressed=true] .mi{filter:drop-shadow(0 0 4px rgba(255,196,0,.45))}.v2-icb[aria-pressed=true]{border-color:var(--acc);color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
 .v2-noic{font-weight:800}
 .v2-knob.has-av{display:grid;place-items:center;overflow:hidden;background:#1d222b}
 .v2-av{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;overflow:hidden}
-.v2-av img{width:100%;height:100%;object-fit:cover}.v2-av.ic{color:#ffd84a}.v2-av.ic .ic,.v2-av.ic .mi{width:78%;height:78%}
+.v2-av img{width:100%;height:100%;object-fit:cover}.v2-av.ic{color:#ffd84a}.v2-av.ic .ic{width:68%;height:68%}.v2-av.ic .mi{width:62%;height:62%;fill:#ffc400}
 .v2-thw{position:relative}.v2-mph{display:block;width:100%;aspect-ratio:2/1;object-fit:cover;border-radius:10px}
 .v2-mbadge{position:absolute;left:6px;top:6px;width:26px;height:26px;display:grid;place-items:center;border-radius:8px;background:rgba(11,13,17,.85);color:#ffd84a}.v2-mbadge .ic{width:18px;height:18px}
 /* ---------- 7 · practice simulator ---------- */
@@ -1861,10 +1861,10 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
 .wr-panel .wr-holds{margin-top:4px}
 html.wr-fl[data-v=hub] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(44vh,460px) + env(safe-area-inset-bottom,0px))!important}
 .wr-ph{display:flex;align-items:center;gap:8px}.wr-ph .chip{background:linear-gradient(180deg,#ffe27a,#e9b81d);color:#14181f;border-radius:7px;padding:1px 8px;font-weight:900}
-.wr-pn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.wr-pv{color:#ffd84a;font-variant-numeric:tabular-nums;min-width:48px;text-align:right}
+.wr-pn{flex:1;min-width:0;width:0;font:inherit;font-weight:800;font-size:18px;color:#e8e8ea;background:transparent;border:0;border-bottom:1.5px dashed #3a414d;border-radius:0;padding:4px 2px 3px;outline:none;text-overflow:ellipsis}.wr-pn:focus{border-bottom:1.5px solid #ffd84a;background:#0f1217}.wr-pv{color:#ffd84a;font-variant-numeric:tabular-nums;min-width:48px;text-align:right}
 .wr-lab{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8a93a0;font-weight:700;margin:10px 0 6px}
 .wr-types{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.wr-types button{background:#12151b;border:1.5px solid #2b303a;border-radius:12px;color:#c9ced6;padding:6px 4px;font:700 11px inherit;display:flex;flex-direction:column;align-items:center;gap:2px}
+.wr-types button{background:#12151b;border:1.5px solid #2b303a;border-radius:12px;color:#c9ced6;padding:6px 4px;font-weight:700;font-size:13px;line-height:1.15;white-space:nowrap;min-width:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:2px}
 .wr-types button.sel{border-color:#ffd84a;color:#ffd84a;box-shadow:0 0 10px rgba(255,216,74,.2)}
 .wr-types img{width:100%;height:34px;object-fit:contain}.wr-none{font-style:normal;font-size:22px;height:34px;line-height:34px;color:#59606c}
 .wr-holds{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.wr-holds .btn{height:48px;touch-action:none}.wr-holds .btn.down{border-color:#ffd84a;color:#ffd84a}
@@ -1872,7 +1872,11 @@ html.wr-fl[data-v=hub] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(4
 .wr-subh{font-weight:800;font-size:13px;color:#c9ced6;margin:2px 4px 6px}
 .wr-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.wr-acts .btn{flex:1 1 auto;min-height:44px}
 .wr-more .wr-lab small{text-transform:none;letter-spacing:0;font-weight:600}
-.wr-test{width:100%;margin:4px 0 2px}
+.wr-test{-webkit-appearance:none;appearance:none;width:100%;height:36px;margin:2px 0;background:transparent;accent-color:#ffc400}
+.wr-test::-webkit-slider-runnable-track{height:8px;border-radius:4px;background:#2a303b;box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}
+.wr-test::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:28px;height:28px;margin-top:-10px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe27a,#ffc400 55%,#d99200);border:2px solid #14181f;box-shadow:0 2px 6px rgba(0,0,0,.6),0 0 8px rgba(255,196,0,.4)}
+.wr-test::-moz-range-track{height:8px;border-radius:4px;background:#2a303b}.wr-test::-moz-range-progress{background:transparent}
+.wr-test::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:#ffc400;border:2px solid #14181f}
 .wr-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;font-weight:600}
 .wr-sw{width:52px;height:30px;border-radius:15px;border:1.5px solid #2b303a;background:#2a303b;position:relative;padding:0;flex:none}.wr-sw i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#e8e8ea;transition:left .18s}.wr-sw.on{background:#1D9E75;border-color:#1D9E75}.wr-sw.on i{left:25px}
 .wr-cbs{display:flex;gap:6px}.wr-cbs .btn{padding:6px 10px;min-height:36px}.wr-cbs .btn.sel,.wr-adds .btn.sel{border-color:#ffd84a;color:#ffd84a}
@@ -2058,7 +2062,7 @@ html.wr-fl[data-v=hub] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(4
       <div class="wr-acts"><button class="btn" id="wrAuto" type="button">✨ Build board</button><button class="btn" id="wrChk" type="button">✓ Check wiring</button><button class="btn" id="wrTidy" type="button">⇲ Tidy</button></div>
       <div class="wr-chk" id="wrChkBox" hidden></div>
       <div class="wr-panel" id="wrPanel" hidden>
-        <div class="wr-ph"><span class="chip">A</span><b class="wr-pn"></b><b class="wr-pv">0%</b><button class="btn wr-x" type="button">Close</button></div>
+        <div class="wr-ph"><span class="chip">A</span><input class="wr-pn" type="text" maxlength="16" autocomplete="off" enterkeyhint="done" aria-label="Channel name"><b class="wr-pv">0%</b><button class="btn wr-x" type="button">Close</button></div>
         <div class="wr-holds"><button class="btn wr-r" type="button">◀ Hold reverse</button><button class="btn wr-f" type="button">Hold forward ▶</button></div>
         <div class="wr-tst" hidden>
           <div class="wr-lab">Test slider <small>let go = stop</small></div>
