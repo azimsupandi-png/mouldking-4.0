@@ -895,6 +895,24 @@ async def t_clean91(b):
     check('cleanup: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_autowire(b):
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'New',cfg:{layout:'board',
+      ch:[{},{},{},{},{},{}],board:[{k:'e',w:1}],pf:['','xl','','','','']}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("mk6Go('drive')"); await pg.wait_for_timeout(300)
+    await pg.evaluate("__ed()")
+    await pg.evaluate("document.getElementById('bdTST').click();document.getElementById('bdAdd').click()"); await pg.wait_for_timeout(300)
+    await pg.evaluate("document.getElementById('bdTL').click();document.getElementById('bdAdd').click()"); await pg.wait_for_timeout(1000)
+    r = await pg.evaluate("(function(){var c=JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg;return [c.board.map(x=>x.k+x.c).join(','),c.pf.slice(0,3).join(','),document.getElementById('toast').textContent]})()")
+    check('hub wiring fills in by itself from new widgets (steering = Servo); a part already picked stays', r[1].startswith('sv,xl') and 'Servo' in r[2], r)
+    check('auto wiring: no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def t_pro(b):
     # P1 live link centre, P3 duplicate + group move, P5 accessibility, P6 what's new + update check
     def mk(seed, w=390, h=844, extra=''):
@@ -1552,7 +1570,7 @@ async def t_wirelock(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
