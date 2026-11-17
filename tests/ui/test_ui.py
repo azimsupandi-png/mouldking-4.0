@@ -887,6 +887,11 @@ async def t_clean91(b):
     await pg.evaluate("document.querySelector('#mIcons [data-ic=tractor]').click()"); await pg.wait_for_timeout(200)
     r = await pg.evaluate("[__t.C.icon,document.querySelectorAll('.v2-av.ic svg.mi').length>0]")
     check('picked picture icon is saved and shown on the model knob', r == ['tractor', True], r)
+    r = await pg.evaluate("""(function(){var o=localStorage.setItem;localStorage.setItem=function(k){if(k==='mk6v2'){var e=new Error('QuotaExceededError');e.name='QuotaExceededError';throw e}return o.apply(this,arguments)};
+      document.querySelector('#mIcons [data-ic=car]').click();localStorage.setItem=o;return document.getElementById('toast').textContent})()""")
+    check('a save that fails (storage full) is reported instead of lost quietly', 'storage is full' in r, r)
+    r = await pg.evaluate("(function(){var id=__t.store.active;window.openModel('nope');return __t.store.active===id})()")
+    check('openModel ignores unknown models', r is True, r)
     check('cleanup: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 

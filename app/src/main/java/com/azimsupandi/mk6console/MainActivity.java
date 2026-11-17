@@ -194,8 +194,19 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
 
         vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-        readModelExtra(getIntent());
-        readSharedFile(getIntent());
+        // A model shortcut (or a shared file) is acted on once, when it is really tapped. Android hands the
+        // same old intent back when the app is reopened from Recents or rebuilt after it was closed in the
+        // background; acting on it again switched to the shortcut's model (other wiring, other hubs) by itself.
+        boolean fresh = savedInstanceState == null
+                && (getIntent().getFlags() & Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) == 0;
+        if (fresh) {
+            readModelExtra(getIntent());
+            readSharedFile(getIntent());
+        } else {
+            getIntent().removeExtra("model");
+            getIntent().setData(null);
+            getIntent().removeExtra(Intent.EXTRA_STREAM);
+        }
 
         web.setWebViewClient(new WebViewClient() {
             @Override
