@@ -1852,27 +1852,26 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
 .wr-panel .wr-holds{margin-top:4px}
 .wr-panel{font-size:13px}.wr-panel .btn{font-size:13px;min-height:42px}.wr-panel .wr-pn{font-size:15px}.wr-panel .wr-pv{font:600 13px var(--f-mono);min-width:40px}
 .wr-panel .wr-ph .chip{font-size:12px}.wr-panel .wr-nav{font-size:22px;width:22px}.wr-panel .wr-ib{width:34px;height:34px;font-size:14px}
-.wr-panel .wr-row{font-size:13px}.wr-panel .wr-lab{letter-spacing:.06em}.wr-panel .wr-lab small{font-size:11px}
+.wr-panel .wr-row{font-size:13px}.wr-panel .wr-lab{letter-spacing:.06em}.wr-panel .wr-lab small{font-size:11px;text-transform:none;letter-spacing:0;font-weight:600}
 .wr-ph{gap:6px}.wr-ph .chip{min-width:28px;text-align:center}
 .wr-nav{width:26px;height:34px;border:0;background:none;color:#8a93a0;font-size:26px;line-height:1;padding:0}.wr-nav:active{color:#ffd84a}
 .wr-ib{flex:none;width:38px;height:38px;border-radius:50%;border:1.5px solid #2b303a;background:#12151b;color:#c9ced6;font-size:16px;padding:0}.wr-ib:active{border-color:#ffd84a;color:#ffd84a}
 .wr-min[aria-pressed=true]{transform:rotate(180deg)}
 .wr-lb{display:grid;grid-template-columns:repeat(20,1fr);gap:2px;margin:2px 0 4px}.wr-lb i{height:7px;border-radius:2px;background:rgba(150,160,175,.22)}
 .wr-panel.min .wr-body,.wr-panel.min .wr-lab{display:none}.wr-panel.min .wr-tst .wr-lab{display:none}
-.wr-types{grid-template-columns:repeat(4,1fr)!important;gap:8px!important}
-.wr-types button{padding:8px 4px 6px!important;font-size:11px!important;border-radius:12px!important;gap:4px}
-.wr-types img{height:36px!important}.wr-none{height:36px!important;line-height:36px!important;font-size:20px!important}
-.wr-tools{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:10px}.wr-tools .btn{min-height:42px}.wr-wig.on{border-color:#ffd84a;color:#ffd84a}
 .wr-sl{flex-wrap:wrap}.wr-sl span{flex:1 1 100%}.wr-sl b{color:#ffd84a;font-variant-numeric:tabular-nums}.wr-sl input{flex:1 1 100%;accent-color:#ffc400}
 
 html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(44vh,460px) + env(safe-area-inset-bottom,0px))!important}
 .wr-ph{display:flex;align-items:center;gap:8px}.wr-ph .chip{background:linear-gradient(180deg,#ffe27a,#e9b81d);color:#14181f;border-radius:7px;padding:1px 8px;font-weight:900}
 .wr-pn{flex:1;min-width:0;width:0;font:inherit;font-weight:800;font-size:18px;color:#e8e8ea;background:transparent;border:0;border-bottom:1.5px dashed #3a414d;border-radius:0;padding:4px 2px 3px;outline:none;text-overflow:ellipsis}.wr-pn:focus{border-bottom:1.5px solid #ffd84a;background:#0f1217}.wr-pv{color:#ffd84a;font-variant-numeric:tabular-nums;min-width:48px;text-align:right}
 .wr-lab{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8a93a0;font-weight:700;margin:10px 0 6px}
-.wr-types{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.wr-types button{background:#12151b;border:1.5px solid #2b303a;border-radius:12px;color:#c9ced6;padding:6px 4px;font-weight:700;font-size:13px;line-height:1.15;white-space:nowrap;min-width:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:2px}
-.wr-types button.sel{border-color:#ffd84a;color:#ffd84a;box-shadow:0 0 10px rgba(255,216,74,.2)}
-.wr-types img{width:100%;height:34px;object-fit:contain}.wr-none{font-style:normal;font-size:22px;height:34px;line-height:34px;color:#59606c}
+.wr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.wr-grid button{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;padding:8px 4px;background:#12151b;border:1.5px solid #2b303a;border-radius:14px;color:#e8e8ea;font:inherit}
+.wr-grid button.sel{border-color:#ffd84a;box-shadow:0 0 10px rgba(255,216,74,.2)}
+.wr-grid em{position:absolute;left:6px;top:6px;font:800 11px var(--f-body);font-style:normal;color:#14181f;background:linear-gradient(180deg,#ffe27a,#e9b81d);border-radius:6px;padding:0 6px}
+.wr-grid img,.wr-grid .wr-none{width:100%;height:40px;object-fit:contain;line-height:40px;text-align:center;font-style:normal;font-size:22px;color:#59606c}
+.wr-grid b{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.wr-grid small{font-size:11px;color:#8a93a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.wr-grid button.sel b{color:#ffd84a}
 .wr-holds{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.wr-holds .btn{height:48px;touch-action:none}.wr-holds .btn.down{border-color:#ffd84a;color:#ffd84a}
 .wr-all{display:flex;flex-direction:column;gap:10px}@media (orientation:landscape){.wr-all{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}}
 .wr-subh{font-weight:800;font-size:13px;color:#c9ced6;margin:2px 4px 6px}
@@ -1970,18 +1969,9 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
           <input type="range" class="wr-test" min="-100" max="100" step="1" value="0" aria-label="Test slider">
         </div>
         <div class="wr-body">
-        <div class="wr-lab">What is plugged in</div>
-        <div class="wr-types">
-          <button type="button" data-t=""><i class="wr-none">∅</i><span>Nothing</span></button>
-          <button type="button" data-t="m"><img src="img/pf/m.webp" alt=""><span>Motor M</span></button>
-          <button type="button" data-t="l"><img src="img/pf/l.webp" alt=""><span>Motor L</span></button>
-          <button type="button" data-t="xl"><img src="img/pf/xl.webp" alt=""><span>Motor XL</span></button>
-          <button type="button" data-t="bg"><img src="img/pf/bg.webp" alt=""><span>Buggy</span></button>
-          <button type="button" data-t="sv"><img src="img/pf/sv.webp" alt=""><span>Servo</span></button>
-          <button type="button" data-t="lt"><img src="img/pf/lt.webp" alt=""><span>LED</span></button>
-        </div>
+        <div class="wr-lab">Wiring <small>(tap a port to change its part)</small></div>
+        <div class="wr-grid" role="group" aria-label="Wiring"></div>
         <div class="wr-more" hidden>
-          <div class="wr-tools"><button class="btn wr-wig" type="button">〰 Wiggle to find it</button><button class="btn wr-stp" type="button">■ Stop</button></div>
           <div class="wr-row"><span>Reverse direction</span><button class="wr-sw" type="button" role="switch" aria-checked="false" aria-label="Reverse direction"><i></i></button></div>
           <div class="wr-row wr-sl"><span>Max power <b class="wr-mxv">100%</b></span><input type="range" class="wr-mx" min="10" max="100" step="5" aria-label="Max power"></div>
           <div class="wr-row wr-sl wr-trow"><span>Centre trim <b class="wr-tmv">0</b></span><input type="range" class="wr-tm" min="-20" max="20" step="1" aria-label="Centre trim"></div>
