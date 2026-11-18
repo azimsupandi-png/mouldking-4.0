@@ -45,7 +45,7 @@ async def t_click_everything(b):
     total = 0
     for v in ['home', 'drive', 'models', 'medit', 'tpl', 'settings', 'hub', 'safety', 'backup', 'm-tilt', 'm-pad', 'm-app', 'm-log']:
         ctx, pg = await page(b)
-        await pg.evaluate("mk6Go('home');document.getElementById('hConn').click();onHubState('ready')")
+        await pg.evaluate("mk6Go('home');document.getElementById('hubConn').click();onHubState('ready')")
         for _ in range(2):
             await pg.evaluate(f"mk6Go('{v}')")
             await pg.wait_for_timeout(120)
@@ -61,7 +61,7 @@ async def t_click_everything(b):
 
 async def t_hub_paths(b):
     ctx, pg = await page(b)
-    await pg.evaluate("mk6Go('home');__calls=[];document.getElementById('hConn').click()")
+    await pg.evaluate("mk6Go('home');__calls=[];document.getElementById('hubConn').click()")
     check('Connect calls MK6Bridge.start', 'start:0' in await pg.evaluate("__calls.join(',')"))
     r = await pg.evaluate("onHubState('connecting');onHubState('ready');" + W % "[document.documentElement.dataset.v,document.querySelector('#v2Pill .ptx').textContent]")
     check('ready opens Drive and the pill shows Hub active', r == ['drive', 'Hub active'], r)
@@ -71,7 +71,7 @@ async def t_hub_paths(b):
     check('lost link shows Connection lost alert', 'Connection lost' in r, r)
     r = await pg.evaluate("onHubState('off');__bt=true;onAppEvent('bt1');" + W % "document.querySelector('#v2Pill .ptx').textContent")
     check('Bluetooth back on clears the stale message', r == 'Connect hub', r)
-    r = await pg.evaluate("__calls=[];mk6Go('settings');document.getElementById('sPrac').click();mk6Go('home');document.getElementById('hConn').click();" + W % "__calls.filter(c=>c.startsWith('start')||c=='send').length")
+    r = await pg.evaluate("__calls=[];mk6Go('settings');document.getElementById('sPrac').click();mk6Go('home');document.getElementById('hubConn').click();" + W % "__calls.filter(c=>c.startsWith('start')||c=='send').length")
     check('practice mode never calls the hub', r == 0, r)
     r = await pg.evaluate("onAppEvent('watchdog');document.querySelector('.toast').textContent")
     check('watchdog event shows the safety-stop message', 'Safety stop' in r, r)
@@ -91,12 +91,10 @@ async def t_hold(b):
         await pg.wait_for_timeout(ms)
         await cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
         await pg.wait_for_timeout(250)
-    await pg.evaluate("mk6Go('home');__calls=[]")
-    await touch('#hPS .psb', 50)
-    check('Home START/STOP short tap does not connect', 'start' not in await pg.evaluate("__calls.join(',')"))
-    await pg.evaluate("__calls=[]")
-    await touch('#hPS .psb', 650)
-    check('Home START/STOP hold (finger wobble) connects', 'start:0' in await pg.evaluate("__calls.join(',')"))
+    await pg.evaluate("mk6Go('home');__calls=[];document.getElementById('hubConn').click()")
+    check('101 Home: Connect on the hub card connects', 'start:0' in await pg.evaluate("__calls.join(',')"))
+    r = await pg.evaluate("[!!document.getElementById('hPS'),!!document.querySelector('#scrHome #hubCard'),!!document.querySelector('#scrHome #wrCard'),!!document.getElementById('scrHub'),!!document.querySelector('[data-go=hub]')]")
+    check('101 old Home cards gone, hub cards on Home, Hub screen and its Settings row gone', r == [False, True, True, False, False], r)
     await pg.evaluate("onHubState('ready')")
     await pg.wait_for_timeout(500)
     await pg.evaluate("mk6Go('drive');__ed();document.getElementById('bdTPS').click();document.getElementById('bdAdd').click();__ed();__calls=[]")
@@ -142,8 +140,8 @@ async def t_features(b):
     check('Hub: Remove second hub', r == '-1', r)
     r = await pg.evaluate("mk6Go('m-app');document.getElementById('lockBtn').click();mk6Go('drive');" + W % "[getComputedStyle(document.getElementById('recCard')).display,getComputedStyle(document.querySelector('[data-tab=models]')).display]")
     check('lock mode hides Record and the Models tab', r == ['none', 'none'], r)
-    r = await pg.evaluate("mk6Go('hub');[mk6Back(),document.documentElement.dataset.v,mk6Back(),document.documentElement.dataset.v,mk6Back()]")
-    check('Android Back goes up, then Home, then leaves', r == [True, 'settings', True, 'home', False], r)
+    r = await pg.evaluate("mk6Go('settings');[mk6Back(),document.documentElement.dataset.v,mk6Back()]")
+    check('Android Back goes to Home, then leaves', r == [True, 'home', False], r)
     check('no JS errors (features)', not pg.errors, pg.errors[:3])
     await ctx.close()
 
@@ -151,10 +149,8 @@ async def t_graphics(b):
     ctx, pg = await page(b)
     r = await pg.evaluate("mk6Go('drive');new Promise(r=>setTimeout(()=>r([document.documentElement.classList.contains('v2-nohub'),[...document.querySelectorAll('#boardGrid > .bdw.v2-es')].length]),400))")
     check('no hub: widgets dimmed, E-Stop widget kept bright', r[0] and r[1] >= 1, r)
-    await pg.evaluate("mk6Go('home');document.getElementById('hConn').click()")
+    await pg.evaluate("mk6Go('home');document.getElementById('hubConn').click()")
     await pg.wait_for_timeout(300)
-    r = await pg.evaluate("[...document.querySelectorAll('#hPS .pssvg path')].map(l=>l.getAttribute('stroke')).filter(c=>c&&c.indexOf('255,216,74')>=0||c==='#ffd84a').length")
-    check('pairing: a yellow tail runs round the START/STOP ring', r >= 2, r)
     r = await pg.evaluate("onHubState('ready');new Promise(r=>setTimeout(()=>r([document.getElementById('v2Pill').classList.contains('v2-pulse'),document.documentElement.classList.contains('v2-nohub')]),400))")
     check('connected: pill pulses once, widgets undimmed', r == [True, False], r)
     await pg.evaluate("document.querySelector('[data-wiz=empty]').click()")
@@ -173,7 +169,7 @@ async def t_graphics(b):
 
 async def t_extras(b):
     ctx, pg = await page(b)
-    await pg.evaluate("document.getElementById('hConn').click();onHubState('ready');mk6Go('hub');document.getElementById('hubDiag').open=true")
+    await pg.evaluate("document.getElementById('hubConn').click();onHubState('ready');mk6Go('hub');document.getElementById('hubDiag').open=true")
     await pg.wait_for_timeout(400)
     r = await pg.evaluate("[...document.querySelectorAll('#diagList dt')].map(e=>e.textContent).join('|')+' :: '+[...document.querySelectorAll('#diagList dd')].map(e=>e.textContent).join('|')")
     check('diagnostics show send mode, counts and the last error', '1 hub' in r and '130' in r and 'internal Bluetooth error' in r and 'Error time' in r, r)
@@ -220,7 +216,7 @@ return bad})()"""
 
 async def t_light_contrast(b):
     ctx, pg = await page(b)
-    await pg.evaluate("document.getElementById('hConn').click();onHubState('ready');mk6Go('settings');document.getElementById('sLight').click()")
+    await pg.evaluate("document.getElementById('hubConn').click();onHubState('ready');mk6Go('settings');document.getElementById('sLight').click()")
     bad = {}
     for v in ['home', 'drive', 'models', 'settings', 'hub', 'medit', 'tpl']:
         await pg.evaluate(f"mk6Go('{v}')")
@@ -232,7 +228,7 @@ async def t_light_contrast(b):
 
 async def t_twelve(b):
     ctx, pg = await page(b)
-    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};document.getElementById('hubConn').click();onHubState('ready');mk6Go('drive')")
     await pg.wait_for_timeout(300)
     # 1 trim: buttons on the slider widget, offset reaches the hub, E-Stop zeroes it
     await pg.evaluate("__ed()")
@@ -316,7 +312,7 @@ async def t_migrate_and_limit(b):
     await pg.wait_for_timeout(300)
     r = await pg.evaluate("mk6Go('medit');document.getElementById('limV0').textContent+'|'+document.getElementById('limP0').getAttribute('aria-pressed')")
     check('3 old Speed "Slow" becomes the 40% limit (Eco)', r.endswith('|true'), r)
-    await pg.evaluate("__calls=[];mk6Go('home');document.getElementById('hConn').click();onHubState('ready')")
+    await pg.evaluate("__calls=[];mk6Go('home');document.getElementById('hubConn').click();onHubState('ready')")
     await pg.wait_for_timeout(4500)
     r = await pg.evaluate("[__calls.includes('stop'),[...document.querySelectorAll('#hAlerts h2')].map(h=>h.textContent).join('|')]")
     check('5 play time: when time is up the motors stop and Home says so', r[0] and 'Play time is up' in r[1], r)
@@ -334,7 +330,7 @@ async def t_three(b):
     await pg.goto(HTML)
     await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
     await pg.wait_for_timeout(300)
-    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};mk6Go('home');document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};mk6Go('home');document.getElementById('hubConn').click();onHubState('ready');mk6Go('drive')")
     await pg.wait_for_timeout(400)
     SL = "document.querySelector('#boardGrid .bdw[data-k=s] input[type=range]')"
     await pg.evaluate("var r="+SL+";r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=50;r.dispatchEvent(new Event('input',{bubbles:true}))")
@@ -382,7 +378,7 @@ async def t_led(b):
     await pg.goto(HTML + '?mk6test')
     await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
     await pg.wait_for_timeout(300)
-    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f;(window.__all=window.__all||[]).push(f)};mk6Go('home');document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f;(window.__all=window.__all||[]).push(f)};mk6Go('home');document.getElementById('hubConn').click();onHubState('ready');mk6Go('drive')")
     await pg.wait_for_timeout(400)
     SLS = "document.querySelectorAll('#boardGrid .bdw[data-k=s] input[type=range]')"
     await pg.evaluate("var rs="+SLS+";var r=rs[0];r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=60;r.dispatchEvent(new Event('input',{bubbles:true}))")
@@ -543,7 +539,7 @@ async def t_buggy(b):
     CRO = "(function(){var R=document.getElementById('wrHost').shadowRoot;return [R.getElementById('croB_0').getAttribute('transform'),R.getElementById('croB_1_0').getAttribute('transform')]})()"
     r = await pg.evaluate("(function(){var R=document.getElementById('wrHost').shadowRoot;return [!!R.querySelector('#ptB image[href*=\"bg.webp\"]'),!!R.getElementById('croB_0'),!!R.getElementById('croB_1_0'),JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.pf[1]]})()")
     check('99 Buggy motor is saved and shows with two output discs', r == [True, True, True, 'bg'], r)
-    await pg.evaluate("document.getElementById('hConn').click();onHubState('ready');mk6Go('hub')"); await pg.wait_for_timeout(400)
+    await pg.evaluate("document.getElementById('hubConn').click();onHubState('ready');mk6Go('hub')"); await pg.wait_for_timeout(400)
     await pg.evaluate("document.querySelector('#wrPanel .wr-f').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:1}))"); await pg.wait_for_timeout(700)
     t0 = await pg.evaluate(CRO); await pg.wait_for_timeout(130); t1 = await pg.evaluate(CRO)
     await pg.evaluate("document.querySelector('#wrPanel .wr-f').dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:1}))")
@@ -554,7 +550,7 @@ async def t_buggy(b):
 async def t_seven(b):
     ctx, pg = await page(b)
     SL = "document.querySelector('#boardGrid .bdw[data-k=s] input[type=range]')"
-    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};document.getElementById('hubConn').click();onHubState('ready');mk6Go('drive')")
     await pg.wait_for_timeout(300)
     # 2 cruise (latch): tap Cruise, push A to 70 and let go -> A keeps going; bring it near 0 and let go -> stops
     await pg.evaluate("document.getElementById('dCruise').click()")
@@ -606,7 +602,7 @@ async def t_seven(b):
     await ctx.close()
     # 7 simulator in practice mode
     ctx, pg = await page(b)
-    await pg.evaluate("mk6Go('settings');document.getElementById('sPrac').click();mk6Go('home');document.getElementById('hConn').click();mk6Go('drive')")
+    await pg.evaluate("mk6Go('settings');document.getElementById('sPrac').click();mk6Go('home');document.getElementById('hubConn').click();mk6Go('drive')")
     await pg.wait_for_timeout(500)
     r = await pg.evaluate("[!document.getElementById('dSim').hidden,document.getElementById('simCv').width>0]")
     check('7 practice simulator shows on the Drive screen', r == [True, True], r)
@@ -639,14 +635,14 @@ async def t_seven(b):
 
 async def t_open_relink(b):
     ctx, pg = await page(b)
-    await pg.evaluate("document.getElementById('hConn').click();onHubState('ready')")
+    await pg.evaluate("document.getElementById('hubConn').click();onHubState('ready')")
     await pg.wait_for_timeout(400)
     await pg.reload()
     await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
     await pg.wait_for_timeout(1500)
     r = await pg.evaluate("__calls.filter(c=>c.startsWith('start')).length")
     check('4 app opened after a session with the hub on: it reconnects', r >= 1, r)
-    await pg.evaluate("document.getElementById('hConn').click()")
+    await pg.evaluate("document.getElementById('hubConn').click()")
     await pg.wait_for_timeout(300)
     await pg.reload()
     await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
@@ -667,7 +663,7 @@ async def t_wup(b):
     await pg.goto(HTML)
     await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
     await pg.wait_for_timeout(300)
-    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};mk6Go('home');document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};mk6Go('home');document.getElementById('hubConn').click();onHubState('ready');mk6Go('drive')")
     await pg.wait_for_timeout(400)
     SLS = "document.querySelectorAll('#boardGrid .bdw[data-k=s] input[type=range]')"
     await pg.evaluate("var rs="+SLS+";[[0,60],[1,-50]].forEach(function(p){var r=rs[p[0]];r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=p[1];r.dispatchEvent(new Event('input',{bubbles:true}))})")
@@ -745,7 +741,7 @@ async def t_xw(b):
     await pg.goto(HTML)
     await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
     await pg.wait_for_timeout(300)
-    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};mk6Go('home');document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};mk6Go('home');document.getElementById('hubConn').click();onHubState('ready');mk6Go('drive')")
     await pg.wait_for_timeout(400)
     r = await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw')].map(w=>w.dataset.k+':'+!!w.querySelector('svg.xwv'))")
     check('XY pad, crossfader and rotor appear on the board', r == ['xy:true', 'xf:true', 'ro:true', 'ro:true'], r)
@@ -810,7 +806,7 @@ async def t_axle(b):
     await pg.add_init_script(STUB + seed)
     await pg.goto(HTML + '?mk6test')
     await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
-    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};mk6Go('home');document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};mk6Go('home');document.getElementById('hubConn').click();onHubState('ready');mk6Go('drive')")
     await pg.wait_for_timeout(400)
     r = await pg.evaluate("[[...document.querySelectorAll('#boardGrid .bdw')].map(w=>w.dataset.k).join(','),JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.board.map(x=>x.k).join(',')]")
     check('Motor axle: shows on the board and is kept when saved', r[0].startswith('ax,s') and r[1].startswith('ax,s'), r)
@@ -969,7 +965,7 @@ async def t_pro(b):
     await pg.wait_for_timeout(200)
     r = await pg.evaluate("[document.documentElement.hasAttribute('data-cb'),getComputedStyle(document.documentElement).getPropertyValue('--ok').trim(),__t.store.prefs.cb]")
     check('P5: colour-blind palette switches the colours', r[0] and r[1].upper() == '#56B4E9' and r[2], r)
-    await pg.evaluate("document.getElementById('hConn').click();onHubState('ready');mk6Go('drive');__t.rt.t[0]=40;__t.rt.t[1]=-30")
+    await pg.evaluate("document.getElementById('hubConn').click();onHubState('ready');mk6Go('drive');__t.rt.t[0]=40;__t.rt.t[1]=-30")
     await pg.wait_for_timeout(800)
     r = await pg.evaluate("[...document.querySelectorAll('#boardGrid .bdw[data-k=s] .bdw-h output')].map(o=>o.textContent)")
     check('P5: values show direction arrows (always on)', len(r) == 2 and r[0].startswith('▲') and r[1].startswith('▼'), r)
@@ -1018,7 +1014,7 @@ async def t_pro(b):
     # P1 live link centre
     stats = """window.__alive=[1,1];window.__n=0;window.MK6Bridge.stats=function(){__n++;return JSON.stringify({mode:'parallel',hubs:2,ok:__n*20,fail:0,frames:__n*22,watchdog:0,up:9000,lastFrameAgo:30,tx:1,err:0,errAgo:-1,mods:[0,1],alive:__alive,lat:60})};"""
     ctx, pg = await mk(seed, extra=stats)
-    await pg.evaluate("document.getElementById('hConn').click();onHubState('ready');mk6Go('hub');document.getElementById('hubDiag').open=true")
+    await pg.evaluate("document.getElementById('hubConn').click();onHubState('ready');mk6Go('hub');document.getElementById('hubDiag').open=true")
     await pg.wait_for_timeout(3500)
     r = await pg.evaluate("[+document.getElementById('lkRate').textContent,document.querySelectorAll('#lkHubs .lk-hub').length,document.getElementById('lkChip').textContent,document.querySelector('#lkSpark .lk-a').getAttribute('d').length,document.getElementById('lkMsg').textContent]")
     check('P1: live rate, hub rings, steady chip and graph', r[0] > 5 and r[1] == 2 and r[2] == 'Steady' and r[3] > 20, r)
@@ -1135,7 +1131,7 @@ async def t_drtl(b):
     await pg.goto(HTML + '?mk6test')
     await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
     await pg.wait_for_timeout(300)
-    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};mk6Go('home');document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};mk6Go('home');document.getElementById('hubConn').click();onHubState('ready');mk6Go('drive')")
     await pg.wait_for_timeout(400)
     r = await pg.evaluate("[[...document.querySelectorAll('#boardGrid .bdw')].map(w=>w.dataset.k).join(),!!document.getElementById('bdTDR'),'dr' in __t.C]")
     check('D/R is gone: an old D/R widget is dropped and there is no D/R setting', r == ['s,tl', False, False], r)
@@ -1206,7 +1202,7 @@ async def t_swing(b):
     await pg.add_init_script(STUB + seed)
     await pg.goto(HTML + '?mk6test')
     await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
-    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};document.getElementById('hubConn').click();onHubState('ready');mk6Go('drive')")
     await pg.wait_for_timeout(400)
     r = await pg.evaluate("[!!document.querySelector('#boardGrid .bdw[data-k=sw] svg image[href=\"img/swing-upper.webp\"]'),!!document.querySelector('#boardGrid .bdw[data-k=sw] svg image[href=\"img/swing-tracks.webp\"]')]")
     check('Swing: the widget shows the excavator (tracks + turning upper)', r == [True, True], r)
@@ -1268,7 +1264,7 @@ async def t_recx(b):
     await pg.goto(HTML)
     await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
     await pg.wait_for_timeout(300)
-    await pg.evaluate("window.MK6Bridge.send=function(f){};mk6Go('home');document.getElementById('hConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.evaluate("window.MK6Bridge.send=function(f){};mk6Go('home');document.getElementById('hubConn').click();onHubState('ready');mk6Go('drive')")
     await pg.wait_for_timeout(300)
     await pg.evaluate("document.querySelector('#boardGrid .bdw[data-k=k] [aria-label=\"Record up to 60 s\"]').click()")
     await pg.evaluate("var r=document.querySelectorAll('#boardGrid .bdw[data-k=s] input[type=range]')[1];r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=70;r.dispatchEvent(new Event('input',{bubbles:true}))")
