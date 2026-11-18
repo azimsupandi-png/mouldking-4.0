@@ -555,6 +555,8 @@ async def t_bdlock(b):
     await pg.evaluate("mk6Go('drive')"); await pg.wait_for_timeout(200)
     r = await pg.evaluate("var l=document.getElementById('bdLock');[l.textContent,(l.click(),l.textContent),JSON.parse(localStorage.getItem('mk6v2')).prefs.bdlock]")
     check('102 🔒 toggles and is saved', r == ['🔓', '🔒', True], r)
+    r = await pg.evaluate("[getComputedStyle(document.getElementById('boardGrid')).pointerEvents,document.getElementById('dbLock').textContent]")
+    check('103 locked: widgets ignore touches (page still scrolls), landscape bar 🔒 matches', r == ['none', '🔒'], r)
     r = await pg.evaluate("document.getElementById('bdEdit').click();document.getElementById('bdEdit').getAttribute('aria-pressed')")
     check('102 locked board cannot be edited', r == 'false', r)
     r = await pg.evaluate("document.getElementById('bdLock').click();document.getElementById('bdEdit').click();document.getElementById('bdEdit').getAttribute('aria-pressed')")

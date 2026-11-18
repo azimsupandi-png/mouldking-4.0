@@ -684,17 +684,12 @@ textarea.txt{padding:8px;font-family:var(--f-mono);font-size:12px;line-height:1.
 .snaprow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid var(--line,#3a404b);border-radius:10px;font-size:13px}
 .snaprow small{color:var(--muted,#8a93a0)}
 #lostBanner[hidden]{display:none}
-#lockPad{position:fixed;right:14px;bottom:14px;z-index:70;display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:26px;border:2px solid #ffc400;background:#1d222b;color:#ffd84a;font-size:14px;font-weight:800;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
-#lockPad[hidden]{display:none}
-#lockPad .lkp{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(255,196,0,.35)}
-#lockPad.hold .lkp{width:100%;transition:width 1s linear}
-#lockPad .lkt{position:relative}
-#lockPad .lkt::before{content:"\1F512 "}
-:root.locked #cols,:root.locked .dashbar{pointer-events:none}
-:root.locked #cols{opacity:.92}
+:root.bdlk #boardGrid{pointer-events:none}
+:root.bdlk #boardGrid>.bdw{opacity:.94}
+#dbLock{min-width:52px;font-size:22px;padding:0 10px}#dbLock[aria-pressed=true]{background:#12151b!important;border-color:#ffc400!important}
 :root.dash .bdw{transition:opacity .25s}
 :root.dash.nolink .bdw{opacity:.5}
-:root.dash main>*:not(.cols),:root.dash .cols>*:not(#boardCard),:root.dash #boardCard>h2,:root.dash #bdNote,:root.dash #boardCard>.rec-row,:root.dash .bd-dashchk{display:none}
+:root.dash main>*:not(.cols),:root.dash .cols>*:not(#boardCard),:root.dash #boardCard>h2,:root.dash #boardCard>.wr-head,:root.dash #bdNote,:root.dash #boardCard>.rec-row,:root.dash .bd-dashchk{display:none}
 :root.dash .cols{display:block}
 :root.dash #boardCard{padding:0;border:0;background:none;box-shadow:none;margin:0}
 :root.dash #boardGrid{display:block;position:relative;margin:0 auto}
@@ -1902,7 +1897,6 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
     <button class="pill hubbtn" id="link" type="button" aria-pressed="true" data-st="on" title="Turn the hub link on or off"><span class="orb" aria-hidden="true"></span><span id="linkText">Simulation on</span></button>
     <button class="estop" id="estop" type="button" aria-pressed="false" aria-label="Emergency stop">E-Stop</button>
   </div>
-  <button id="lockPad" type="button" hidden aria-label="Hold to unlock the board"><span class="lkp" aria-hidden="true"></span><span class="lkt">Hold to unlock</span></button>
   <div id="lostBanner" role="alert" hidden>HUB LINK LOST \u00b7 motors stopped. Tap to dismiss.</div>
   <div class="bar-banner" id="esBanner" role="alert" hidden>E-Stop is on. Every channel is locked at 0. Tap Release E-Stop to continue.</div>
 </header>
@@ -2190,7 +2184,7 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
         <button class="btn" id="dbReset" type="button" aria-label="Reset layout">Reset</button>
         <button class="btn" id="dbBack" type="button" aria-label="Put back the last removed widget" hidden>Back</button>
         <select id="dbModel" aria-label="Model"></select>
-        <button class="btn" id="dbLock" type="button" aria-label="Lock the board so nothing is touched by accident">Lock</button>
+        <button class="btn v2-dbkeep" id="dbLock" type="button" aria-pressed="false" aria-label="Board unlocked">🔓</button>
         <button class="btn" id="dbExit" type="button" aria-label="Exit dashboard">Exit</button>
       </div>
       <label class="check bd-dashchk" for="bdDash"><input id="bdDash" type="checkbox">Dashboard when the phone is sideways</label>
