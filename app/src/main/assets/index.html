@@ -726,10 +726,6 @@ textarea.txt{padding:8px;font-family:var(--f-mono);font-size:12px;line-height:1.
 :root.matching.dash .dw:not(.pick){cursor:copy}
 :root.dash .dw.pinch{z-index:6;outline:3px solid #ffc400;outline-offset:2px;box-shadow:0 0 0 7px rgba(255,196,0,.15)}
 :root.dash .dw.pinch.bad{outline-color:#E24B4A}
-#fineBadge{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:60;transform:translate(-50%,-14px);opacity:0;pointer-events:none;display:flex;align-items:center;gap:4px;padding:5px 14px;border-radius:16px;background:#14251f;border:1.5px solid #1D9E75;color:#3fd09d;font-weight:800;font-size:13px;letter-spacing:.04em;box-shadow:0 4px 14px rgba(0,0,0,.5),0 0 12px rgba(29,158,117,.35);transition:opacity .15s,transform .15s}
-#fineBadge.on{opacity:1;transform:translate(-50%,0)}
-#fineBadge span:nth-child(2){text-transform:uppercase}
-.dcomet{filter:drop-shadow(0 0 2.5px rgba(255,196,0,.9));pointer-events:none}
 .bbx{max-width:640px}
 .bb-tabs{display:flex;gap:6px;flex-wrap:wrap}.bb-tabs .btn{min-height:30px;padding:0 10px;font-size:12px}
 .bb-tabs .btn[aria-pressed="true"]{background:#ffc400;color:#111;border-color:transparent;font-weight:800}
@@ -738,7 +734,6 @@ textarea.txt{padding:8px;font-family:var(--f-mono);font-size:12px;line-height:1.
 .bb-g canvas{position:absolute;inset:0;width:100%;height:100%}
 .bb-l{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px}.bb-li{display:inline-flex;align-items:center;gap:5px}.bb-li i{width:12px;height:4px;border-radius:2px;display:inline-block}
 @media (orientation:landscape) and (max-height:500px){.bb-g{height:130px}}
-.ptrail{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;border-radius:50%}
 .pad>.knob{z-index:1}
 .dw-psz{position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(18px,4vw,34px);font-weight:800;color:#ffd84a;text-shadow:0 2px 10px #000,0 0 3px #000;pointer-events:none;z-index:9;background:rgba(10,12,16,.35);border-radius:inherit}
 :root.dash .dw.sel{outline:3px solid #f4b800;z-index:3}
@@ -2014,9 +2009,7 @@ html.wr-fl[data-v=hub] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(4
     <button class="v2-li v2-sw" type="button" id="sHC" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M12 3.4v17.2A8.6 8.6 0 0 0 12 3.4z" fill="currentColor"/></svg><span>High contrast (outdoor)</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li v2-sw" type="button" id="sCB" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/></svg><span>Colour-blind colours</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li" type="button" id="sBb"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M6.5 14l3-4 3 3 2.5-5 2.5 6"/></svg><span>E-Stop black box</span><small id="sBbV">None yet</small></button>
-    <button class="v2-li v2-sw" type="button" id="sTrail" role="switch" aria-checked="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="16" cy="8" r="3.6"/><path d="M13.4 10.6C10 14 8.5 13.5 4.5 19.5"/></svg><span>Light trails (joystick and dial)</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li v2-sw" type="button" id="sLframe" role="switch" aria-checked="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="3.5"/><path d="M8 12h8"/></svg><span>Live frames (green = running, red = full)</span><i class="tg" aria-hidden="true"></i></button>
-    <button class="v2-li" type="button" id="sFine"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3.5 21h17"/></svg><span>Two-finger fine control</span><small id="sFineV">30%</small></button>
     <button class="v2-li v2-sw" type="button" id="sLefty" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l-3.5 3.5L7 14M3.5 10.5H14a6 6 0 0 1 6 6v1"/></svg><span>Left-handed (landscape)</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li v2-sw v2-lk" type="button" id="sPrac" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.8 9.2 12 4.5l9.2 4.7L12 13.9z"/><path d="M6.8 11.4v4.3c0 1.5 2.3 3 5.2 3s5.2-1.5 5.2-3v-4.3M21.2 9.2v5"/></svg><span>Practice mode (no hub)</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li" type="button" id="sLang"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M3.4 12h17.2M12 3.4c2.4 2.4 3.4 5.3 3.4 8.6s-1 6.2-3.4 8.6c-2.4-2.4-3.4-5.3-3.4-8.6s1-6.2 3.4-8.6z"/></svg><span>Language</span><small id="sLangV"></small><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
