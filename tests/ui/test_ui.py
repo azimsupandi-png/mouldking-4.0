@@ -547,6 +547,23 @@ async def t_buggy(b):
     check('99 no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_bdlock(b):
+    # Build 102: no empty Hub heading in Settings; 🔒 on the Board card blocks editing
+    ctx, pg = await page(b)
+    r = await pg.evaluate("mk6Go('settings');[...document.querySelectorAll('#scrSet .v2-grp')].map(e=>e.textContent).indexOf('Hub')")
+    check('102 Settings has no Hub heading', r == -1, r)
+    await pg.evaluate("mk6Go('drive')"); await pg.wait_for_timeout(200)
+    r = await pg.evaluate("var l=document.getElementById('bdLock');[l.textContent,(l.click(),l.textContent),JSON.parse(localStorage.getItem('mk6v2')).prefs.bdlock]")
+    check('102 🔒 toggles and is saved', r == ['🔓', '🔒', True], r)
+    r = await pg.evaluate("document.getElementById('bdEdit').click();document.getElementById('bdEdit').getAttribute('aria-pressed')")
+    check('102 locked board cannot be edited', r == 'false', r)
+    r = await pg.evaluate("document.getElementById('bdLock').click();document.getElementById('bdEdit').click();document.getElementById('bdEdit').getAttribute('aria-pressed')")
+    check('102 unlocked board can be edited again', r == 'true', r)
+    r = await pg.evaluate("document.getElementById('bdLock').click();document.getElementById('bdEdit').getAttribute('aria-pressed')")
+    check('102 locking while editing ends editing', r == 'false', r)
+    check('102 no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def t_seven(b):
     ctx, pg = await page(b)
     SL = "document.querySelector('#boardGrid .bdw[data-k=s] input[type=range]')"
@@ -1571,7 +1588,7 @@ async def t_wirelock(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

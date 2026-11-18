@@ -2049,7 +2049,6 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
     <h2 class="v2-big">Settings</h2>
     <label class="v2-search sr-box"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="M15.6 15.6l4.6 4.6"/></svg><input id="setSearch" type="search" placeholder="Search settings… (power, lock, lights)" autocomplete="off" aria-label="Search settings"></label>
     <div class="sr-res" id="setRes" hidden></div>
-    <div class="v2-grp">Hub</div>
     <div class="v2-grp v2-lk">Safety</div>
     <button class="v2-li" type="button" data-go="safety"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2l7.6 2.9v5.8c0 4.4-3.2 7.9-7.6 8.9-4.4-1-7.6-4.5-7.6-8.9V6.1z"/><path d="M12 8.2v4.6M12 15.8v.1"/></svg><span>Limits &amp; auto-stop</span><small id="sLimV"></small><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
     <button class="v2-li v2-lk" type="button" id="sPlay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="7.6"/><path d="M12 9v4.2l2.6 1.6M9.5 3.5h5"/></svg><span>Play time limit (a day)</span><small id="sPlayV">Off</small></button>
@@ -2122,7 +2121,7 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
     </section>
 
     <section class="card" id="boardCard" aria-label="Control board">
-      <h2>Board</h2>
+      <div class="wr-head"><h2>Board</h2><button class="btn wr-lock" id="bdLock" type="button" aria-pressed="false" aria-label="Board unlocked">🔓</button></div>
       <div class="bdgrid" id="boardGrid"></div>
       <p class="rec-stat" id="bdNote"></p>
       <div class="dtpl" id="jcDlg" hidden role="dialog" aria-label="Joystick settings">
