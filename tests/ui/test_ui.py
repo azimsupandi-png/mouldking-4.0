@@ -527,6 +527,30 @@ async def t_lefty(b):
     check('98 no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_buggy(b):
+    # Build 99: Buggy motor part, two red outputs that turn together
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'W',cfg:{layout:'board',ch:[{},{},{},{},{},{}],board:[{k:'s',c:0,w:2}],pf:['l','m']}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};onHubState('ready');mk6Go('hub')"); await pg.wait_for_timeout(600)
+    await pg.evaluate("""(function(){var R=document.getElementById('wrHost').shadowRoot,g=R.querySelector('.pt[data-p=B]'),r=g.getBoundingClientRect();
+      g.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:3,clientX:r.x+5,clientY:r.y+5}));window.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:3,clientX:r.x+5,clientY:r.y+5}))})()"""); await pg.wait_for_timeout(300)
+    await pg.evaluate("document.querySelector('#wrPanel .wr-types button[data-t=bg]').click()"); await pg.wait_for_timeout(300)
+    CRO = "(function(){var R=document.getElementById('wrHost').shadowRoot;return [R.getElementById('croB_0').getAttribute('transform'),R.getElementById('croB_1_0').getAttribute('transform')]})()"
+    r = await pg.evaluate("(function(){var R=document.getElementById('wrHost').shadowRoot;return [!!R.querySelector('#ptB image[href*=\"bg.webp\"]'),!!R.getElementById('croB_0'),!!R.getElementById('croB_1_0'),JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.pf[1]]})()")
+    check('99 Buggy motor is saved and shows with two output discs', r == [True, True, True, 'bg'], r)
+    await pg.evaluate("document.getElementById('hConn').click();onHubState('ready');mk6Go('hub')"); await pg.wait_for_timeout(400)
+    await pg.evaluate("document.querySelector('#wrPanel .wr-f').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:1}))"); await pg.wait_for_timeout(700)
+    t0 = await pg.evaluate(CRO); await pg.wait_for_timeout(130); t1 = await pg.evaluate(CRO)
+    await pg.evaluate("document.querySelector('#wrPanel .wr-f').dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:1}))")
+    check('99 both red outputs turn when the port runs', t0[0] != t1[0] and t0[1] != t1[1], [t0, t1])
+    check('99 no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def t_seven(b):
     ctx, pg = await page(b)
     SL = "document.querySelector('#boardGrid .bdw[data-k=s] input[type=range]')"
@@ -1551,7 +1575,7 @@ async def t_wirelock(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
