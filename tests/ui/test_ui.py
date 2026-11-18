@@ -583,6 +583,21 @@ async def t_hubrows(b):
     check('106 no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_trimrest(b):
+    # Build 111: trim at rest only for a servo or an unset port; a motor or LED port sends 0 when idle
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'T',cfg:{layout:'board',ch:[{trim:9},{trim:9},{trim:3},{trim:4},{},{}],board:[{k:'s',c:0,w:2}],pf:['lt','l','','sv']}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};document.getElementById('hubConn').click();onHubState('ready')"); await pg.wait_for_timeout(600)
+    r = await pg.evaluate("(window.__last||'').split(',').slice(0,4)")
+    check('111 at rest: LED port 0, motor port 0, unset port keeps trim, servo keeps trim', r == ['0', '0', '3', '4'], r)
+    check('111 no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def t_seven(b):
     ctx, pg = await page(b)
     SL = "document.querySelector('#boardGrid .bdw[data-k=s] input[type=range]')"
@@ -1607,7 +1622,7 @@ async def t_wirelock(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_hubrows, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_hubrows, t_trimrest, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
