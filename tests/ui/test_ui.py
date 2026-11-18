@@ -566,6 +566,18 @@ async def t_bdlock(b):
     check('102 no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_hubrows(b):
+    # Build 106: hub picture with Bluetooth rings when no hub; one row per hub when connected
+    ctx, pg = await page(b)
+    await pg.evaluate("mk6Go('home')"); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[document.querySelectorAll('#hubEmpty .v2-hubpic i').length,!!document.querySelector('#hubEmpty .v2-hubpic img'),!!document.querySelector('#hubEmpty .qi')]")
+    check('106 no hub: hub picture with 3 Bluetooth rings, no ?', r == [3, True, False], r)
+    await pg.evaluate("document.getElementById('hubConn').click();onHubState('ready')"); await pg.wait_for_timeout(400)
+    r = await pg.evaluate("[...document.querySelectorAll('#hubList .v2-hrow')].map(e=>[e.querySelector('em').textContent,e.querySelectorAll('.v2-leds i').length])")
+    check('106 connected: a row per hub with its LEDs', len(r) >= 1 and r[0] == ['M1', 14], r)
+    check('106 no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def t_seven(b):
     ctx, pg = await page(b)
     SL = "document.querySelector('#boardGrid .bdw[data-k=s] input[type=range]')"
@@ -1575,12 +1587,12 @@ async def t_wirelock(b):
     check('wiring tabs: switching to hub 2 shows its wiring', r == [True, True], r)
     r = await pg.evaluate("[document.getElementById('wrLock').getAttribute('aria-pressed'),document.getElementById('wrHost').shadowRoot.querySelector('svg').classList.contains('lk')]")
     check('wiring lock: on by default', r == ['true', True], r)
-    bb = await pg.evaluate("(function(){var r=document.getElementById('wrHost').shadowRoot.querySelector('.hubg').getBoundingClientRect();return [r.x+r.width*.5,r.y+r.height*.85]})()")
+    bb = await pg.evaluate("(function(){var g=document.getElementById('wrHost').shadowRoot.querySelector('.hubg');g.scrollIntoView({block:'center'});var r=g.getBoundingClientRect();return [r.x+r.width*.5,r.y+r.height*.85]})()")
     await pg.mouse.move(bb[0], bb[1]); await pg.mouse.down(); await pg.mouse.move(bb[0]-40, bb[1]+40, steps=8); await pg.mouse.up(); await pg.wait_for_timeout(300)
     r = await pg.evaluate("JSON.stringify(JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.pfp||{})")
     check('wiring lock: a drag while locked moves nothing', '"19"' not in r and '"18"' not in r, r)
     await pg.evaluate("document.getElementById('wrLock').click()"); await pg.wait_for_timeout(200)
-    bb = await pg.evaluate("(function(){var r=document.getElementById('wrHost').shadowRoot.querySelector('.hubg').getBoundingClientRect();return [r.x+r.width*.5,r.y+r.height*.85]})()")
+    bb = await pg.evaluate("(function(){var g=document.getElementById('wrHost').shadowRoot.querySelector('.hubg');g.scrollIntoView({block:'center'});var r=g.getBoundingClientRect();return [r.x+r.width*.5,r.y+r.height*.85]})()")
     await pg.mouse.move(bb[0], bb[1]); await pg.mouse.down(); await pg.mouse.move(bb[0]-40, bb[1]+40, steps=8); await pg.mouse.up(); await pg.wait_for_timeout(400)
     r = await pg.evaluate("JSON.stringify(JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.pfp||{})")
     check('wiring lock: unlocked, the hub can be dragged (saved for hub 2)', '"19"' in r, r)
@@ -1590,7 +1602,7 @@ async def t_wirelock(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_hubrows, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

@@ -1376,6 +1376,14 @@ section.model details.adv{margin-top:14px}
 
 /* ---------- 5 · Hub: card with output LEDs, channel-test knobs ---------- */
 .v2-hubcard{border-color:var(--acc)!important;box-shadow:0 0 0 1px var(--acc)}
+.v2-hch{display:flex;align-items:baseline;justify-content:space-between;gap:10px}.v2-hch b{font-size:18px}.v2-hch small{color:#1D9E75;font-size:13px;white-space:nowrap}
+.v2-hrows{display:flex;flex-direction:column;gap:10px;margin:14px 0 4px}
+.v2-hrow{background:var(--well);border:1px solid var(--line);border-radius:16px;padding:10px 12px}
+.v2-hrow .t{display:flex;align-items:center;gap:8px}.v2-hrow .t em{font:900 12px var(--f-body);font-style:normal;color:#14181f;background:linear-gradient(180deg,#ffe27a,#e9b81d);border-radius:7px;padding:2px 7px}
+.v2-hrow .t b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}.v2-hrow .t strong{color:var(--acc);font-variant-numeric:tabular-nums}
+.v2-hrow .l{display:flex;align-items:center;gap:10px;margin-top:8px}.v2-hrow .v2-leds i{height:9px}
+.v2-hrow .l small{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:11.5px;white-space:nowrap;min-width:52px;justify-content:flex-end}.v2-hrow .l small::before{content:"";width:8px;height:8px;border-radius:50%;background:#1D9E75;box-shadow:0 0 6px rgba(29,158,117,.7)}
+.v2-hrow .l small.off::before{background:#E24B4A;box-shadow:0 0 6px rgba(226,75,74,.7)}
 .v2-hubic{position:relative;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;width:52px;height:52px;border:1px solid var(--line);border-radius:14px;background:var(--well);color:#c5ccd6}
 .v2-hubic .ic{width:24px;height:24px}
 .v2-hubic em{position:absolute;bottom:-8px;padding:0 6px;border-radius:8px;background:var(--panel);font:800 10px var(--f-body);font-style:normal;color:var(--acc)}
@@ -1390,7 +1398,14 @@ section.model details.adv{margin-top:14px}
 #hubSlots{display:flex;flex-direction:column;gap:14px}#hubSlots:empty{display:none}
 .v2-slot .btn{flex:none}
 .v2-emptyhub{display:flex;flex-direction:column;align-items:center;text-align:center;padding:26px 16px 20px}
-.v2-emptyhub .qi{width:84px;height:84px;color:#6b7280;stroke-width:1.2}
+.v2-hubpic{position:relative;width:180px;height:150px;display:flex;align-items:center;justify-content:center}
+.v2-hubpic img{position:relative;width:118px;height:auto;filter:drop-shadow(0 8px 10px rgba(0,0,0,.5))}
+.v2-hubpic i{position:absolute;left:50%;top:50%;width:150px;height:150px;margin:-75px 0 0 -75px;border:2px solid #378ADD;border-radius:50%;opacity:0;animation:v2ring 2.4s ease-out infinite}
+.v2-hubpic i:nth-child(2){animation-delay:.8s}.v2-hubpic i:nth-child(3){animation-delay:1.6s}
+@keyframes v2ring{0%{transform:scale(.45);opacity:.85}100%{transform:scale(1.15);opacity:0}}
+@media (prefers-reduced-motion:reduce){.v2-hubpic i{animation:none;opacity:.35}.v2-hubpic i:nth-child(2){transform:scale(.75)}.v2-hubpic i:nth-child(3){transform:scale(.5)}}
+.v2-hubpic .bt{position:absolute;right:14px;top:8px;width:34px;height:34px;border-radius:50%;background:#12151b;border:2px solid #378ADD;display:flex;align-items:center;justify-content:center;box-shadow:0 0 12px rgba(55,138,221,.5)}
+.v2-hubpic .bt svg{width:20px;height:20px;fill:none;stroke:#5aa7f0;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .v2-emptyhub b{display:block;font-size:17px;margin-top:14px}
 .v2-emptyhub p{color:var(--muted);margin:6px auto 16px;max-width:290px;font-size:13.5px;line-height:1.45}
 .v2-emptyhub .btn{min-width:200px}
@@ -1810,7 +1825,7 @@ html[data-ui=light]:not(.dash) .btn:not(.bdw *),html[data-ui=light]:not(.dash) .
 html[data-ui=light]:not(.dash) .btn[aria-pressed="true"]:not(.bdw *),html[data-ui=light]:not(.dash) .v2-empty .btn.pri{background:var(--acc)!important;border-color:var(--acc)!important;color:#1b1b1b!important}
 html[data-ui=light]:not(.dash) .btn:disabled{opacity:.45}
 html[data-ui=light]:not(.dash) select option{background:#fff;color:#14181D}
-html[data-ui=light]:not(.dash) .v2-grp,html[data-ui=light]:not(.dash) .v2-chip b,html[data-ui=light]:not(.dash) .v2-nav button[aria-pressed=true],html[data-ui=light]:not(.dash) .v2-hst[data-st=busy],html[data-ui=light]:not(.dash) .v2-pill[data-st=busy] .ptx,html[data-ui=light]:not(.dash) .v2-outrow b,html[data-ui=light]:not(.dash) .v2-hubic em,html[data-ui=light]:not(.dash) .v2-knob-b[aria-pressed=true] .kl,html[data-ui=light]:not(.dash) .v2-madd{color:var(--acc-t)!important}
+html[data-ui=light]:not(.dash) .v2-grp,html[data-ui=light]:not(.dash) .v2-chip b,html[data-ui=light]:not(.dash) .v2-nav button[aria-pressed=true],html[data-ui=light]:not(.dash) .v2-hst[data-st=busy],html[data-ui=light]:not(.dash) .v2-pill[data-st=busy] .ptx,html[data-ui=light]:not(.dash) .v2-hrow .t strong,html[data-ui=light]:not(.dash) .v2-knob-b[aria-pressed=true] .kl,html[data-ui=light]:not(.dash) .v2-madd{color:var(--acc-t)!important}
 html[data-ui=light]:not(.dash) .v2-madd{border-color:#C68700}
 html[data-ui=light]:not(.dash) .v2-li > .ic:first-child,html[data-ui=light]:not(.dash) .v2-ib,html[data-ui=light]:not(.dash) .v2-pill:not([data-bt=off]) .pbt,html[data-ui=light]:not(.dash) .v2-hubic{color:#5D6773}
 html[data-ui=light]:not(.dash) .v2-ib:active{background:rgba(0,0,0,.05)}
@@ -1921,17 +1936,14 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
   <section class="v2-scr" id="scrHome" aria-label="Home">
     <div id="hAlerts"></div>
     <div class="card v2-emptyhub" id="hubEmpty">
-      <svg class="ic qi" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6" stroke-dasharray="2.4 2.4"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1.1.9-1.1 1.6v.6M12 16.8v.1"/></svg>
+      <div class="v2-hubpic" aria-hidden="true"><i></i><i></i><i></i><img src="img/pf/hub.webp" alt=""><span class="bt"><svg viewBox="0 0 24 24"><path d="M7 7.5l10 9-5 4.5v-18l5 4.5-10 9"/></svg></span></div>
       <b>No hub connected</b>
       <p>Turn the hub on, press its button for 2 seconds and hold it near the phone.</p>
       <button class="btn" id="hubConn" type="button" aria-pressed="true">Connect</button>
     </div>
     <section class="card v2-hubcard" id="hubCard">
-      <div class="v2-mrow">
-        <span class="v2-hubic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="6.5" width="11" height="11" rx="2.2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9.5 3.5v3M14.5 3.5v3M9.5 17.5v3M14.5 17.5v3M3.5 9.5h3M3.5 14.5h3M17.5 9.5h3M17.5 14.5h3"/></svg><em id="hubMod">M1</em></span>
-        <span class="v2-grow"><b id="hubTitle">Mould King 6.0</b><small id="hubSub"></small></span>
-      </div>
-      <div class="v2-outrow"><span class="v2-olbl">Output</span><span class="v2-leds" id="hubLeds"></span><b id="hubPct">0%</b></div>
+      <div class="v2-hch"><b>Mould King 6.0</b><small id="hubSub"></small></div>
+      <div class="v2-hrows" id="hubList"></div>
       <div class="rec-row">
         <button class="btn v2-icbtn" id="hubName" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4.2L19.2 9a2.1 2.1 0 0 0-3-3L5.2 17z"/><path d="M14.5 7.5l3 3"/></svg><span>Rename</span></button>
         <button class="btn v2-icbtn" id="hubOff" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 14.5 7.4 16.6a3 3 0 0 1-4.2-4.2l3-3M14.5 9.5l2.1-2.1a3 3 0 0 1 4.2 4.2l-3 3M8 4.5v2.5M4.5 8H7M16 19.5V17M19.5 16H17"/></svg><span>Disconnect</span></button>
