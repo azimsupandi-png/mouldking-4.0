@@ -1841,6 +1841,18 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
 .wr-panel{position:fixed;left:10px;right:10px;margin:0 auto;max-width:520px;bottom:calc(var(--nav-h,64px) + 40px + env(safe-area-inset-bottom,0px));z-index:45;max-height:min(44vh,460px);overflow:auto;overscroll-behavior:contain;border:1.5px solid #ffd84a;border-radius:20px;padding:10px 12px 12px;background:#161a21;box-shadow:0 16px 44px rgba(0,0,0,.7),0 0 0 1px rgba(0,0,0,.4)}
 .wr-panel .wr-ph{position:sticky;top:-10px;z-index:1;background:#161a21;margin:-10px -12px 6px;padding:10px 12px 6px;border-radius:20px 20px 0 0}
 .wr-panel .wr-holds{margin-top:4px}
+.wr-ph{gap:6px}.wr-ph .chip{min-width:28px;text-align:center}
+.wr-nav{width:26px;height:34px;border:0;background:none;color:#8a93a0;font-size:26px;line-height:1;padding:0}.wr-nav:active{color:#ffd84a}
+.wr-ib{flex:none;width:38px;height:38px;border-radius:50%;border:1.5px solid #2b303a;background:#12151b;color:#c9ced6;font-size:16px;padding:0}.wr-ib:active{border-color:#ffd84a;color:#ffd84a}
+.wr-min[aria-pressed=true]{transform:rotate(180deg)}
+.wr-lb{display:grid;grid-template-columns:repeat(20,1fr);gap:2px;margin:2px 0 4px}.wr-lb i{height:7px;border-radius:2px;background:rgba(150,160,175,.22)}
+.wr-panel.min .wr-body,.wr-panel.min .wr-lab{display:none}.wr-panel.min .wr-tst .wr-lab{display:none}
+.wr-types{grid-template-columns:repeat(6,1fr)!important;gap:4px!important}
+.wr-types button{padding:4px 2px!important;font-size:10.5px!important;border-radius:10px!important}
+.wr-types img{height:26px!important}.wr-none{height:26px!important;line-height:26px!important;font-size:18px!important}
+.wr-tools{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:10px}.wr-tools .btn{min-height:42px}.wr-wig.on{border-color:#ffd84a;color:#ffd84a}
+.wr-sl{flex-wrap:wrap}.wr-sl span{flex:1 1 100%}.wr-sl b{color:#ffd84a;font-variant-numeric:tabular-nums}.wr-sl input{flex:1 1 100%;accent-color:#ffc400}
+
 html.wr-fl[data-v=hub] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(44vh,460px) + env(safe-area-inset-bottom,0px))!important}
 .wr-ph{display:flex;align-items:center;gap:8px}.wr-ph .chip{background:linear-gradient(180deg,#ffe27a,#e9b81d);color:#14181f;border-radius:7px;padding:1px 8px;font-weight:900}
 .wr-pn{flex:1;min-width:0;width:0;font:inherit;font-weight:800;font-size:18px;color:#e8e8ea;background:transparent;border:0;border-bottom:1.5px dashed #3a414d;border-radius:0;padding:4px 2px 3px;outline:none;text-overflow:ellipsis}.wr-pn:focus{border-bottom:1.5px solid #ffd84a;background:#0f1217}.wr-pv{color:#ffd84a;font-variant-numeric:tabular-nums;min-width:48px;text-align:right}
@@ -1998,8 +2010,7 @@ html.wr-fl[data-v=hub] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(4
     <button class="v2-li v2-sw" type="button" id="sHC" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M12 3.4v17.2A8.6 8.6 0 0 0 12 3.4z" fill="currentColor"/></svg><span>High contrast (outdoor)</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li v2-sw" type="button" id="sCB" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/></svg><span>Colour-blind colours</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li" type="button" id="sBb"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M6.5 14l3-4 3 3 2.5-5 2.5 6"/></svg><span>E-Stop black box</span><small id="sBbV">None yet</small></button>
-    <button class="v2-li v2-sw" type="button" id="sLframe" role="switch" aria-checked="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="3.5"/><path d="M8 12h8"/></svg><span>Live frames (green = running, red = full)</span><i class="tg" aria-hidden="true"></i></button>
-    <button class="v2-li v2-sw" type="button" id="sLefty" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l-3.5 3.5L7 14M3.5 10.5H14a6 6 0 0 1 6 6v1"/></svg><span>Left-handed (landscape)</span><i class="tg" aria-hidden="true"></i></button>
+    <button class="v2-li v2-sw" type="button" id="sLframe" role="switch" aria-checked="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="3.5"/><path d="M8 12h8"/></svg><span>Live frame</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li v2-sw v2-lk" type="button" id="sPrac" role="switch" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.8 9.2 12 4.5l9.2 4.7L12 13.9z"/><path d="M6.8 11.4v4.3c0 1.5 2.3 3 5.2 3s5.2-1.5 5.2-3v-4.3M21.2 9.2v5"/></svg><span>Practice mode (no hub)</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li" type="button" id="sLang"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M3.4 12h17.2M12 3.4c2.4 2.4 3.4 5.3 3.4 8.6s-1 6.2-3.4 8.6c-2.4-2.4-3.4-5.3-3.4-8.6s1-6.2 3.4-8.6z"/></svg><span>Language</span><small id="sLangV"></small><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
     <div class="v2-grp">About</div>
@@ -2042,12 +2053,14 @@ html.wr-fl[data-v=hub] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(4
       <div class="wr-acts"><button class="btn" id="wrChk" type="button">✓ Check wiring</button><button class="btn" id="wrTidy" type="button">⇲ Tidy</button></div>
       <div class="wr-chk" id="wrChkBox" hidden></div>
       <div class="wr-panel" id="wrPanel" hidden>
-        <div class="wr-ph"><span class="chip">A</span><input class="wr-pn" type="text" maxlength="16" autocomplete="off" enterkeyhint="done" aria-label="Channel name"><b class="wr-pv">0%</b><button class="btn wr-x" type="button">Close</button></div>
+        <div class="wr-ph"><button class="wr-nav" type="button" data-d="-1" aria-label="Previous port">‹</button><span class="chip">A</span><button class="wr-nav" type="button" data-d="1" aria-label="Next port">›</button><input class="wr-pn" type="text" maxlength="16" autocomplete="off" enterkeyhint="done" aria-label="Channel name"><b class="wr-pv">0%</b><button class="wr-ib wr-min" type="button" aria-label="Make the panel smaller" aria-pressed="false">▾</button><button class="wr-ib wr-x" type="button" aria-label="Close">✕</button></div>
+        <div class="wr-lb" aria-hidden="true"></div>
         <div class="wr-holds"><button class="btn wr-r" type="button">◀ Hold reverse</button><button class="btn wr-f" type="button">Hold forward ▶</button></div>
         <div class="wr-tst" hidden>
           <div class="wr-lab">Test slider <small>let go = stop</small></div>
           <input type="range" class="wr-test" min="-100" max="100" step="1" value="0" aria-label="Test slider">
         </div>
+        <div class="wr-body">
         <div class="wr-lab">What is plugged in</div>
         <div class="wr-types">
           <button type="button" data-t=""><i class="wr-none">∅</i><span>Nothing</span></button>
@@ -2058,11 +2071,15 @@ html.wr-fl[data-v=hub] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(4
           <button type="button" data-t="lt"><img src="img/pf/lt.webp" alt=""><span>LED lights</span></button>
         </div>
         <div class="wr-more" hidden>
+          <div class="wr-tools"><button class="btn wr-wig" type="button">〰 Wiggle to find it</button><button class="btn wr-stp" type="button">■ Stop</button></div>
           <div class="wr-row"><span>Reverse direction</span><button class="wr-sw" type="button" role="switch" aria-checked="false" aria-label="Reverse direction"><i></i></button></div>
+          <div class="wr-row wr-sl"><span>Max power <b class="wr-mxv">100%</b></span><input type="range" class="wr-mx" min="10" max="100" step="5" aria-label="Max power"></div>
+          <div class="wr-row wr-sl wr-trow"><span>Centre trim <b class="wr-tmv">0</b></span><input type="range" class="wr-tm" min="-20" max="20" step="1" aria-label="Centre trim"></div>
           <div class="wr-row"><span>Cable <b class="wr-cl">0 cm</b></span><span class="wr-cbs"><button class="btn" type="button" data-l="20">20 cm</button><button class="btn" type="button" data-l="50">50 cm</button></span></div>
           <div class="wr-cw" hidden>The cable does not reach this far. Move the part closer or use a 50 cm cable.</div>
           <div class="wr-lab">Add to board</div>
           <div class="wr-adds"><button class="btn" type="button" data-w="ax">Motor axle</button><button class="btn" type="button" data-w="s">Slider</button><button class="btn" type="button" data-w="lv">Lever</button><button class="btn" type="button" data-w="st">Steering wheel</button><button class="btn" type="button" data-w="t">Toggle</button><button class="btn" type="button" data-w="f">Arc meter</button></div>
+        </div>
         </div>
       </div>
     </section>

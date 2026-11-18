@@ -508,14 +508,23 @@ async def t_led(b):
     await ctx.close()
 
 async def t_lefty(b):
-    ctx, pg = await page(b, w=844, h=390)
-    await pg.evaluate("mk6Go('drive')")
-    await pg.wait_for_timeout(400)
-    x0 = await pg.evaluate("document.querySelector('#boardGrid .bdw.v2-es').getBoundingClientRect().left")
-    await pg.evaluate("mk6Go('settings');document.getElementById('sLefty').click();mk6Go('drive')")
-    await pg.wait_for_timeout(500)
-    x1 = await pg.evaluate("document.querySelector('#boardGrid .bdw.v2-es').getBoundingClientRect().left")
-    check('6 left-handed: the landscape board is mirrored', x0 > 500 and x1 < 200, [x0, x1])
+    # Build 98: Left-handed is gone, the switch is "Live frame", the port panel has ‹ › arrows, fold, live bar, max power and trim
+    ctx, pg = await page(b)
+    await pg.evaluate("mk6Go('settings')")
+    r = await pg.evaluate("[!!document.getElementById('sLefty'),document.querySelector('#sLframe span').textContent]")
+    check('98 Left-handed removed, switch reads Live frame', r == [False, 'Live frame'], r)
+    await pg.evaluate("mk6Go('hub')"); await pg.wait_for_timeout(300)
+    await pg.evaluate("document.getElementById('wrHost').shadowRoot.querySelector('.slot[data-p=B]').dispatchEvent(new MouseEvent('click'))"); await pg.wait_for_timeout(200)
+    await pg.evaluate("document.querySelector('#wrPanel .wr-nav[data-d=\"1\"]').click()"); await pg.wait_for_timeout(200)
+    c = await pg.evaluate("document.querySelector('#wrPanel .chip').textContent")
+    check('98 › steps to the next port', c.endswith('C'), c)
+    await pg.evaluate("var m=document.querySelector('#wrPanel .wr-mx');m.value=60;m.dispatchEvent(new Event('input'));m.dispatchEvent(new Event('change'))")
+    mx = await pg.evaluate("JSON.parse(localStorage.getItem(Object.keys(localStorage).find(function(k){return /mk6/i.test(k)})||'{}')) && document.querySelector('#wrPanel .wr-mxv').textContent")
+    check('98 max power slider sets the port', mx == '60%', mx)
+    await pg.evaluate("document.querySelector('#wrPanel .wr-min').click()")
+    h = await pg.evaluate("[getComputedStyle(document.querySelector('#wrPanel .wr-body')).display,document.querySelectorAll('#wrPanel .wr-lb i').length]")
+    check('98 ▾ folds the panel and the live bar has 20 LEDs', h == ['none', 20], h)
+    check('98 no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
 async def t_seven(b):
