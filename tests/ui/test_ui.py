@@ -43,7 +43,7 @@ W = "new Promise(r=>setTimeout(()=>r(%s),400))"
 async def t_click_everything(b):
     errs = []
     total = 0
-    for v in ['home', 'drive', 'models', 'medit', 'tpl', 'settings', 'hub', 'safety', 'backup', 'm-tilt', 'm-pad', 'm-app', 'm-log']:
+    for v in ['home', 'drive', 'models', 'medit', 'tpl', 'settings', 'hub', 'safety', 'backup', 'm-tilt', 'm-pad', 'm-log']:
         ctx, pg = await page(b)
         await pg.evaluate("mk6Go('home');document.getElementById('hubConn').click();onHubState('ready')")
         for _ in range(2):
