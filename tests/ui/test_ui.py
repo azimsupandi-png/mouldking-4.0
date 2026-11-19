@@ -278,7 +278,7 @@ async def t_twelve(b):
     # 4 gamepad picture: pressing a button highlights its row
     await pg.evaluate("mk6Go('m-pad');v2GpPress(1)")
     await pg.wait_for_timeout(300)
-    r = await pg.evaluate("[document.querySelectorAll('#gpPic .gp-b').length,document.querySelectorAll('#gpMap .pm')[1].classList.contains('v2sel')]")
+    r = await pg.evaluate("[document.querySelectorAll('#gpPic .gp-b,#gpPic2 .gp-b').length,document.querySelectorAll('#gpMap .pm')[1].classList.contains('v2sel')]")
     check('4 gamepad picture: 12 buttons, pressing B selects its row', r == [12, True], r)
     # 11 quick settings: hold the pill
     await pg.evaluate("mk6Go('home');document.getElementById('v2Pill').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientY:20}))")

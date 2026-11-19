@@ -1491,11 +1491,6 @@ html[data-macc] .v2-mchip .v2-knob.sm,html[data-macc] #scrHome .v2-mrow .v2-knob
 .bd-types.v2-gal2 .gt svg{display:block;width:100%;height:100%}
 .bd-types.v2-gal2 .gl{font-size:12px;font-weight:700;text-align:center}
 /* ---------- 4 · gamepad picture ---------- */
-.v2-gp{max-width:360px;margin:6px auto 0}
-.gp-svg{display:block;width:100%}
-.gp-body{fill:#1d222b;stroke:#6b7280;stroke-width:1.2}.gp-sh{fill:#2a303b}
-.gp-b{cursor:pointer}.gp-b circle{fill:#0b0d11;stroke:#4a5260;stroke-width:1}.gp-b text{font:800 5.6px sans-serif;fill:#c5ccd6;pointer-events:none}
-.gp-b.on circle{stroke:#ffd84a;stroke-width:1.4}.gp-b.sel circle{fill:#ffd84a}.gp-b.sel text{fill:#1b1b1b}
 .v2-gph{text-align:center;font-size:12px;margin:4px 0 8px}
 #gpMap .pm.v2sel{outline:2px solid var(--acc);outline-offset:3px;border-radius:8px}
 /* ---------- 11 · quick settings panel ---------- */
@@ -1884,6 +1879,40 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
 .wr-bw{margin-top:8px;padding:8px 10px;border-radius:12px;font-size:12px}.wr-bw.y{border:1px solid #EF9F27;background:rgba(239,159,39,.12);color:#ffd08a}.wr-bw.r{border:1px solid #E24B4A;background:rgba(226,75,74,.12);color:#ffb3b3}
 .wr-note{color:#8a93a0;font-size:12px;margin:8px 0 0}
 .wr-head{display:flex;align-items:center;gap:8px}.wr-head h2{flex:1;min-width:0}.wr-lock,.wr-lock[aria-pressed]{min-width:48px;height:48px;font-size:24px;padding:0;background:none!important;border:0!important;box-shadow:none!important;color:inherit!important}.wr-lock:active{transform:scale(.9)}
+
+/* ---------- Gamepad (PS4 renders) and Tilt steering cards ---------- */
+.gpx-stat{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,#252b35,#191d24);margin:0 0 10px}
+.gpx-ico{width:62px;flex:none;position:relative;filter:drop-shadow(0 3px 4px rgba(0,0,0,.6))}.gpx-ico img{display:block;width:100%;opacity:.7;transition:opacity .2s}
+.gpx-ico::before{content:"";position:absolute;left:32%;right:32%;top:-1px;height:3px;border-radius:2px;background:#3a404b;transition:.2s}
+.gpx-stat.on .gpx-ico img{opacity:1}.gpx-stat.on .gpx-ico::before{background:#7cc4ff;box-shadow:0 0 6px #3b9cff,0 0 12px #3b9cff}
+.gpx-st{flex:1;min-width:0}.gpx-st b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gpx-st .rec-stat{margin:2px 0 0;font-size:12px;font-family:var(--f-body);line-height:1.3}
+.gpx-stat.on .rec-stat{color:#1D9E75}
+.gpx-lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:18px 2px 8px;font-weight:600}
+.gpx-lbl em{font-style:normal;text-transform:none;letter-spacing:0;color:#59606c;font-weight:400;margin-left:6px}
+.gpx-sticks{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gpx-w{padding:6px 6px 8px!important;min-width:0;grid-column:auto!important}.gpx-w .bdw-h{font-size:12px}
+.gpx-w .pad.gpx-pad{width:calc(100% - 22px);margin:12px auto 10px;pointer-events:none}
+.gpx-val{text-align:center;font:600 12px var(--f-mono);color:#c9ced6}.gpx-val.dz{color:#EF9F27}
+.gpx-dz{position:absolute;left:50%;top:50%;border-radius:50%;border:2px dashed #EF9F27;background:radial-gradient(circle,rgba(239,159,39,.22),rgba(239,159,39,.06));transform:translate(-50%,-50%);pointer-events:none;z-index:0;box-shadow:0 0 12px rgba(239,159,39,.25)}
+.gpx-n{margin-top:2px}
+.gpx-pic{margin:0 -6px}.gpx-pic svg{display:block;width:100%}.gpx-back{margin:0 4px}
+.gpx-pic .gp-b{cursor:pointer}.gpx-pic .gp-b .rg{fill:transparent;stroke:transparent;stroke-width:5;transition:fill .08s,stroke .08s}
+.gpx-pic .gp-b.sel .rg{stroke:#ffd84a;fill:rgba(255,216,74,.2);filter:drop-shadow(0 0 8px #ffd84a)}
+.gpx-pic .gp-b.live .rg{stroke:#3fe0a6;fill:rgba(63,224,166,.4);filter:drop-shadow(0 0 10px #3fe0a6)}
+.gpx-pic .chip{cursor:pointer}
+.gpx-trg{display:flex;align-items:center;gap:10px;margin:8px 2px}.gpx-trg b{width:24px;font-size:13px;color:#c9ced6}
+.gpx-trg output{min-width:44px;text-align:right;font-weight:700;color:var(--acc,#ffd84a);font-size:13px}
+.gpx-bar{flex:1;display:grid;grid-template-columns:repeat(20,1fr);gap:3px;height:24px;padding:4px;border-radius:12px;background:#0b0d11;border:1px solid var(--line);box-shadow:inset 0 2px 5px rgba(0,0,0,.8)}
+.gpx-bar i{border-radius:3px;background:rgba(150,160,175,.22)}
+#tlOpt{display:block;min-width:0}#tlOpt[hidden]{display:none}
+.tlx-gauge svg,.tlx-curve svg{display:block;width:100%}
+.tlx-st{text-align:center;margin:2px 0 8px}
+.tlx-ctr{display:flex;justify-content:center;gap:8px}.tlx-ctr .btn{flex:0 1 auto}
+.tlx-cn{text-align:center;margin:6px 0 0}
+.tlx-seg{display:flex;background:#0b0d11;border:1px solid var(--line);border-radius:24px;padding:4px;box-shadow:inset 0 2px 6px rgba(0,0,0,.6)}
+.tlx-seg button{flex:1;border:0;background:none;color:var(--muted);padding:7px 4px;border-radius:20px;line-height:1.15;min-height:0;font:inherit}
+.tlx-seg b{display:block;font-size:13.5px}.tlx-seg small{font-size:11px;opacity:.85}
+.tlx-seg button[aria-pressed=true]{background:linear-gradient(180deg,#ffe066,#ffc400);color:#1a1300;box-shadow:0 2px 8px rgba(255,196,0,.35),inset 0 1px 0 rgba(255,255,255,.5)}
 </style>
 </head>
 <body>
@@ -2250,14 +2279,27 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
     <div class="stack">
       <section class="card" id="tiltCard">
         <h2>Tilt steering</h2>
-        <label class="check" for="tlOn"><input id="tlOn" type="checkbox">Steer by tilting the phone (experimental)</label>
+        <button class="v2-li v2-sw" type="button" role="switch" aria-checked="false" id="sTlOn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2.5" transform="rotate(-18 12 12)"/></svg><span>Steer by tilting the phone</span><i class="tg" aria-hidden="true"></i></button>
+        <input id="tlOn" type="checkbox" hidden>
         <div class="tilt-opt" id="tlOpt" hidden>
-          <label>Tilt for full steering<select id="tlSens"><option value="60">Low sensitivity (60°)</option><option value="45">Medium (45°)</option><option value="30">High sensitivity (30°)</option></select></label>
-          <label class="check" for="tlInv"><input id="tlInv" type="checkbox">Reverse tilt direction</label>
-          <label class="check" for="tlAll"><input id="tlAll" type="checkbox">Tilt on every Board joystick and slider</label>
+          <div class="tlx-gauge"><svg viewBox="0 0 320 196" id="tlGauge" aria-hidden="true"></svg></div>
+          <p class="rec-stat tlx-st" id="tlSt"></p>
+          <div class="tlx-ctr"><button class="btn" type="button" id="tlCentre">⊕ Set centre</button><button class="btn" type="button" id="tlAuto">Auto centre</button></div>
+          <p class="note tlx-cn" id="tlCNote"></p>
+          <div class="gpx-lbl">Tilt for full steering</div>
+          <div class="tlx-seg" id="tlSeg"><button type="button" data-v="30"><b>High</b><small>30°</small></button><button type="button" data-v="45"><b>Medium</b><small>45°</small></button><button type="button" data-v="60"><b>Low</b><small>60°</small></button></div>
+          <select id="tlSens" hidden><option value="60">60</option><option value="45">45</option><option value="30">30</option></select>
+          <div style="height:12px"></div>
+          <button class="v2-li v2-sw" type="button" role="switch" aria-checked="false" id="sTlInv"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h13l-3-3M20 15H7l3 3"/></svg><span>Reverse tilt direction</span><i class="tg" aria-hidden="true"></i></button>
+          <button class="v2-li v2-sw" type="button" role="switch" aria-checked="false" id="sTlAll"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="12" r="4"/><path d="M15 8v8M19 6v12"/></svg><span>Tilt on every Board joystick and slider</span><i class="tg" aria-hidden="true"></i></button>
+          <input id="tlInv" type="checkbox" hidden><input id="tlAll" type="checkbox" hidden>
+          <div class="gpx-lbl">Response curve</div>
+          <div class="tlx-curve"><svg viewBox="0 0 320 178" id="tlCurve" aria-hidden="true"></svg></div>
+          <div class="set">
+            <div class="set-row"><label for="tlDz"><span class="set-top"><span>Dead zone</span><output id="tlDzO">4°</output></span></label><input id="tlDz" type="range" min="0" max="15" step="1" value="4"></div>
+            <div class="set-row"><label for="tlEx"><span class="set-top"><span>Expo (fine control near centre)</span><output id="tlExO">0%</output></span></label><input id="tlEx" type="range" min="0" max="80" step="5" value="0"></div>
+          </div>
         </div>
-        <div class="tl-wheel" id="tlWheel" aria-hidden="true"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="tlgR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a94a6"/><stop offset=".5" stop-color="#3a4252"/><stop offset="1" stop-color="#1b2029"/></linearGradient><linearGradient id="tlgS" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6b7587"/><stop offset="1" stop-color="#2a303b"/></linearGradient><radialGradient id="tlgH" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#5b6578"/><stop offset="1" stop-color="#14181f"/></radialGradient></defs><circle cx="50" cy="50" r="45" fill="none" stroke="#0b0d11" stroke-width="12"/><circle cx="50" cy="50" r="45" fill="none" stroke="url(#tlgR)" stroke-width="8.5"/><circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="1" stroke-dasharray="1.2 1.8"/><path d="M9 50H91M50 50V92" stroke="#0b0d11" stroke-width="10.5" stroke-linecap="round"/><path d="M9 50H91M50 50V92" stroke="url(#tlgS)" stroke-width="8" stroke-linecap="round"/><circle cx="50" cy="50" r="13" fill="url(#tlgH)" stroke="#0b0d11" stroke-width="2"/><circle cx="50" cy="50" r="4" style="fill:var(--hc,#ffd84a)" opacity=".9"/><rect x="43.5" y="2.5" width="13" height="16" rx="3.5" style="fill:var(--hc,#ffd84a);stroke:var(--hcd,#7a6a1f)" stroke-width="1.2"/><rect x="46" y="5" width="3" height="11" rx="1.5" fill="rgba(255,255,255,.55)"/></svg></div>
-        <p class="rec-stat" id="tlSt"></p>
         <p class="note">Touch and hold the joystick with one thumb. Up and down drives. Tilt the phone left or right like a steering wheel to steer. It works with the left joystick, or the first joystick on the Board. Hold the phone upright or sideways, not flat.</p>
       </section>
 
@@ -2290,16 +2332,26 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
 
       <section class="card" id="padCard">
         <h2>Gamepad</h2>
-        <p class="rec-stat" id="gpStat">No gamepad found. Pair it in Android Bluetooth settings, then press any button.</p>
-        <label class="check" for="gpOn"><input id="gpOn" type="checkbox" checked>Use gamepad</label>
-        <div class="set" style="margin-top:12px">
+        <div class="gpx-stat" id="gpBox"><div class="gpx-ico"><img src="img/ds4-front.webp" alt=""></div><div class="gpx-st"><b id="gpName">No gamepad</b><p class="rec-stat" id="gpStat">No gamepad found. Pair it in Android Bluetooth settings, then press any button.</p></div></div>
+        <button class="v2-li v2-sw" type="button" role="switch" aria-checked="true" id="sGpOn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h10a4 4 0 0 1 3.8 5.2l-1 3a2.5 2.5 0 0 1-4.3.7L14 15h-4l-1.5 1.9a2.5 2.5 0 0 1-4.3-.7l-1-3A4 4 0 0 1 7 8z"/></svg><span>Use gamepad</span><i class="tg" aria-hidden="true"></i></button>
+        <input id="gpOn" type="checkbox" checked hidden>
+        <div class="gpx-lbl">Sticks <em>live from the gamepad</em></div>
+        <div class="gpx-sticks"><div class="bdw padw gpx-w"><div class="bdw-h"><span><i class="bdw-chip">L3</i>Left stick</span></div><div class="pad gpx-pad" id="gpL"><i class="gpx-dz"></i><div class="knob rest"></div></div><div class="gpx-val" id="gpLV">0 · 0</div></div><div class="bdw padw gpx-w"><div class="bdw-h"><span><i class="bdw-chip">R3</i>Right stick</span></div><div class="pad gpx-pad" id="gpR"><i class="gpx-dz"></i><div class="knob rest"></div></div><div class="gpx-val" id="gpRV">0 · 0</div></div></div>
+        <div class="set" style="margin-top:4px">
           <div class="set-row"><label for="gpDead"><span class="set-top"><span>Stick dead zone</span><output id="gpDeadOut">12%</output></span></label>
             <input id="gpDead" type="range" min="5" max="40" step="1" value="12"></div>
-          <label>Trigger channel (RT forward, LT reverse)<select id="gpTrig"></select></label>
         </div>
-        <div class="v2-gp" id="gpPic"></div><p class="note v2-gph" id="gpHint">Tap a button on the picture, or press it on the gamepad.</p>
+        <p class="note gpx-n">Orange ring = dead zone: inside it the hub gets 0.</p>
+        <div class="gpx-lbl">Buttons <em>tap a button, or press it on the gamepad</em></div>
+        <div class="gpx-pic" id="gpPic"></div>
+        <div class="gpx-lbl">Shoulders &amp; triggers <em>seen from behind</em></div>
+        <div class="gpx-pic gpx-back" id="gpPic2"></div>
+        <p class="note v2-gph" id="gpHint">Tap a button on the picture, or press it on the gamepad.</p>
+        <div class="gpx-trg"><b>L2</b><div class="gpx-bar" id="gpL2"></div><output id="gpL2O">0%</output></div>
+        <div class="gpx-trg"><b>R2</b><div class="gpx-bar" id="gpR2"></div><output id="gpR2O">0%</output></div>
+        <div class="set"><label>Trigger channel (R2 forward, L2 reverse)<select id="gpTrig"></select></label></div>
         <details class="adv"><summary>Button mapping</summary><div class="set" id="gpMap" style="margin-top:8px"></div></details>
-        <p class="note">The left and right sticks move the joysticks on the board. Back = E-Stop, Start = release.</p>
+        <p class="note">The left and right sticks move the joysticks on the board. Share = E-Stop, Options = release.</p>
       </section>
 
       <section class="card" id="calCard">
