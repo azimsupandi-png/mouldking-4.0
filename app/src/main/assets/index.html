@@ -361,7 +361,7 @@ textarea.txt{padding:8px;font-family:var(--f-mono);font-size:12px;line-height:1.
 .prof-wrap select,.prof-wrap input{flex:1;min-width:0}
 @media (prefers-reduced-motion:reduce){.knob.rest,.fill{transition:none}.estop[aria-pressed="true"],.bar-banner{animation:none}}
 
-/* Player mode, settings lock, calibration, battery */
+/* Calibration, battery */
 /* Layout fixes: keep content inside its card whatever the number width */
 .ch>*{min-width:0}
 .ch-foot{min-width:0;gap:8px}
@@ -414,20 +414,9 @@ textarea.txt{padding:8px;font-family:var(--f-mono);font-size:12px;line-height:1.
 .bd-fields label{display:grid;gap:4px;font-size:12px;color:var(--muted)}
 .bd-fields label[hidden]{display:none}
 .tilt-opt{display:grid;gap:8px;margin:10px 0}
-:root[data-lock] #tiltCard,:root[data-lock] #bdEdit,:root[data-lock] #bdEditor,:root[data-lock] .bdw-ed{display:none}
 
 .btn.holding{background:var(--acc);color:#111;border-color:var(--acc)}
 .bat{margin-left:6px;font-family:var(--f-mono)}.bat::before{content:"\00b7 ";}.bat.low{color:var(--danger);font-weight:700}
-.player{position:fixed;inset:0;z-index:60;background:var(--bg);color:var(--fg);display:flex;flex-direction:column;gap:12px;padding:14px;padding-top:14px;overflow:auto}
-.pl-top{display:flex;align-items:center;gap:10px}
-.pl-top b{flex:1;font-family:var(--f-display);font-size:22px;letter-spacing:.06em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;align-content:start;flex:1}
-.pl-grid .qbtn{min-height:110px;font-size:24px;white-space:normal}
-.pl-note{color:var(--muted);font-size:15px}
-.pl-stop{min-height:88px;border:0;border-radius:10px;background:var(--danger);color:#fff;font-family:var(--f-display);font-size:30px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
-.pl-exit.hold{background:var(--acc);color:#fff}
-:root[data-lock] #limLbl,:root[data-lock] #limSeg,:root[data-lock] #recCard,:root[data-lock] #kidRow,:root[data-lock] #setCard,:root[data-lock] #seqCard,:root[data-lock] #calCard,:root[data-lock] #padCard,:root[data-lock] .model-row,:root[data-lock] details.adv,:root[data-lock] .ch .inv{display:none}
-:root[data-lock] #profName,:root[data-lock] .ch .name{pointer-events:none}
 
 /* ---- Header: hub power orb and yellow E-Stop button ---- */
 .bar .hubbtn{flex-direction:column;justify-content:center;gap:3px;min-height:0;padding:0;border:0;background:none;border-radius:0;width:76px;color:var(--fg)}
@@ -1427,10 +1416,6 @@ html:not(.dash-l) .v2-dbmore{display:none!important}
 html.dash-l #dashBar select{border-color:transparent!important;background-color:transparent!important;font-weight:700}
 
 /* ---------- lock mode: the app's own lock rules stay in charge ---------- */
-html:not(#a)[data-lock] #cols .stack > #recCard,html:not(#a)[data-lock] #cols .stack > #seqCard,html:not(#a)[data-lock] #cols .stack > #setCard,
-html:not(#a)[data-lock] #cols .stack > #calCard,html:not(#a)[data-lock] #cols .stack > #padCard,html:not(#a)[data-lock] #cols .stack > #tiltCard,
-html[data-lock] .v2-lk,html[data-lock] #scrSet [data-go=safety],html[data-lock] .v2-nav [data-tab=models],
-html[data-lock] #dEdit,html[data-lock] #dRec,html[data-lock] #hubRows,html[data-lock] #hubSlots,html[data-lock] .v2-chips{display:none!important}
 html[data-v=medit] section.model .model-row:first-child > label:first-child{display:none}
 html[data-v=medit] section.model .seg{display:grid!important;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px}
 html[data-v=medit] section.model .seg .btn span{font-size:12px!important;letter-spacing:0!important;white-space:nowrap}
@@ -1480,7 +1465,6 @@ html[data-v=drive]:not(.dash) main > #dMode{display:flex!important}
 .v2-seg3{flex:1 1 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:3px;border:1px solid var(--line);border-radius:20px;background:var(--well)}
 .v2-seg3 button{min-height:34px;border:0;border-radius:17px;background:none;color:var(--fg);font:700 13px var(--f-body);cursor:pointer}
 .v2-seg3 button[aria-pressed=true]{background:var(--acc);color:#1b1b1b}
-html[data-lock] #dMode [data-lp="2"]{display:none}html[data-lock] .v2-seg3{grid-template-columns:repeat(2,1fr)}
 .v2-ptime{flex:none;display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:0 12px;border:1px solid var(--line);border-radius:17px;background:var(--well);font:700 13px var(--f-mono,monospace);color:var(--ok)}
 .v2-ptime .ic{width:16px;height:16px}.v2-ptime.low{color:var(--danger);border-color:var(--danger)}
 /* ---------- 9 · widget sizes (1×1, 2×1, 1×2, 2×2) + 1 · trim buttons ---------- */
@@ -1750,7 +1734,6 @@ html[data-cb] .sf-fill.warn,html[data-cb] .sf-tip.warn{stroke:#E69F00;color:#E69
   box-shadow:0 0 0 5px var(--panel),0 8px 18px rgba(255,196,0,.35)}
 .v2-pb .ic{width:28px!important;height:28px!important;stroke:#141414;stroke-width:3}
 .v2-plus:active .v2-pb{transform:scale(.92)}
-html[data-lock] .v2-nav .v2-plus{display:none!important}
 .ndbox h3{margin:0 0 2px}.nd-sub{margin:0 0 12px}
 .chpop-ov{position:fixed;inset:0;z-index:85}
 .chpop{position:fixed;width:min(300px,calc(100vw - 16px));background:#232831;border:1px solid #3a414e;border-radius:14px;padding:10px;box-shadow:0 12px 32px rgba(0,0,0,.6);display:grid;gap:8px;color:#e8e8ea;animation:gbIn .22s cubic-bezier(.2,1.3,.4,1)}
@@ -1924,11 +1907,6 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
 </header>
 <div class="live" id="live" role="status" aria-live="polite"></div>
 <div class="toast" id="toast" role="status" hidden></div>
-<div class="player" id="player" role="dialog" aria-modal="true" aria-label="Player mode" hidden>
-  <div class="pl-top"><b id="plTitle"></b><button class="btn pl-exit" id="plExit" type="button">Hold to exit</button></div>
-  <div class="pl-grid" id="plGrid"></div>
-  <button class="pl-stop" id="plStop" type="button">E-Stop</button>
-</div>
 
 <main>
   <!-- ===== Layout shell ("Lakaran UI v2"): screens built on the app's own cards; minimalist icons (style 1) ===== -->
@@ -2070,7 +2048,7 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
     <button class="v2-li" type="button" id="sLang"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M3.4 12h17.2M12 3.4c2.4 2.4 3.4 5.3 3.4 8.6s-1 6.2-3.4 8.6c-2.4-2.4-3.4-5.3-3.4-8.6s1-6.2 3.4-8.6z"/></svg><span>Language</span><small id="sLangV"></small><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
     <button class="v2-li v2-sw" type="button" id="sRelink" role="switch" aria-checked="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 11A7.5 7.5 0 0 0 6 6.6L4.5 8M4.5 4v4h4"/><path d="M12 9v3.5l2.2 1.4"/></svg><span>Reconnect automatically</span><i class="tg" aria-hidden="true"></i></button>
     <button class="v2-li v2-sw" type="button" id="sFull" role="switch" aria-checked="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg><span>Full screen (hide system bars)</span><i class="tg" aria-hidden="true"></i></button>
-    <div hidden>    <label class="v2-li"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6L5.5 10l4.6-1.9z"/><path d="M18.5 15.5l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/></svg><span>Effects</span><select class="v2-sel" id="optFx"><option value="auto">Auto (recommended)</option><option value="full">Full</option><option value="lite">Lightweight</option></select></label><button class="v2-li" type="button" id="guideBtn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="3.5" width="15" height="17" rx="2.5"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4"/></svg><span>Show guide</span><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button><button class="v2-li" type="button" id="pinBtn" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.8" width="12" height="18.4" rx="2.6"/><path d="M12 8.5v6M9 11.5h6"/></svg><span>Add model to home screen</span><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button><label class="v2-li v2-lk" id="kidRow"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"/></svg><span>Player mode power limit</span><select class="v2-sel" id="kidLim"><option value="100">100%</option><option value="70">70%</option><option value="50">50%</option><option value="30">30%</option></select></label><button class="v2-li" type="button" id="playerBtn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="10" rx="5"/><path d="M7.5 10.5v3M6 12h3"/><circle cx="15.5" cy="11" r=".9"/><circle cx="17.5" cy="13" r=".9"/></svg><span>Player mode</span><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button><button class="v2-li" type="button" id="lockBtn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.4"/><path d="M8.5 10.5V7.8a3.5 3.5 0 0 1 7 0v2.7"/></svg><span>Lock settings</span></button><button class="v2-li v2-lk" type="button" id="pinSet"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="16" cy="12" r="1.2"/><rect x="3" y="7" width="18" height="10" rx="3"/></svg><span>Set PIN</span><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button><p class="v2-note" id="lockNote">Player mode shows only big sequence buttons and E-Stop. Lock settings hides everything that changes the model. Hold the button for 2 seconds to unlock or leave.</p><select id="lang"><option value="en">English</option><option value="ms">Bahasa Melayu</option></select><input id="optSound" type="checkbox" checked><input id="optHaptic" type="checkbox" checked><input id="optRelink" type="checkbox" checked><input id="optFull" type="checkbox" checked></div>
+    <div hidden><select id="lang"><option value="en">English</option><option value="ms">Bahasa Melayu</option></select><input id="optSound" type="checkbox" checked><input id="optHaptic" type="checkbox" checked><input id="optRelink" type="checkbox" checked><input id="optFull" type="checkbox" checked></div>
     <div class="v2-grp">About</div>
     <button class="v2-li" type="button" id="sTour"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M14.8 9.2l-1.9 4.6-4.6 1.9 1.9-4.6z"/></svg><span>Guided tour</span><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
     <button class="v2-li" type="button" id="sNew"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.3 5.2 5.7.6-4.3 3.8 1.2 5.6L12 15.8l-4.9 2.9 1.2-5.6L4 9.3l5.7-.6z"/></svg><span>What's new</span><svg class="ic v2ch" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>

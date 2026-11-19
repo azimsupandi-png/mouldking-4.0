@@ -69,7 +69,7 @@ import java.util.Locale;
  *
  * JS -> native: MK6Bridge.start/send/stop/stats/haptic/tilt/immersive/battery/btOn/
  *               btSettings/exportFile/importFile/pickWallpaper/autoBackup/
- *               pinModel/shortcuts/theme/textZoom/shareFile
+ *               shortcuts/theme/textZoom/shareFile
  * native -> JS: window.onHubState, onAppEvent, onTilt, onFileResult,
  *               onImportText, onWallpaper, openModel, onSharedModel
  */
@@ -915,22 +915,6 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void autoBackup(String json) {
             new Thread(() -> notifyApp(writeBackup(json) ? "backupok" : "backupfail")).start();
-        }
-
-        @JavascriptInterface
-        public void pinModel(String id, String name) {
-            runOnUiThread(() -> {
-                try {
-                    ShortcutManager sm = getSystemService(ShortcutManager.class);
-                    if (sm != null && sm.isRequestPinShortcutSupported() && id != null && id.matches(MODEL_ID)) {
-                        sm.requestPinShortcut(shortcutFor("pin_", id, name), null);
-                        return;
-                    }
-                    notifyApp("nopin");
-                } catch (RuntimeException e) {
-                    notifyApp("nopin");
-                }
-            });
         }
 
         /** Version info for Settings: {"code":346,"name":"1.2","build":46,"date":"2026-11-13"} */
