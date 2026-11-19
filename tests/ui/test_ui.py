@@ -514,7 +514,7 @@ async def t_lefty(b):
     await pg.evaluate("document.querySelector('#wrPanel .wr-nav[data-d=\"1\"]').click()"); await pg.wait_for_timeout(200)
     c = await pg.evaluate("document.querySelector('#wrPanel .chip').textContent")
     check('98 › steps to the next port', c.endswith('C'), c)
-    await pg.evaluate("var m=document.querySelector('#wrPanel .wr-mx');m.value=60;m.dispatchEvent(new Event('input'));m.dispatchEvent(new Event('change'))")
+    await pg.evaluate("var b=document.querySelector('#wrPanel .wr-step[data-f=max] button[data-d=\"-5\"]');for(var n=0;n<8;n++) b.click()")
     mx = await pg.evaluate("JSON.parse(localStorage.getItem(Object.keys(localStorage).find(function(k){return /mk6/i.test(k)})||'{}')) && document.querySelector('#wrPanel .wr-mxv').textContent")
     check('98 max power slider sets the port', mx == '60%', mx)
     await pg.evaluate("document.querySelector('#wrPanel .wr-min').click()")
@@ -596,6 +596,42 @@ async def t_trimrest(b):
     r = await pg.evaluate("(window.__last||'').split(',').slice(0,4)")
     check('111 at rest: LED port 0, motor port 0, unset port keeps trim, servo keeps trim', r == ['0', '0', '3', '4'], r)
     check('111 no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
+async def t_wiremap(b):
+    # Build 112: every part and plug opens its own port, and Hold drives that port's slot in the frame (two hubs, parts packed close)
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'W',cfg:{layout:'board',hubs:[0,1,-1],ch:[{name:'a'},{name:'b'},{name:'c'},{name:'d'},{name:'e'},{name:'f'},{},{},{},{},{},{}],board:[{k:'s',c:0,w:2}],
+      pf:['bg','sv','l','sv','l','lt','m','xl','sv','l','bg','lt'],pfp:{1:[700,330],2:[560,300],3:[860,1200],4:[300,330]}}}],prefs:{seen:true,wn:99,tour:true,wrlock:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};document.getElementById('hubConn').click();onHubState('ready');mk6Go('home')"); await pg.wait_for_timeout(700)
+    await pg.evaluate("mk6Go('home')"); await pg.wait_for_timeout(700)
+    bad = []
+    hosts = await pg.evaluate("[...document.querySelectorAll('#wrCard [id^=wrHost], #wrCard .wr-host')].length")
+    for kind in ['pt', 'sock']:
+        for L in 'ABCDEF':
+            await pg.evaluate("var x=document.querySelector('#wrPanel .wr-x');if(x&&!document.getElementById('wrPanel').hidden) x.click()"); await pg.wait_for_timeout(150)
+            r = await pg.evaluate("""(function(kind,L){var R=document.getElementById('wrHost').shadowRoot,g=R.querySelector('.'+kind+'[data-p='+L+']');if(!g) return 'none';
+              g.scrollIntoView({block:'center'});var hit=kind==='pt'?g.querySelector('.hit'):g,bb=hit.getBBox(),M=hit.getScreenCTM(),pt=R.host.ownerSVGElement;
+              var svg=R.querySelector('svg'),p=svg.createSVGPoint(),best=null;
+              for(var fy=.3;fy<=.7&&!best;fy+=.1) for(var fx=.3;fx<=.7&&!best;fx+=.1){p.x=bb.x+bb.width*fx;p.y=bb.y+bb.height*fy;if(hit.isPointInFill&&!hit.isPointInFill(p)) continue;var s=p.matrixTransform(M);var e=R.elementFromPoint(s.x,s.y),q=e&&e.closest('[data-p]');if(q&&q.getAttribute('data-p')===L) best=[s.x,s.y]}
+              if(!best) return 'covered';
+              var e=R.elementFromPoint(best[0],best[1]);e.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:7,clientX:best[0],clientY:best[1]}));window.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:7,clientX:best[0],clientY:best[1]}));
+              return document.querySelector('#wrPanel .chip').textContent})""" .replace('\n',' ') + "('" + kind + "','" + L + "')")
+            if r != 'M1' + L:
+                bad.append(kind + L + '->' + str(r))
+            await pg.evaluate("var b=document.querySelector('#wrPanel .wr-f');b.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:1}))"); await pg.wait_for_timeout(450)
+            fr = await pg.evaluate("(window.__last||'').split(',').map(Number)")
+            await pg.evaluate("var b=document.querySelector('#wrPanel .wr-f');b.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:1}))"); await pg.wait_for_timeout(450)
+            idx = 'ABCDEF'.index(L)
+            if not (len(fr) >= 12 and fr[idx] != 0 and all(v == 0 for j, v in enumerate(fr) if j != idx)):
+                bad.append('hold' + kind + L + '->' + str(fr))
+    check('112 every part and plug of hub 1 opens its own port and Hold drives only that port', not bad, bad)
+    check('112 no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
 async def t_seven(b):
@@ -1622,7 +1658,7 @@ async def t_wirelock(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_hubrows, t_trimrest, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_hubrows, t_trimrest, t_wiremap, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

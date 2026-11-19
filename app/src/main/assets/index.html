@@ -1859,6 +1859,7 @@ html[data-ui=light]:not(.dash) #boardGrid .bdw{box-shadow:0 6px 14px rgba(20,24,
 .wr-min[aria-pressed=true]{transform:rotate(180deg)}
 .wr-lb{display:grid;grid-template-columns:repeat(20,1fr);gap:2px;margin:2px 0 4px}.wr-lb i{height:7px;border-radius:2px;background:rgba(150,160,175,.22)}
 .wr-panel.min .wr-body,.wr-panel.min .wr-lab{display:none}.wr-panel.min .wr-tst .wr-lab{display:none}
+.wr-step{display:flex;align-items:center;gap:6px}.wr-step .btn{min-width:40px;min-height:36px!important;padding:0;font-size:18px!important}.wr-step b{min-width:46px;text-align:center;color:#ffd84a;font:600 13px var(--f-mono);font-variant-numeric:tabular-nums}
 .wr-sl{flex-wrap:wrap}.wr-sl span{flex:1 1 100%}.wr-sl b{color:#ffd84a;font-variant-numeric:tabular-nums}.wr-sl input{flex:1 1 100%;accent-color:#ffc400}
 
 html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(44vh,460px) + env(safe-area-inset-bottom,0px))!important}
@@ -1973,8 +1974,8 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
         <div class="wr-grid" role="group" aria-label="Wiring"></div>
         <div class="wr-more" hidden>
           <div class="wr-row"><span>Reverse direction</span><button class="wr-sw" type="button" role="switch" aria-checked="false" aria-label="Reverse direction"><i></i></button></div>
-          <div class="wr-row wr-sl"><span>Max power <b class="wr-mxv">100%</b></span><input type="range" class="wr-mx" min="10" max="100" step="5" aria-label="Max power"></div>
-          <div class="wr-row wr-sl wr-trow"><span>Centre trim <b class="wr-tmv">0</b></span><input type="range" class="wr-tm" min="-20" max="20" step="1" aria-label="Centre trim"></div>
+          <div class="wr-row"><span>Max power</span><span class="wr-step" data-f="max"><button class="btn" type="button" data-d="-5" aria-label="Less power">−</button><b class="wr-mxv">100%</b><button class="btn" type="button" data-d="5" aria-label="More power">+</button></span></div>
+          <div class="wr-row wr-trow"><span>Centre trim</span><span class="wr-step" data-f="trim"><button class="btn" type="button" data-d="-1" aria-label="Trim left">−</button><b class="wr-tmv">0</b><button class="btn" type="button" data-d="1" aria-label="Trim right">+</button></span></div>
           <div class="wr-row"><span>Cable <b class="wr-cl">0 cm</b></span><span class="wr-cbs"><button class="btn" type="button" data-l="20">20 cm</button><button class="btn" type="button" data-l="50">50 cm</button></span></div>
           <div class="wr-cw" hidden>The cable does not reach this far. Move the part closer or use a 50 cm cable.</div>
           <div class="wr-lab">Add to board</div>
