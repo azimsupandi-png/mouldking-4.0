@@ -667,6 +667,23 @@ async def t_outmap(b):
     check('113 no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_inview(b):
+    # Build 114: a part saved outside the picture comes back inside and can be grabbed; dragging cannot push it out
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'V',cfg:{layout:'board',ch:[{},{},{},{},{},{}],board:[{k:'s',c:0,w:2}],pf:['bg','l'],pfp:{0:[700,-220],1:[1500,1700]}}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("mk6Go('home')"); await pg.wait_for_timeout(600)
+    r = await pg.evaluate("""(function(){var R=document.getElementById('wrHost').shadowRoot,svg=R.querySelector('svg'),vb=[0,0,1360,1560],out=[];
+      ['A','B'].forEach(function(k){var b=R.querySelector('#pt'+k+' .hit').getBBox(),m=R.querySelector('#pt'+k).transform.baseVal.consolidate().matrix;
+        var x0=m.e+b.x*m.a,y0=m.f+b.y*m.d,x1=x0+b.width*m.a,y1=y0+b.height*m.d;out.push(x0>=0&&y0>=0&&x1<=1360&&y1<=1560)});return out})()""")
+    check('114 parts saved outside the picture are drawn fully inside it', r == [True, True], r)
+    check('114 no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def t_seven(b):
     ctx, pg = await page(b)
     SL = "document.querySelector('#boardGrid .bdw[data-k=s] input[type=range]')"
@@ -1691,7 +1708,7 @@ async def t_wirelock(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
