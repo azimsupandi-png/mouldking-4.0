@@ -83,7 +83,7 @@ public class MainActivity extends Activity {
     private static final String BACKUP_NAME = "MK6-Console-backup.json";
     private static final int MAX_IMPORT_BYTES = 1024 * 1024;
     private static final int MAX_WALLPAPER_PX = 1600;
-    private static final long TILT_MIN_MS = 30L;
+    private static final long TILT_MIN_MS = 16L;
 
     private static final int REQ_BLUETOOTH = 41;
     private static final int REQ_EXPORT = 42;

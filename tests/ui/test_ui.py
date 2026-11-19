@@ -571,6 +571,38 @@ async def t_bdlock(b):
     check('102 no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_gpmap(b):
+    # Build 121: every PS4 button lights its own spot on the pictures, and a mapped button does its job
+    ctx, pg = await page(b)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("""window.__gpB=-1;window.__gpV={};navigator.getGamepads=function(){var B=[];for(var i=0;i<17;i++){var v=window.__gpV[i]||(i===window.__gpB?1:0);B.push({pressed:v>.5,value:v})}
+      return [{id:'Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 09cc)',connected:true,mapping:'standard',axes:[0,0,0,0],buttons:B}]};mk6Go('m-pad')""")
+    await pg.wait_for_timeout(300)
+    bad = []
+    for btn in [0, 1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 15]:
+        r = await pg.evaluate("window.__gpB=%d;" % btn + W % "[...document.querySelectorAll('#gpPic .gp-b.live,#gpPic2 .gp-b.live')].map(e=>+e.dataset.b)")
+        if r != [btn]: bad.append((btn, r))
+    check('121 each PS4 button lights only its own spot on the pictures', not bad, bad)
+    r = await pg.evaluate("window.__gpB=-1;window.__gpV={6:.5,7:1};" + W % "[document.getElementById('gpL2O').textContent,document.getElementById('gpR2O').textContent,document.getElementById('gpTc7').getAttribute('fill')!=='#12151b']")
+    check('121 L2 / R2 values show on the bars and R2 lights on the rear picture', r == ['−50%', '+100%', True], r)
+    r = await pg.evaluate("""window.__gpV={};var p=__t.C.pad;p.map={0:'f0',1:'r0',5:'t1'};""" + W % "(window.__gpB=0,0)")
+    r = await pg.evaluate(W % "__t.rt.t[0]")
+    check('121 ✕ mapped to channel A forward drives it', r == 100, r)
+    r = await pg.evaluate("window.__gpB=1;" + W % "__t.rt.t[0]")
+    check('121 ○ mapped to channel A reverse drives it', r == -100, r)
+    r = await pg.evaluate("window.__gpB=-1;" + W % "__t.rt.t[0]")
+    check('121 releasing the button stops the channel', r == 0, r)
+    await pg.evaluate("mk6Go('settings');mk6Go('m-pad')"); await pg.wait_for_timeout(200)
+    r = await pg.evaluate("[...document.querySelectorAll('#gpPic .chip[data-b]')].map(e=>e.dataset.b+':'+e.textContent).sort()")
+    check('121 chips show the mapped jobs next to ✕ and ○', r == ['0:A ▲', '1:A ▼'], r)
+    r = await pg.evaluate("window.__gpB=8;" + W % "__t.S.estop")
+    check('121 Share = E-Stop', r is True, r)
+    r = await pg.evaluate("window.__gpB=9;" + W % "__t.S.estop")
+    check('121 Options = release', r is False, r)
+    check('121 no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def t_hubrows(b):
     # Build 106: hub picture with Bluetooth rings when no hub; one row per hub when connected
     ctx, pg = await page(b)
@@ -1688,7 +1720,7 @@ async def t_wirelock(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
