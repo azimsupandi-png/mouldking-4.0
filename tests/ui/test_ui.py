@@ -612,7 +612,11 @@ async def t_wiremap(b):
     await pg.evaluate("mk6Go('home')"); await pg.wait_for_timeout(700)
     bad = []
     hosts = await pg.evaluate("[...document.querySelectorAll('#wrCard [id^=wrHost], #wrCard .wr-host')].length")
-    for kind in ['pt', 'sock']:
+    for hub in [0, 1]:
+     if hub == 1:
+        await pg.evaluate("document.querySelectorAll('#wrTabs button')[1].click()"); await pg.wait_for_timeout(500)
+        await pg.evaluate("mk6Go('home')"); await pg.wait_for_timeout(500)
+     for kind in ['pt', 'sock']:
         for L in 'ABCDEF':
             await pg.evaluate("var x=document.querySelector('#wrPanel .wr-x');if(x&&!document.getElementById('wrPanel').hidden) x.click()"); await pg.wait_for_timeout(150)
             r = await pg.evaluate("""(function(kind,L){var R=document.getElementById('wrHost').shadowRoot,g=R.querySelector('.'+kind+'[data-p='+L+']');if(!g) return 'none';
@@ -622,16 +626,45 @@ async def t_wiremap(b):
               if(!best) return 'covered';
               var e=R.elementFromPoint(best[0],best[1]);e.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:7,clientX:best[0],clientY:best[1]}));window.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:7,clientX:best[0],clientY:best[1]}));
               return document.querySelector('#wrPanel .chip').textContent})""" .replace('\n',' ') + "('" + kind + "','" + L + "')")
-            if r != 'M1' + L:
-                bad.append(kind + L + '->' + str(r))
+            if r != 'M%d' % (hub + 1) + L:
+                bad.append(str(hub) + kind + L + '->' + str(r))
             await pg.evaluate("var b=document.querySelector('#wrPanel .wr-f');b.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:1}))"); await pg.wait_for_timeout(450)
             fr = await pg.evaluate("(window.__last||'').split(',').map(Number)")
             await pg.evaluate("var b=document.querySelector('#wrPanel .wr-f');b.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:1}))"); await pg.wait_for_timeout(450)
-            idx = 'ABCDEF'.index(L)
+            idx = hub * 6 + 'ABCDEF'.index(L)
             if not (len(fr) >= 12 and fr[idx] != 0 and all(v == 0 for j, v in enumerate(fr) if j != idx)):
-                bad.append('hold' + kind + L + '->' + str(fr))
-    check('112 every part and plug of hub 1 opens its own port and Hold drives only that port', not bad, bad)
+                bad.append(str(hub) + 'hold' + kind + L + '->' + str(fr))
+    check('112 every part and plug of hub 1 and hub 2 opens its own port and Hold drives only that port', not bad, bad)
     check('112 no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
+async def t_outmap(b):
+    # Build 113: output pipeline end to end: every channel of two hubs lands in its own frame slot; reverse, Max power, mode limit and E-Stop
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){var ch=[];for(var n=0;n<12;n++) ch.push({name:'c'+n});localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'O',cfg:{layout:'board',hubs:[0,1,-1],ramp:0,limit:100,ch:ch,board:[{k:'s',c:0,w:2}],pf:['m','m','m','m','m','m','l','l','l','l','l','l']}}],prefs:{seen:true,wn:99,tour:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=f};document.getElementById('hubConn').click();onHubState('ready')"); await pg.wait_for_timeout(500)
+    FR = "new Promise(r=>setTimeout(()=>r((window.__last||'').split(',').map(Number)),350))"
+    bad = []
+    for i in range(12):
+        fr = await pg.evaluate("__t.rt.t.fill(0);__t.rt.t[%d]=100;%s" % (i, FR))
+        if not (len(fr) == 12 and fr[i] == 100 and all(v == 0 for j, v in enumerate(fr) if j != i)):
+            bad.append((i, fr))
+    check('113 every channel of 2 hubs reaches only its own frame slot at 100', not bad, bad)
+    fr = await pg.evaluate("__t.rt.t.fill(0);__t.C.ch[7].inv=true;__t.rt.t[7]=100;" + FR)
+    check('113 reverse flips the sign of only that port', fr[7] == -100 and sum(abs(v) for j, v in enumerate(fr) if j != 7) == 0, fr)
+    fr = await pg.evaluate("__t.C.ch[7].inv=false;__t.C.ch[7].max=50;" + FR)
+    check('113 Max power caps the port', fr[7] == 50, fr)
+    fr = await pg.evaluate("__t.C.ch[7].max=100;__t.C.limit=60;" + FR)
+    check('113 drive mode limit scales the port', fr[7] == 60, fr)
+    await pg.evaluate("__t.C.limit=100;document.getElementById('estop').click()")
+    fr = await pg.evaluate(FR)
+    check('113 E-Stop sends 0 on every port', len(fr) == 12 and all(v == 0 for v in fr), fr)
+    check('113 no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
 async def t_seven(b):
@@ -1658,7 +1691,7 @@ async def t_wirelock(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_hubrows, t_trimrest, t_wiremap, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
