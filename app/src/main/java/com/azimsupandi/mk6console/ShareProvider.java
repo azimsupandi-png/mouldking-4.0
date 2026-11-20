@@ -17,7 +17,8 @@ import java.io.FileNotFoundException;
  */
 public class ShareProvider extends ContentProvider {
 
-    static final String AUTHORITY = "com.azimsupandi.mk6console.share";
+    // follows the app id, so a test build (another app id) can be installed beside the main app
+    static final String AUTHORITY = BuildConfig.APPLICATION_ID + ".share";
     private static final String NAME_OK = "[A-Za-z0-9 ._()-]{1,80}";
 
     static File dir(android.content.Context c) {

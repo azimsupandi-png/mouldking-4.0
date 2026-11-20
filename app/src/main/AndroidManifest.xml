@@ -43,7 +43,7 @@
 
         <provider
             android:name=".ShareProvider"
-            android:authorities="com.azimsupandi.mk6console.share"
+            android:authorities="${applicationId}.share"
             android:exported="false"
             android:grantUriPermissions="true" />
     </application>
