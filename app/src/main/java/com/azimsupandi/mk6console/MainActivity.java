@@ -78,7 +78,7 @@ public class MainActivity extends Activity {
     private static final String PAGE = "file:///android_asset/index.html";
     private static final String ASSET_PREFIX = "file:///android_asset/";
     private static final String REPO_URL = "https://github.com/azimsupandi-png/";
-    private static final String RELEASE_API = "https://api.github.com/repos/azimsupandi-png/mk6-console-releases/releases/tags/latest";
+    private static final String RELEASE_API = "";
     private static final String MODEL_ID = "[A-Za-z0-9_-]{1,40}";
     private static final String BACKUP_NAME = "MK6-Console-backup.json";
     private static final int MAX_IMPORT_BYTES = 1024 * 1024;
@@ -939,6 +939,8 @@ public class MainActivity extends Activity {
                 String res;
                 HttpURLConnection c = null;
                 try {
+                    // test build (mouldking-4.0): no update check, so it never offers the stable APK
+                    if (RELEASE_API.isEmpty()) throw new Exception("test build: update check is off");
                     c = (HttpURLConnection) new URL(RELEASE_API).openConnection();
                     c.setConnectTimeout(8000);
                     c.setReadTimeout(8000);

@@ -62,28 +62,29 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p out
-          cp app/build/outputs/apk/release/app-release.apk out/MK6-Console.apk
+          cp app/build/outputs/apk/release/app-release.apk out/MK6-MK4-Test.apk
           ls -la out
 
       - uses: actions/upload-artifact@v5
         with:
-          name: MK6-Console-apk
-          path: out/MK6-Console.apk
+          name: MK6-MK4-Test-apk
+          path: out/MK6-MK4-Test.apk
 
       - name: Publish to "latest" release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest out/MK6-Console.apk \
-            --title "MK6 Console (build ${{ github.run_number }})" \
+          gh release create latest out/MK6-MK4-Test.apk \
+            --title "MK6 MK4 Test (build ${{ github.run_number }})" \
             --notes "Automatic build from ${{ github.sha }}" \
             --target ${{ github.sha }}
 
       # The code repo is private, so the app checks for updates in a public repo that only holds the APK.
       # Needs the secret RELEASES_TOKEN (fine-grained token, Contents: read and write on mk6-console-releases).
       - name: Publish to the public releases repo
-        if: env.RT != ''
+        # only the main repo publishes to the public releases repo; this test repo keeps its builds to itself
+        if: env.RT != '' && github.repository == 'azimsupandi-png/Mouldking-6.0.1'
         env:
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
           R: azimsupandi-png/mk6-console-releases
