@@ -603,6 +603,90 @@ async def t_gpmap(b):
     check('121 no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_mk4(b):
+    # MK 4.0 test bed: hub type per slot, E/F gone on a 4.0 hub, start codes, saved fields
+    ctx, pg = await page(b)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    r = await pg.evaluate("""(()=>{const s=(id,v)=>{const e=document.getElementById(id);e.value=v;e.dispatchEvent(new Event('change'))};
+      s('hub1','1');s('hubT1','4');s('hub1','0');return [__t.C.hubs.slice(),__t.C.hubT.slice()]})()""")
+    check('MK4 a 6.0 M1 and a 4.0 M1 can be used together', r == [[0, 0, -1], [6, 4, 6]], r)
+    r = await pg.evaluate("[...document.getElementById('gpTrig').options].map(o=>+o.value).filter(v=>v>=6)")
+    check('MK4 ports E and F of a 4.0 hub are not offered', r == [6, 7, 8, 9], r)
+    await pg.evaluate("document.getElementById('hubConn').click()"); await pg.wait_for_timeout(200)
+    r = await pg.evaluate("__calls.filter(c=>c.startsWith('start:'))")
+    check('MK4 connect sends 10+module for a 4.0 hub', r[-1:] == ['start:0,10'], r)
+    await pg.evaluate("onHubState('ready');mk6Go('home')"); await pg.wait_for_timeout(700)
+    await pg.evaluate("[...document.querySelectorAll('#scrHome button')].find(b=>/Hub 2/.test(b.textContent)).click()"); await pg.wait_for_timeout(600)
+    r = await pg.evaluate("(()=>{const sv=document.getElementById('wrHost').shadowRoot.querySelector('svg');return [sv.classList.contains('mk4'),[...document.querySelectorAll('#scrHome button')].some(b=>/Hub 2 · M1 · 4[.]0/.test(b.textContent))]})()")
+    check('MK4 wiring picture of a 4.0 hub greys out E/F and its tab says 4.0', r == [True, True], r)
+    r = await pg.evaluate("""[__t.cleanBoard([{k:'b',c:0,lock:true}])[0].bt,__t.cleanBoard([{k:'b',c:0,bt:'a',ar:2,af:0}])[0],__t.cleanBoard([{k:'s',c:0,tm:1,tr:80,tp:0}])[0],__t.cleanBoard([{k:'b',c:0,bt:'x'}])[0].bt||'']""")
+    check('MK4 saved fields: old lock = toggle, accelerator and train settings kept, junk dropped',
+          r[0] == 't' and r[1].get('bt') == 'a' and r[1].get('ar') == 2 and r[1].get('af') == 0 and r[2].get('tm') == 1 and r[2].get('tr') == 80 and r[2].get('tp') == 0 and r[3] == '', r)
+    check('MK4 no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
+async def t_btypes(b):
+    # Button types on the Board Turbo button, Train slider, and gamepad button types
+    ctx, pg = await page(b)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    async def board(items):
+        await pg.evaluate("(it)=>{__t.C.layout='board';__t.C.board=__t.cleanBoard(it);__t.syncBoard();mk6Go('drive')}", items)
+        await pg.wait_for_timeout(250)
+    async def tap(i=0, up=True):
+        await pg.evaluate("(a)=>{const b=document.querySelectorAll('#boardGrid .qbtn.turbo')[a[0]];b.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:7}));if(a[1]) b.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:7}))}", [i, up])
+        await pg.wait_for_timeout(80)
+    rt0 = "__t.rt.t[0]"
+    await board([{'k': 'b', 'c': 0, 'bt': 'p'}])
+    seq = []
+    for _ in range(4):
+        await tap(); seq.append(await pg.evaluate(rt0))
+    check('BT PingPong goes forward, stop, reverse, stop', seq == [100, 0, -100, 0], seq)
+    await board([{'k': 'b', 'c': 0, 'bt': 't', 'p': 80}])
+    await tap(); a1 = await pg.evaluate(rt0); await tap(); a2 = await pg.evaluate(rt0)
+    check('BT Toggle stays on after letting go, next press turns it off', [a1, a2] == [80, 0], [a1, a2])
+    await board([{'k': 'b', 'c': 0, 'bt': 'a'}])
+    await tap(0, False); await pg.wait_for_timeout(450); mid = await pg.evaluate(rt0)
+    await pg.wait_for_timeout(800); top = await pg.evaluate(rt0)
+    await pg.evaluate("document.querySelector('#boardGrid .qbtn.turbo').dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:7}))")
+    await pg.wait_for_timeout(1300); end = await pg.evaluate(rt0)
+    check('BT Accelerator ramps up while held and back to 0 after', 25 <= mid <= 75 and top == 100 and end == 0, [mid, top, end])
+    await board([{'k': 'b', 'c': 0, 'bt': 'a', 'af': 0}])
+    await tap(0, False); await pg.wait_for_timeout(1200)
+    await pg.evaluate("document.querySelector('#boardGrid .qbtn.turbo').dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:7}))")
+    await pg.wait_for_timeout(600); keep = await pg.evaluate(rt0)
+    await pg.evaluate("document.getElementById('estop').click()"); await pg.wait_for_timeout(150); es = await pg.evaluate(rt0)
+    check('BT Accelerator "Keep power" holds the power, E-Stop still stops it', keep == 100 and es == 0, [keep, es])
+    await pg.evaluate("document.getElementById('estop').click()"); await pg.wait_for_timeout(150)
+    r = await pg.evaluate("(()=>{const s=__t.WSPEC.b.f.map(f=>f.k);return s})()")
+    check('BT Button settings offer the type and accelerator timings', r[:4] == ['p', 'bt', 'ar', 'af'], r)
+    # Train slider
+    await board([{'k': 's', 'c': 0, 'tm': 1, 'v': True}])
+    await pg.evaluate("""(()=>{const r=document.querySelector('#boardGrid input[type=range]');r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value='100';r.dispatchEvent(new Event('input',{bubbles:true}))})()""")
+    await pg.wait_for_timeout(1000); held = await pg.evaluate(rt0)
+    await pg.evaluate("""(()=>{const r=document.querySelector('#boardGrid input[type=range]');r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}))})()""")
+    await pg.wait_for_timeout(500)
+    r = await pg.evaluate("[__t.rt.t[0],+document.querySelector('#boardGrid input[type=range]').value,!!document.querySelector('#boardGrid .bt-chip.trn'),document.querySelector('#boardGrid .trmk').classList.contains('on')]")
+    check('TR Train: full push raises the speed about 40%/s, the speed stays and the lever returns to centre', 25 <= held <= 50 and r[0] == held and r[1] == 0 and r[2] and r[3], [held] + r)
+    await pg.evaluate("""(()=>{const r=document.querySelector('#boardGrid input[type=range]');r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}));r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}))})()""")
+    await pg.wait_for_timeout(150)
+    check('TR Train: double tap goes to 0', await pg.evaluate(rt0) == 0, await pg.evaluate(rt0))
+    # gamepad types
+    await pg.evaluate("""window.__gpB=-1;navigator.getGamepads=function(){var B=[];for(var i=0;i<17;i++)B.push({pressed:i===window.__gpB,value:i===window.__gpB?1:0});return [{id:'Wireless Controller',connected:true,mapping:'standard',axes:[0,0,0,0],buttons:B}]};
+      __t.C.pad.on=true;__t.C.pad.map={0:'f0',1:'f1'};__t.C.pad.mt={0:'t',1:'a'};__t.C.layout='std'""")
+    W2 = "new Promise(r=>setTimeout(()=>r(%s),160))"
+    a = await pg.evaluate("window.__gpB=0;" + W2 % "__t.rt.t[0]")
+    b2 = await pg.evaluate("window.__gpB=-1;" + W2 % "__t.rt.t[0]")
+    c = await pg.evaluate("window.__gpB=0;" + W2 % "__t.rt.t[0]")
+    await pg.evaluate("window.__gpB=-1"); await pg.wait_for_timeout(160)
+    check('GPT gamepad Toggle: press on, stays on, press again off', [a, b2, c] == [100, 100, 0], [a, b2, c])
+    await pg.evaluate("window.__gpB=1"); await pg.wait_for_timeout(500); m1 = await pg.evaluate("__t.rt.t[1]")
+    await pg.evaluate("window.__gpB=-1"); await pg.wait_for_timeout(1300); m2 = await pg.evaluate("__t.rt.t[1]")
+    check('GPT gamepad Accelerator ramps up while held and down after', 25 <= m1 <= 75 and m2 == 0, [m1, m2])
+    check('BT no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def t_hubrows(b):
     # Build 106: hub picture with Bluetooth rings when no hub; one row per hub when connected
     ctx, pg = await page(b)
@@ -1720,7 +1804,7 @@ async def t_wirelock(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_btypes, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

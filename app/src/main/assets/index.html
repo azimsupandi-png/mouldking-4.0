@@ -181,6 +181,7 @@ textarea.txt{padding:8px;font-family:var(--f-mono);font-size:12px;line-height:1.
 .check{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--fg)}
 .check input{width:18px;height:18px;accent-color:var(--acc)}
 .hubrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.hubrow .hubT{margin-top:6px}
 
 .rec-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:10px}
 .rec-row .btn{flex:1 1 auto}
@@ -1916,6 +1917,19 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
 .tlx-seg button{flex:1;border:0;background:none;color:var(--muted);padding:7px 4px;border-radius:20px;line-height:1.15;min-height:0;font:inherit}
 .tlx-seg b{display:block;font-size:13.5px}.tlx-seg small{font-size:11px;opacity:.85}
 .tlx-seg button[aria-pressed=true]{background:linear-gradient(180deg,#ffe066,#ffc400);color:#1a1300;box-shadow:0 2px 8px rgba(255,196,0,.35),inset 0 1px 0 rgba(255,255,255,.5)}
+
+/* button types and Train mode on the Board */
+.bt-chip{margin-left:auto;flex:none;font:700 9.5px var(--f-mono);letter-spacing:.06em;color:#ffd84a;border:1px solid rgba(255,216,74,.55);border-radius:8px;padding:1px 5px;font-style:normal}
+.bt-chip.trn{color:#3fe0a6;border-color:rgba(63,224,166,.6)}
+.qbtn.turbo{position:relative;overflow:hidden}
+.qbtn.turbo::after{content:"";position:absolute;left:8%;bottom:7px;height:6px;border-radius:3px;width:calc(var(--acc,0%) * .84);background:linear-gradient(90deg,#1D9E75,#EF9F27 70%,#E24B4A);box-shadow:0 0 8px rgba(239,159,39,.8);pointer-events:none;transition:width .05s linear}
+.qbtn.turbo>span{position:relative;z-index:1}
+.bdv,.bdhz{position:relative}
+.trmk{position:absolute;pointer-events:none;z-index:3;background:#3fe0a6;box-shadow:0 0 8px #3fe0a6;border-radius:2px;opacity:0;transition:opacity .2s}
+.bdv>.trmk{left:12%;right:12%;height:3px;top:calc(50% - var(--tv,0) * 0.45% * 100 / 100 - 1.5px)}
+.bdhz>.trmk{top:12%;bottom:12%;width:3px;left:calc(50% + var(--tv,0) * 0.45% * 100 / 100 - 1.5px)}
+.trmk.on{opacity:1}
+.pmw{display:flex;gap:6px;min-width:0}.pmw select{min-width:0;flex:1}.pmw .pmt{flex:0 0 7.6em;color:#ffd84a}.pmw .pmt[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -2415,12 +2429,13 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
           <label>Auto-stop when idle<select id="sfIdle"><option value="0">Off</option><option value="10">10 s</option><option value="30">30 s</option><option value="60">60 s</option><option value="120">2 min</option></select></label>
           <label>Stop a channel after running this long<select id="sfRun"><option value="0">Off</option><option value="10">10 s</option><option value="20">20 s</option><option value="30">30 s</option><option value="60">60 s</option></select></label>
           <label>Warn after long full power<select id="sfWarn"><option value="0">Off</option><option value="15">15 s</option><option value="30">30 s</option><option value="60">60 s</option></select></label>
-          <div class="set-row"><span class="set-top"><span>Hubs (module number of each)</span></span>
+          <div class="set-row"><span class="set-top"><span>Hubs (module and type of each)</span></span>
             <div class="hubrow">
-              <label>Hub 1<select id="hub0"><option value="0">M1</option><option value="1">M2</option><option value="2">M3</option></select></label>
-              <label>Hub 2<select id="hub1"><option value="-1">Off</option><option value="0">M1</option><option value="1">M2</option><option value="2">M3</option></select></label>
-              <label>Hub 3<select id="hub2"><option value="-1">Off</option><option value="0">M1</option><option value="1">M2</option><option value="2">M3</option></select></label>
+              <label>Hub 1<select id="hub0"><option value="0">M1</option><option value="1">M2</option><option value="2">M3</option></select><select id="hubT0" class="hubT" aria-label="Hub 1 type"><option value="6">MK 6.0</option><option value="4">MK 4.0</option></select></label>
+              <label>Hub 2<select id="hub1"><option value="-1">Off</option><option value="0">M1</option><option value="1">M2</option><option value="2">M3</option></select><select id="hubT1" class="hubT" aria-label="Hub 2 type"><option value="6">MK 6.0</option><option value="4">MK 4.0</option></select></label>
+              <label>Hub 3<select id="hub2"><option value="-1">Off</option><option value="0">M1</option><option value="1">M2</option><option value="2">M3</option></select><select id="hubT2" class="hubT" aria-label="Hub 3 type"><option value="6">MK 6.0</option><option value="4">MK 4.0</option></select></label>
             </div>
+            <p class="note" id="hubTNote">MK 4.0 hubs have 4 ports (A–D) and 7 speed steps each way.</p>
           </div>
           <div class="set-row"><span class="set-top"><span>Hub names (optional)</span></span>
             <div class="hubrow hubnames">

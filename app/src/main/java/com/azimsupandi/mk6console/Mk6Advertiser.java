@@ -13,7 +13,11 @@ import android.os.SystemClock;
 import java.util.Arrays;
 
 /**
- * Drives up to three Mould King 6.0 hubs over BLE advertising.
+ * Drives up to three Mould King hubs over BLE advertising: 6.0 hubs and 4.0 hubs, mixed if needed.
+ *
+ * Hub slots are given as module numbers: 0..2 for a 6.0 hub (module 1..3), 10..12 for a 4.0 hub.
+ * A 4.0 hub has 4 ports (A-D) with 7 speed steps each way, and all 4.0 modules share one
+ * telegram (one nibble per port), so every 4.0 slot always sends the same combined telegram.
  *
  * Hub 0 uses the primary advertising set. Extra hubs either get their own
  * advertising set ("parallel" mode) or, if the phone cannot run several sets,
@@ -35,6 +39,11 @@ final class Mk6Advertiser {
 
     private static final byte[] ADDR = {(byte) 0xC1, (byte) 0xC2, (byte) 0xC3, (byte) 0xC4, (byte) 0xC5};
     private static final byte[] CONNECT = {0x6D, 0x7B, (byte) 0xA7, (byte) 0x80, (byte) 0x80, (byte) 0x80, (byte) 0x80, (byte) 0x92};
+    /** Mould King 4.0 connect telegram (same app id bytes as the 6.0 one). */
+    private static final byte[] CONNECT4 = {(byte) 0xAD, 0x7B, (byte) 0xA7, (byte) 0x80, (byte) 0x80, (byte) 0x80, 0x4F, 0x52};
+    /** Slot numbers from this value up are Mould King 4.0 modules (10 = module 1). */
+    static final int MK4 = 10;
+    private static final long CONNECT_FLIP_MS = 150L;
     private static final int CHANNELS = 6;
     private static final int COMPANY_ID = 0xFFF0;
     private static final long CONNECT_MS = 3000L;
@@ -87,6 +96,35 @@ final class Mk6Advertiser {
     }
 
     private int[] modules = {0};
+    private boolean connectFlip;
+
+    private boolean isMk4(int slot) {
+        return modules[slot] >= MK4;
+    }
+
+    private boolean anyMk4() {
+        for (int m : modules) if (m >= MK4) return true;
+        return false;
+    }
+
+    private boolean allMk4() {
+        for (int m : modules) if (m < MK4) return false;
+        return true;
+    }
+
+    /** Mixed 6.0 and 4.0 hubs: alternate the two connect telegrams during the connect window. */
+    private final Runnable connectFlipTask = new Runnable() {
+        @Override
+        public void run() {
+            if (!running || !connecting || set == null) return;
+            connectFlip = !connectFlip;
+            try {
+                set.setAdvertisingData(dataFor(connectFlip ? CONNECT4 : CONNECT));
+            } catch (RuntimeException ignored) {
+            }
+            handler.postDelayed(this, CONNECT_FLIP_MS);
+        }
+    };
     private int[][] latest = new int[1][CHANNELS];
     private final int[] sent = new int[MAX_HUBS * CHANNELS];
 
@@ -108,6 +146,10 @@ final class Mk6Advertiser {
                     connecting = true;
                     listener.onState("connecting");
                     handler.postDelayed(finishConnect, CONNECT_MS);
+                    if (anyMk4() && !allMk4()) {
+                        connectFlip = false;
+                        handler.postDelayed(connectFlipTask, CONNECT_FLIP_MS);
+                    }
                 } else if (status == ADVERTISE_SUCCESS) {
                     // stop() was requested while starting
                     set = advertisingSet;
@@ -156,6 +198,7 @@ final class Mk6Advertiser {
         public void run() {
             if (!running) return;
             connecting = false;
+            handler.removeCallbacks(connectFlipTask);
             if (modules.length > 1) startExtras();
             pushDirty(true);
             lastFrameAt = SystemClock.uptimeMillis();
@@ -256,6 +299,38 @@ final class Mk6Advertiser {
         return (int) Math.min(255f, 128f + mag);
     }
 
+    /** Maps -100..100 to a Mould King 4.0 nibble: 8 = stop, 9..15 forward steps 1..7, 1..7 reverse steps 1..7. */
+    static int nibble4(float v) {
+        float f = Math.max(-1f, Math.min(1f, v / 100f));
+        if (f <= -1f / 7f) return Math.min(7, (int) (-f * 7f));
+        if (f >= 1f / 7f) return Math.min(15, (int) (f * 7f + 8f));
+        return 8;
+    }
+
+    /**
+     * Mould King 4.0 telegram for every 4.0 slot: 7D, app id, 6 bytes of nibbles, 82.
+     * Module m, port p (0..3) sits in byte 3 + 2m + p/2: ports A and C in the high nibble, B and D in the low one.
+     */
+    static byte[] telegram4(int[] mods, int[][] values) {
+        byte[] t = {0x7D, 0x7B, (byte) 0xA7, (byte) 0x88, (byte) 0x88, (byte) 0x88, (byte) 0x88, (byte) 0x88, (byte) 0x88, (byte) 0x82};
+        for (int k = 0; k < mods.length; k++) {
+            if (mods[k] < MK4) continue;
+            int m = mods[k] - MK4;
+            for (int p = 0; p < 4; p++) {
+                int pos = 3 + m * 2 + (p >> 1);
+                int n = nibble4(values[k][p]);
+                int b = t[pos] & 0xFF;
+                b = (p & 1) == 1 ? (b & 0xF0) | n : (b & 0x0F) | (n << 4);
+                t[pos] = (byte) b;
+            }
+        }
+        return t;
+    }
+
+    private byte[] telegramFor(int slot) {
+        return isMk4(slot) ? telegram4(modules, latest) : telegram(modules[slot], latest[slot]);
+    }
+
     static byte[] telegram(int module, int[] channels) {
         byte[] t = new byte[10];
         t[0] = (byte) (module + 0x61);
@@ -331,7 +406,7 @@ final class Mk6Advertiser {
             return;
         }
         for (int i = 0; i < mods.length; i++) {
-            if (mods[i] < 0 || mods[i] > 2) {
+            if ((mods[i] < 0 || mods[i] > 2) && (mods[i] < MK4 || mods[i] > MK4 + 2)) {
                 listener.onState("error");
                 return;
             }
@@ -366,7 +441,7 @@ final class Mk6Advertiser {
         stopping = false;
         starting = true;
         try {
-            advertiser.startAdvertisingSet(params(), dataFor(CONNECT), null, null, null, callback);
+            advertiser.startAdvertisingSet(params(), dataFor(allMk4() ? CONNECT4 : CONNECT), null, null, null, callback);
         } catch (SecurityException e) {
             starting = false;
             listener.onState("denied");
@@ -404,6 +479,7 @@ final class Mk6Advertiser {
         if (!running && !starting) return;
         stopping = true;
         handler.removeCallbacks(finishConnect);
+        handler.removeCallbacks(connectFlipTask);
         handler.removeCallbacks(pushTask);
         pushScheduled = false;
         handler.removeCallbacks(watchdog);
@@ -444,15 +520,22 @@ final class Mk6Advertiser {
     private void pushDirty(boolean force) {
         if (!running || set == null || connecting) return;
         try {
+            boolean[] dirtyAt = new boolean[modules.length];
+            boolean mk4Dirty = false;
             for (int i = 0; i < modules.length; i++) {
                 boolean dirty = force;
                 for (int j = 0; j < CHANNELS && !dirty; j++) {
                     if (sent[i * CHANNELS + j] != latest[i][j]) dirty = true;
                 }
-                if (!dirty) continue;
+                dirtyAt[i] = dirty;
+                if (dirty && isMk4(i)) mk4Dirty = true;
+            }
+            for (int i = 0; i < modules.length; i++) {
+                // 4.0 hubs share one telegram: a change on one 4.0 hub is sent by every 4.0 slot
+                if (!dirtyAt[i] && !(mk4Dirty && isMk4(i))) continue;
                 AdvertisingSet target = i == 0 ? set : extra[i];
                 if (target == null) continue;
-                target.setAdvertisingData(dataFor(telegram(modules[i], latest[i])));
+                target.setAdvertisingData(dataFor(telegramFor(i)));
                 for (int j = 0; j < CHANNELS; j++) {
                     sent[i * CHANNELS + j] = latest[i][j];
                 }
@@ -467,7 +550,7 @@ final class Mk6Advertiser {
     private void pushModule(int i) {
         if (!running || set == null || i >= modules.length) return;
         try {
-            set.setAdvertisingData(dataFor(telegram(modules[i], latest[i])));
+            set.setAdvertisingData(dataFor(telegramFor(i)));
             lastPushAt = SystemClock.uptimeMillis();
         } catch (RuntimeException e) {
             stopNow();
@@ -483,7 +566,7 @@ final class Mk6Advertiser {
             extraCb[i] = new SetCb(i);
             extrasPending++;
             try {
-                advertiser.startAdvertisingSet(p, dataFor(telegram(modules[i], latest[i])),
+                advertiser.startAdvertisingSet(p, dataFor(telegramFor(i)),
                         null, null, null, extraCb[i]);
             } catch (RuntimeException e) {
                 extrasPending--;
@@ -540,6 +623,7 @@ final class Mk6Advertiser {
         liveNonZero = false;
         handler.removeCallbacks(stopTask);
         handler.removeCallbacks(finishConnect);
+        handler.removeCallbacks(connectFlipTask);
         handler.removeCallbacks(pushTask);
         handler.removeCallbacks(rotateTask);
         pushScheduled = false;
