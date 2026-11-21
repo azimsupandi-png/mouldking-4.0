@@ -152,10 +152,10 @@ final class HallHub {
         for (int i = 0; i < ports; i++) {
             double[] sv = servo[i];
             if (sv == null) { targets[i] = null; continue; }
-            float v = i < v0.length ? v0[i] : 0f;
+            float sval = i < v0.length ? v0[i] : 0f;
             // the first value only sets the starting point, so the servo does not jump when the link comes up
-            if (!servoSeen[i]) { servoSeen[i] = true; if (v == 0f) { values[i] = 0f; continue; } }
-            double f = (Math.max(-1f, Math.min(1f, v)) + 1.0) / 2.0;
+            if (!servoSeen[i]) { servoSeen[i] = true; if (sval == 0f) { values[i] = 0f; continue; } }
+            double f = (Math.max(-1f, Math.min(1f, sval)) + 1.0) / 2.0;
             targets[i] = (int) Math.round(sv[0] + f * (sv[1] - sv[0]));
             servoSpeeds[i] = HallProtocol.servoSpeed((int) sv[2]);
             values[i] = 0f;
