@@ -38,6 +38,7 @@ import android.os.Vibrator;
 import android.provider.MediaStore;
 import android.util.Base64;
 import android.graphics.Color;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
@@ -275,6 +276,22 @@ public class MainActivity extends Activity {
         setTilt(false);
         mk6.destroy();
         super.onDestroy();
+    }
+
+    /**
+     * Volume Up is the emergency stop while the app is open: one press turns E-Stop on (the page
+     * releases it only from its red banner). The key never changes the volume here; Volume Down still does.
+     */
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP && web != null && pageReady) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                ConnLog.add("Volume Up: E-Stop");
+                web.evaluateJavascript("window.mk6VolUp&&window.mk6VolUp()", null);
+            }
+            return true;
+        }
+        return super.dispatchKeyEvent(event);
     }
 
     /** Back goes up one screen inside the app; it only leaves the app from Home. */

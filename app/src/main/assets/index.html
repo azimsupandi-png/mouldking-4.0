@@ -65,6 +65,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .bar-banner{animation:slide .25s ease-out}
 @keyframes slide{from{transform:translateY(-100%);opacity:0}}
 .bar-banner{background:var(--danger);color:#fff;font-size:13px;font-weight:600;text-align:center;padding:6px 16px}
+#estop,.bar .estop,:root .bar .estop{display:none!important}
+#esBanner{cursor:pointer;padding:10px 16px}
 
 main{max-width:1100px;margin:0 auto;padding-block:16px 40px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
@@ -1971,10 +1973,11 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
     <div class="spacer"></div>
     <button class="btb" id="btBtn" type="button" data-bt="on" aria-label="Bluetooth"></button>
     <button class="pill hubbtn" id="link" type="button" aria-pressed="true" data-st="on" title="Turn the hub link on or off"><span class="orb" aria-hidden="true"></span><span id="linkText">Simulation on</span></button>
-    <button class="estop" id="estop" type="button" aria-pressed="false" aria-label="Emergency stop">E-Stop</button>
+    <!-- E-Stop is the Volume Up key now; the button stays (hidden) as the page's E-Stop switch -->
+    <button class="estop" id="estop" type="button" aria-pressed="false" aria-label="Emergency stop" hidden>E-Stop</button>
   </div>
   <div id="lostBanner" role="alert" hidden>HUB LINK LOST \u00b7 motors stopped. Tap to dismiss.</div>
-  <div class="bar-banner" id="esBanner" role="alert" hidden>E-Stop is on. Every channel is locked at 0. Tap Release E-Stop to continue.</div>
+  <div class="bar-banner" id="esBanner" role="alert" hidden>E-Stop is on (Volume Up). Every channel is locked at 0. Tap here to release.</div>
 </header>
 <div class="live" id="live" role="status" aria-live="polite"></div>
 <div class="toast" id="toast" role="status" hidden></div>
