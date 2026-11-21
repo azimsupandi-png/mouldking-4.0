@@ -7,7 +7,7 @@ import java.util.Locale;
 /**
  * The list of hubs the page asks the app to drive, from the text it passes to start().
  * Items are separated by commas and keep the order of the page's hubs (and of the frame):
- *   "0" 6.0 hub module 1..3 (0..2),  "10" 4.0 hub module 1..3 (10..12),
+ *   "0" 6.0 hub module 1..3 (0..2),  "10" 4.0 hub module 1..3 (10..12), "20" 4.0 on/off box module 1..3 (20..22),
  *   "H4=AA:BB:CC:DD:EE:FF" or "H6=AA:BB:CC:DD:EE:FF" an H4.0 or H6.0 hub at that Bluetooth address.
  */
 final class HubSpec {
@@ -48,7 +48,7 @@ final class HubSpec {
                 } catch (NumberFormatException e) {
                     return null;
                 }
-                if (!((v >= 0 && v <= 2) || (v >= Mk6Advertiser.MK4 && v <= Mk6Advertiser.MK4 + 2))) return null;
+                if (!((v >= 0 && v <= 2) || Mk6Advertiser.isMk4Mod(v) || Mk6Advertiser.isOnOffMod(v))) return null;
                 h = new Hub(v, null, v >= Mk6Advertiser.MK4 ? 4 : 6);
             }
             for (Hub o : s.hubs) {

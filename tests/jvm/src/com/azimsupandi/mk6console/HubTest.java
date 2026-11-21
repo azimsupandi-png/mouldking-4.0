@@ -28,6 +28,14 @@ public class HubTest {
             eq("spec adv", s.advMods().length, 2);
             eq("spec ports", s.hubs.get(1).ports, 6);
         }
+        HubSpec o = HubSpec.parse("20,21,10");
+        eq("spec on/off ok", o != null, true);
+        if (o != null) {
+            eq("spec on/off ports", o.hubs.get(0).ports, 4);
+            eq("spec on/off adv", o.advMods().length, 3);
+        }
+        eq("spec on/off out of range", HubSpec.parse("23"), null);
+        eq("spec between ranges", HubSpec.parse("15"), null);
         eq("dup", HubSpec.parse("0,0"), null);
         eq("four", HubSpec.parse("0,1,2,10"), null);
         eq("bad", HubSpec.parse("H4=zz"), null);

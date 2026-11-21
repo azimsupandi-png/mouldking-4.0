@@ -63,6 +63,29 @@ public final class ProtocolTest {
                 Arrays.equals(Mk6Advertiser.telegram4(new int[]{0}, new int[][]{{100, 100, 100, 100, 0, 0}}),
                         b(0x7D, 0x7B, 0xA7, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x82)));
 
+        // Older 4.0 on/off boxes (OpenCrown "MK4OO"): two bits per port, one byte per module
+        int O = Mk6Advertiser.MK4OO;
+        check("4.0 on/off telegram, all stopped",
+                Arrays.equals(Mk6Advertiser.telegramOO(new int[]{O}, new int[][]{new int[6]}),
+                        b(0x77, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x88)));
+        byte[] oo = Mk6Advertiser.telegramOO(new int[]{O, O + 1, M},
+                new int[][]{{100, -100, 0, 50, 0, 0}, {0, 0, -60, 0, 0, 0}, {100, 100, 100, 100, 0, 0}});
+        check("4.0 on/off: module 1 A forward, B reverse, D forward = 0x4A", (oo[3] & 0xFF) == 0x4A);
+        check("4.0 on/off: module 2 C reverse = 0x10", (oo[4] & 0xFF) == 0x10);
+        check("4.0 on/off: module 3 untouched, speed-control 4.0 slot ignored", oo[5] == 0);
+        check("4.0 on/off: small values stay off",
+                Mk6Advertiser.telegramOO(new int[]{O}, new int[][]{{15, -15, 20, -20, 0, 0}})[3] == 0);
+        check("4.0 speed telegram ignores on/off slots",
+                Arrays.equals(Mk6Advertiser.telegram4(new int[]{O}, new int[][]{{100, 100, 100, 100, 0, 0}}),
+                        b(0x7D, 0x7B, 0xA7, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x82)));
+        byte[][] cs = Mk6Advertiser.connectsFor(new int[]{O, O + 1, M});
+        check("connect: two on/off boxes and a 4.0 hub = 4.0 then on/off connect",
+                cs.length == 2 && (cs[0][0] & 0xFF) == 0xAD
+                        && Arrays.equals(cs[1], b(0xAA, 0x00, 0x00, 0x80, 0x80, 0x80, 0x00, 0x55)));
+        check("connect: a single 6.0 hub = 6.0 connect only",
+                Mk6Advertiser.connectsFor(new int[]{0}).length == 1 && Mk6Advertiser.connectsFor(new int[]{0})[0][0] == 0x6D);
+        check("connect: 6.0, 4.0 and on/off = three telegrams", Mk6Advertiser.connectsFor(new int[]{0, M, O}).length == 3);
+
         ConnLog.clear();
         ConnLog.add("first");
         ConnLog.add("second");

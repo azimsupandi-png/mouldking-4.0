@@ -15,9 +15,13 @@ import java.util.Arrays;
 /**
  * Drives up to three Mould King hubs over BLE advertising: 6.0 hubs and 4.0 hubs, mixed if needed.
  *
- * Hub slots are given as module numbers: 0..2 for a 6.0 hub (module 1..3), 10..12 for a 4.0 hub.
+ * Hub slots are given as module numbers: 0..2 for a 6.0 hub (module 1..3), 10..12 for a 4.0 hub,
+ * 20..22 for an older 4.0 on/off box.
  * A 4.0 hub has 4 ports (A-D) with 7 speed steps each way, and all 4.0 modules share one
  * telegram (one nibble per port), so every 4.0 slot always sends the same combined telegram.
+ * The older 4.0 on/off boxes work the same way with their own telegram: two bits per port
+ * (forward, reverse), one byte per module, all three modules in one telegram.
+ * During the connect window the hub types in use take turns with their connect telegrams.
  *
  * Hub 0 uses the primary advertising set. Extra hubs either get their own
  * advertising set ("parallel" mode) or, if the phone cannot run several sets,
@@ -43,6 +47,12 @@ final class Mk6Advertiser {
     private static final byte[] CONNECT4 = {(byte) 0xAD, 0x7B, (byte) 0xA7, (byte) 0x80, (byte) 0x80, (byte) 0x80, 0x4F, 0x52};
     /** Slot numbers from this value up are Mould King 4.0 modules (10 = module 1). */
     static final int MK4 = 10;
+    /** Older Mould King 4.0 on/off boxes (as in OpenCrown / MK Plus "V40"). */
+    private static final byte[] CONNECT_OO = {(byte) 0xAA, 0x00, 0x00, (byte) 0x80, (byte) 0x80, (byte) 0x80, 0x00, 0x55};
+    /** Slot numbers from this value up are older 4.0 on/off boxes (20 = module 1). */
+    static final int MK4OO = 20;
+    /** An on/off port switches on beyond this much of full power (-100..100 scale). */
+    static final int ONOFF_THRESHOLD = 20;
     private static final long CONNECT_FLIP_MS = 150L;
     private static final int CHANNELS = 6;
     private static final int COMPANY_ID = 0xFFF0;
@@ -105,30 +115,49 @@ final class Mk6Advertiser {
     }
 
     private int[] modules = {0};
-    private boolean connectFlip;
+    private int connectIdx;
+    private byte[][] connects = {CONNECT};
+
+    static boolean isMk4Mod(int m) {
+        return m >= MK4 && m < MK4 + 3;
+    }
+
+    static boolean isOnOffMod(int m) {
+        return m >= MK4OO && m < MK4OO + 3;
+    }
 
     private boolean isMk4(int slot) {
-        return modules[slot] >= MK4;
+        return isMk4Mod(modules[slot]);
     }
 
-    private boolean anyMk4() {
-        for (int m : modules) if (m >= MK4) return true;
-        return false;
+    private boolean isOnOff(int slot) {
+        return isOnOffMod(modules[slot]);
     }
 
-    private boolean allMk4() {
-        for (int m : modules) if (m < MK4) return false;
-        return true;
+    /** The connect telegrams of the hub types in use: 6.0, then 4.0, then 4.0 on/off. */
+    static byte[][] connectsFor(int[] mods) {
+        boolean six = false, four = false, oo = false;
+        for (int m : mods) {
+            if (isOnOffMod(m)) oo = true;
+            else if (isMk4Mod(m)) four = true;
+            else six = true;
+        }
+        int n = (six ? 1 : 0) + (four ? 1 : 0) + (oo ? 1 : 0), k = 0;
+        byte[][] out = new byte[n][];
+        if (six) out[k++] = CONNECT;
+        if (four) out[k++] = CONNECT4;
+        if (oo) out[k] = CONNECT_OO;
+        return out;
     }
 
-    /** Mixed 6.0 and 4.0 hubs: alternate the two connect telegrams during the connect window. */
+    /** Mixed hub types: the connect telegrams take turns during the connect window. */
     private final Runnable connectFlipTask = new Runnable() {
         @Override
         public void run() {
             if (!running || !connecting || set == null) return;
-            connectFlip = !connectFlip;
+            connectIdx = (connectIdx + 1) % connects.length;
             try {
-                set.setAdvertisingData(dataFor(connectFlip ? CONNECT4 : CONNECT));
+                set.setAdvertisingData(dataFor(connects[connectIdx]));
             } catch (RuntimeException ignored) {
             }
             handler.postDelayed(this, CONNECT_FLIP_MS);
@@ -155,9 +184,10 @@ final class Mk6Advertiser {
                     running = true;
                     connecting = true;
                     listener.onState("connecting");
-                    handler.postDelayed(finishConnect, CONNECT_MS);
-                    if (anyMk4() && !allMk4()) {
-                        connectFlip = false;
+                    // mixed hub types share the window, so give each extra type one more second
+                    handler.postDelayed(finishConnect, CONNECT_MS + 1000L * (connects.length - 1));
+                    if (connects.length > 1) {
+                        connectIdx = 0;
                         handler.postDelayed(connectFlipTask, CONNECT_FLIP_MS);
                     }
                 } else if (status == ADVERTISE_SUCCESS) {
@@ -327,7 +357,7 @@ final class Mk6Advertiser {
     static byte[] telegram4(int[] mods, int[][] values) {
         byte[] t = {0x7D, 0x7B, (byte) 0xA7, (byte) 0x88, (byte) 0x88, (byte) 0x88, (byte) 0x88, (byte) 0x88, (byte) 0x88, (byte) 0x82};
         for (int k = 0; k < mods.length; k++) {
-            if (mods[k] < MK4) continue;
+            if (!isMk4Mod(mods[k])) continue;
             int m = mods[k] - MK4;
             for (int p = 0; p < 4; p++) {
                 int pos = 3 + m * 2 + (p >> 1);
@@ -340,9 +370,31 @@ final class Mk6Advertiser {
         return t;
     }
 
+    /**
+     * Older 4.0 on/off telegram for every on/off slot: 77 00 00 m1 m2 m3 00 88.
+     * Each module byte holds two bits per port (forward, reverse): A = bits 1/0, B = 7/6, C = 5/4, D = 3/2.
+     */
+    static byte[] telegramOO(int[] mods, int[][] values) {
+        byte[] t = {0x77, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, (byte) 0x88};
+        final int[] fwdBit = {1, 7, 5, 3};
+        for (int k = 0; k < mods.length; k++) {
+            if (!isOnOffMod(mods[k])) continue;
+            int m = mods[k] - MK4OO, b = 0;
+            for (int p = 0; p < 4; p++) {
+                int v = values[k][p];
+                if (v > ONOFF_THRESHOLD) b |= 1 << fwdBit[p];
+                else if (v < -ONOFF_THRESHOLD) b |= 1 << (fwdBit[p] - 1);
+            }
+            t[3 + m] = (byte) b;
+        }
+        return t;
+    }
+
     private byte[] telegramFor(int slot) {
+        if (isOnOff(slot)) return telegramOO(modules, latest);
         return isMk4(slot) ? telegram4(modules, latest) : telegram(modules[slot], latest[slot]);
     }
+
 
     static byte[] telegram(int module, int[] channels) {
         byte[] t = new byte[10];
@@ -423,7 +475,7 @@ final class Mk6Advertiser {
             return;
         }
         for (int i = 0; i < mods.length; i++) {
-            if ((mods[i] < 0 || mods[i] > 2) && (mods[i] < MK4 || mods[i] > MK4 + 2)) {
+            if ((mods[i] < 0 || mods[i] > 2) && !isMk4Mod(mods[i]) && !isOnOffMod(mods[i])) {
                 listener.onState("error");
                 return;
             }
@@ -451,6 +503,7 @@ final class Mk6Advertiser {
             return;
         }
         modules = mods.clone();
+        connects = connectsFor(modules);
         latest = new int[modules.length][CHANNELS];
         rotateIdx = 0;
         parallel = false;
@@ -461,8 +514,8 @@ final class Mk6Advertiser {
         stopping = false;
         starting = true;
         try {
-            ConnLog.add("Connect telegram: " + ConnLog.hex(allMk4() ? CONNECT4 : CONNECT));
-            advertiser.startAdvertisingSet(params(), dataFor(allMk4() ? CONNECT4 : CONNECT), null, null, null, callback);
+            ConnLog.add("Connect telegram: " + ConnLog.hex(connects[0]) + (connects.length > 1 ? " (+" + (connects.length - 1) + " more, taking turns)" : ""));
+            advertiser.startAdvertisingSet(params(), dataFor(connects[0]), null, null, null, callback);
         } catch (SecurityException e) {
             starting = false;
             ConnLog.add("Bluetooth permission denied");
@@ -502,7 +555,8 @@ final class Mk6Advertiser {
         StringBuilder b = new StringBuilder();
         for (int i = 0; i < mods.length; i++) {
             if (i > 0) b.append(", ");
-            b.append(mods[i] >= MK4 ? "4.0 M" + (mods[i] - MK4 + 1) : "6.0 M" + (mods[i] + 1));
+            b.append(isOnOffMod(mods[i]) ? "4.0 on/off M" + (mods[i] - MK4OO + 1)
+                    : isMk4Mod(mods[i]) ? "4.0 M" + (mods[i] - MK4 + 1) : "6.0 M" + (mods[i] + 1));
         }
         return b.toString();
     }
@@ -555,7 +609,7 @@ final class Mk6Advertiser {
         if (!running || set == null || connecting) return;
         try {
             boolean[] dirtyAt = new boolean[modules.length];
-            boolean mk4Dirty = false;
+            boolean mk4Dirty = false, ooDirty = false;
             for (int i = 0; i < modules.length; i++) {
                 boolean dirty = force;
                 for (int j = 0; j < CHANNELS && !dirty; j++) {
@@ -563,10 +617,11 @@ final class Mk6Advertiser {
                 }
                 dirtyAt[i] = dirty;
                 if (dirty && isMk4(i)) mk4Dirty = true;
+                if (dirty && isOnOff(i)) ooDirty = true;
             }
             for (int i = 0; i < modules.length; i++) {
                 // 4.0 hubs share one telegram: a change on one 4.0 hub is sent by every 4.0 slot
-                if (!dirtyAt[i] && !(mk4Dirty && isMk4(i))) continue;
+                if (!dirtyAt[i] && !(mk4Dirty && isMk4(i)) && !(ooDirty && isOnOff(i))) continue;
                 AdvertisingSet target = i == 0 ? set : extra[i];
                 if (target == null) continue;
                 target.setAdvertisingData(dataFor(telegramFor(i)));

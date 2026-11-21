@@ -78,7 +78,7 @@ final class HubLink {
         StringBuilder d = new StringBuilder();
         for (HubSpec.Hub h : s.hubs) {
             if (d.length() > 0) d.append(", ");
-            d.append(h.isHall() ? "H" + h.ports + " " + h.addr : (h.adv >= Mk6Advertiser.MK4 ? "4.0 M" + (h.adv - 9) : "6.0 M" + (h.adv + 1)));
+            d.append(h.isHall() ? "H" + h.ports + " " + h.addr : (Mk6Advertiser.isOnOffMod(h.adv) ? "4.0 on/off M" + (h.adv - 19) : h.adv >= Mk6Advertiser.MK4 ? "4.0 M" + (h.adv - 9) : "6.0 M" + (h.adv + 1)));
         }
         ConnLog.add("Link start: " + d);
         listener.onState("connecting");

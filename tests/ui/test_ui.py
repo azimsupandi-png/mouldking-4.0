@@ -628,6 +628,27 @@ async def t_mk4(b):
     check('MK4 no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_mk4oo(b):
+    # Older MK 4.0 on/off boxes as a hub type (40), mixed with a 4.0 speed hub on the same module number
+    ctx, pg = await page(b)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    r = await pg.evaluate("""(()=>{const s=(id,v)=>{const e=document.getElementById(id);e.value=v;e.dispatchEvent(new Event('change'))};
+      s('hubT0','40');s('hub1','1');s('hubT1','40');s('hub2','0');s('hubT2','4');return [__t.C.hubs.slice(),__t.C.hubT.slice()]})()""")
+    check('MK4OO two on/off boxes and a 4.0 speed hub M1 can be used together', r == [[0, 1, 0], [40, 40, 4]], r)
+    r = await pg.evaluate("[...document.getElementById('hubT0').options].map(o=>o.value)")
+    check('MK4OO hub type list offers MK 4.0 on/off', r == ['6', '4', '40', '14', '16'], r)
+    await pg.evaluate("document.getElementById('hubConn').click()"); await pg.wait_for_timeout(200)
+    r = await pg.evaluate("__calls.filter(c=>c.startsWith('start:'))")
+    check('MK4OO connect sends 20+module for an on/off box', r[-1:] == ['start:20,21,10'], r)
+    await pg.evaluate("onHubState('ready');mk6Go('home')"); await pg.wait_for_timeout(700)
+    r = await pg.evaluate("[...document.querySelectorAll('#scrHome button')].some(b=>/Hub 1 · M1 · 4[.]0 on\\/off/.test(b.textContent))")
+    check('MK4OO hub tab says 4.0 on/off', r, r)
+    r = await pg.evaluate("[...document.getElementById('gpTrig').options].map(o=>+o.value).filter(v=>v>=4&&v<6)")
+    check('MK4OO ports E and F of an on/off box are not offered', r == [], r)
+    check('MK4OO no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def t_btypes(b):
     # Button types on the Board Turbo button, Train slider, and gamepad button types
     ctx, pg = await page(b)
@@ -1943,7 +1964,7 @@ async def t_loginspect(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_stage4, t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_stage4, t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_mk4oo, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
