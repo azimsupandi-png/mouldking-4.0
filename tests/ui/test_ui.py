@@ -709,6 +709,45 @@ async def t_lpmulti(b):
     check('LP no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_fix5(b):
+    # reverse code choices, L3 / R3 from Android, restore result shown on any page, restore of more than 10 models
+    ctx, pg = await page(b)
+    await pg.evaluate("window.MK6Bridge.mk4Codes=function(a,o){__calls.push('codes:'+a+','+o)};mk6Go('settings')")
+    await pg.evaluate("(()=>{const e=document.getElementById('m4r');e.value='1';e.dispatchEvent(new Event('change'))})()")
+    await pg.evaluate("(()=>{const e=document.getElementById('oor');e.value='1';e.dispatchEvent(new Event('change'))})()")
+    r = await pg.evaluate("__calls.filter(c=>c.startsWith('codes:'))")
+    check('reverse code choices go to Android at once', r[-2:] == ['codes:1,0', 'codes:1,1'], r)
+    r = await pg.evaluate("JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>/mk6/.test(k)&&/prefs|store|cfg/i.test(k))||'{}')||'{}')")
+    r = await pg.evaluate("[document.getElementById('m4r').value,document.getElementById('oor').value]")
+    check('reverse code choices stay set', r == ['1', '1'], r)
+    # L3 sent by Android counts as button 10 for the mapping
+    await pg.evaluate("""(()=>{window.__gp={connected:true,id:'pad',mapping:'standard',axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))};
+      navigator.getGamepads=()=>[window.__gp]})()""")
+    await pg.evaluate("document.getElementById('hubConn').click();onHubState('ready');mk6Go('drive')")
+    await pg.wait_for_timeout(200)
+    await pg.goto(HTML + '?mk6test'); await pg.wait_for_function('window.mk6Ready===true')
+    await pg.evaluate("""(()=>{window.__gp={connected:true,id:'pad',mapping:'standard',axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))};
+      navigator.getGamepads=()=>[window.__gp];__t.C.pad.on=true;__t.C.pad.map={10:'f0'};document.getElementById('hubConn').click();onHubState('ready')})()""")
+    await pg.wait_for_timeout(200)
+    await pg.evaluate("window.mk6PadKey(10,true)"); await pg.wait_for_timeout(300)
+    r1 = await pg.evaluate("__t.rt.t[0]")
+    await pg.evaluate("window.mk6PadKey(10,false)"); await pg.wait_for_timeout(300)
+    r2 = await pg.evaluate("__t.rt.t[0]")
+    check('L3 sent by Android drives the channel mapped to L3, and lets go', r1 == 100 and r2 == 0, [r1, r2])
+    # import: result shows as a message, more than 10 models come back
+    profs = [{'name': 'R%d' % i, 'cfg': {}} for i in range(14)]
+    import json as _j
+    await pg.evaluate("mk6Go('models')")
+    await pg.evaluate("(t)=>window.onImportText(t)", _j.dumps({'app': 'MK6 Console', 'version': 1, 'profiles': profs}))
+    await pg.wait_for_timeout(200)
+    r = await pg.evaluate("[document.getElementById('toast').textContent,document.getElementById('toast').classList.contains('show')||getComputedStyle(document.getElementById('toast')).opacity!=='0']")
+    check('restore result shows as a message on the Models page', 'Imported 14 models' in r[0], r)
+    await pg.evaluate("(t)=>window.onImportText(t)", 'not json')
+    r = await pg.evaluate("document.getElementById('toast').textContent")
+    check('a bad restore file says so on any page', 'not valid' in r, r)
+    check('fix5 no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def t_btypes(b):
     # Button types on the Board Turbo button, Train slider, and gamepad button types
     ctx, pg = await page(b)
@@ -2042,7 +2081,7 @@ async def t_loginspect(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_stage4, t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_mk4oo, t_lpmulti, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_stage4, t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_mk4oo, t_lpmulti, t_fix5, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

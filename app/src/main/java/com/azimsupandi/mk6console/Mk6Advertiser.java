@@ -53,6 +53,28 @@ final class Mk6Advertiser {
     static final int MK4OO = 20;
     /** An on/off port switches on beyond this much of full power (-100..100 scale). */
     static final int ONOFF_THRESHOLD = 20;
+
+    /*
+     * Reverse codes to try on real 4.0 hubs (test build: the references disagree and the first
+     * hubs did not reverse with the BC2 / OpenCrown codes).
+     * 4.0 speed: 0 = reverse step n -> n (BC2, OpenCrown), 1 = 8 - n (mirrors forward 8 + n),
+     *            2 = sign bit: forward n, reverse 8 + n (MouldKingino).
+     * 4.0 on/off: 0 = reverse bit only (OpenCrown), 1 = reverse and forward bits together.
+     */
+    static volatile int mk4Rev = 0, ooRev = 0;
+    private static volatile boolean codesChanged;
+
+    static void setReverseCodes(int speed, int onOff) {
+        int a = speed >= 0 && speed <= 2 ? speed : 0, b = onOff == 1 ? 1 : 0;
+        if (a == mk4Rev && b == ooRev) return;
+        mk4Rev = a;
+        ooRev = b;
+        codesChanged = true;
+        ConnLog.add("4.0 reverse code: speed " + a + ", on/off " + b);
+    }
+
+    private long lastHexLog;
+    private String lastHex = "";
     private static final long CONNECT_FLIP_MS = 150L;
     private static final int CHANNELS = 6;
     private static final int COMPANY_ID = 0xFFF0;
@@ -345,8 +367,15 @@ final class Mk6Advertiser {
     /** Maps -100..100 to a Mould King 4.0 nibble: 8 = stop, 9..15 forward steps 1..7, 1..7 reverse steps 1..7. */
     static int nibble4(float v) {
         float f = Math.max(-1f, Math.min(1f, v / 100f));
-        if (f <= -1f / 7f) return Math.min(7, (int) (-f * 7f));
-        if (f >= 1f / 7f) return Math.min(15, (int) (f * 7f + 8f));
+        int mode = mk4Rev;
+        if (f <= -1f / 7f) {
+            int n = Math.min(7, (int) (-f * 7f));
+            return mode == 1 ? 8 - n : mode == 2 ? 8 + n : n;
+        }
+        if (f >= 1f / 7f) {
+            int n = Math.min(7, (int) (f * 7f));
+            return mode == 2 ? n : 8 + n;
+        }
         return 8;
     }
 
@@ -383,7 +412,7 @@ final class Mk6Advertiser {
             for (int p = 0; p < 4; p++) {
                 int v = values[k][p];
                 if (v > ONOFF_THRESHOLD) b |= 1 << fwdBit[p];
-                else if (v < -ONOFF_THRESHOLD) b |= 1 << (fwdBit[p] - 1);
+                else if (v < -ONOFF_THRESHOLD) b |= ooRev == 1 ? (1 << fwdBit[p]) | (1 << (fwdBit[p] - 1)) : 1 << (fwdBit[p] - 1);
             }
             t[3 + m] = (byte) b;
         }
@@ -607,6 +636,10 @@ final class Mk6Advertiser {
     /** Push every hub whose channels changed since last send (or all, if forced). */
     private void pushDirty(boolean force) {
         if (!running || set == null || connecting) return;
+        if (codesChanged) {
+            codesChanged = false;
+            force = true;
+        }
         try {
             boolean[] dirtyAt = new boolean[modules.length];
             boolean mk4Dirty = false, ooDirty = false;
@@ -624,7 +657,9 @@ final class Mk6Advertiser {
                 if (!dirtyAt[i] && !(mk4Dirty && isMk4(i)) && !(ooDirty && isOnOff(i))) continue;
                 AdvertisingSet target = i == 0 ? set : extra[i];
                 if (target == null) continue;
-                target.setAdvertisingData(dataFor(telegramFor(i)));
+                byte[] tg = telegramFor(i);
+                target.setAdvertisingData(dataFor(tg));
+                if (isMk4(i) || isOnOff(i)) logHex(tg);
                 for (int j = 0; j < CHANNELS; j++) {
                     sent[i * CHANNELS + j] = latest[i][j];
                 }
@@ -634,6 +669,16 @@ final class Mk6Advertiser {
             stopNow();
             listener.onState("error");
         }
+    }
+
+    /** The 4.0 data telegrams in the connection log (changes only, at most two a second). */
+    private void logHex(byte[] tg) {
+        String h = ConnLog.hex(tg);
+        long now = SystemClock.uptimeMillis();
+        if (h.equals(lastHex) || now - lastHexLog < 500) return;
+        lastHex = h;
+        lastHexLog = now;
+        ConnLog.add("4.0 data: " + h);
     }
 
     private void pushModule(int i) {

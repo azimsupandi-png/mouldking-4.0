@@ -86,6 +86,20 @@ public final class ProtocolTest {
                 Mk6Advertiser.connectsFor(new int[]{0}).length == 1 && Mk6Advertiser.connectsFor(new int[]{0})[0][0] == 0x6D);
         check("connect: 6.0, 4.0 and on/off = three telegrams", Mk6Advertiser.connectsFor(new int[]{0, M, O}).length == 3);
 
+        // Reverse codes to try on real 4.0 hubs
+        check("code A (default): full reverse = 7, full forward = 15", Mk6Advertiser.nibble4(-100) == 7 && Mk6Advertiser.nibble4(100) == 15);
+        Mk6Advertiser.setReverseCodes(1, 1);
+        check("code B: mirrored, full reverse = 1, one step back = 7, forward unchanged",
+                Mk6Advertiser.nibble4(-100) == 1 && Mk6Advertiser.nibble4(-15) == 7 && Mk6Advertiser.nibble4(100) == 15 && Mk6Advertiser.nibble4(0) == 8);
+        check("on/off code B: reverse sets both bits of the port (A = 0x03)",
+                (Mk6Advertiser.telegramOO(new int[]{Mk6Advertiser.MK4OO}, new int[][]{{-100, 0, 0, 0, 0, 0}})[3] & 0xFF) == 0x03);
+        check("on/off code B: forward still only the forward bit (A = 0x02)",
+                (Mk6Advertiser.telegramOO(new int[]{Mk6Advertiser.MK4OO}, new int[][]{{100, 0, 0, 0, 0, 0}})[3] & 0xFF) == 0x02);
+        Mk6Advertiser.setReverseCodes(2, 0);
+        check("code C: forward 1..7, reverse 9..15", Mk6Advertiser.nibble4(100) == 7 && Mk6Advertiser.nibble4(-100) == 15 && Mk6Advertiser.nibble4(-15) == 9 && Mk6Advertiser.nibble4(0) == 8);
+        Mk6Advertiser.setReverseCodes(9, 9);
+        check("unknown codes fall back to A", Mk6Advertiser.mk4Rev == 0 && Mk6Advertiser.ooRev == 0 && Mk6Advertiser.nibble4(-100) == 7);
+
         ConnLog.clear();
         ConnLog.add("first");
         ConnLog.add("second");

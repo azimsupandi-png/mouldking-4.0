@@ -291,8 +291,22 @@ public class MainActivity extends Activity {
             }
             return true;
         }
+        // Gamepad buttons: the first press of each key is logged (to tell which code a controller sends),
+        // and the stick buttons are also passed to the page directly, for controllers whose L3 / R3
+        // never reach the page's gamepad buttons 10 and 11.
+        if (KeyEvent.isGamepadButton(event.getKeyCode()) && web != null && pageReady && event.getRepeatCount() == 0) {
+            int kc = event.getKeyCode();
+            boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
+            if (down && padKeysSeen.add(kc)) ConnLog.add("Gamepad key: " + KeyEvent.keyCodeToString(kc));
+            int idx = kc == KeyEvent.KEYCODE_BUTTON_THUMBL ? 10 : kc == KeyEvent.KEYCODE_BUTTON_THUMBR ? 11 : -1;
+            if (idx >= 0 && (down || event.getAction() == KeyEvent.ACTION_UP)) {
+                web.evaluateJavascript("window.mk6PadKey&&window.mk6PadKey(" + idx + "," + down + ")", null);
+            }
+        }
         return super.dispatchKeyEvent(event);
     }
+
+    private final java.util.Set<Integer> padKeysSeen = new java.util.HashSet<>();
 
     /** Back goes up one screen inside the app; it only leaves the app from Home. */
     @Override
@@ -370,13 +384,16 @@ public class MainActivity extends Activity {
             } else {
                 String text = readLimited(uri);
                 if (text == null) {
+                    ConnLog.add("Import: could not read the file (missing, or over 1 MB)");
                     notifyFile("import", "fail");
                     return;
                 }
+                ConnLog.add("Import: read " + text.length() + " characters");
                 String js = "window.onImportText&&window.onImportText(" + JSONObject.quote(text) + ")";
                 web.post(() -> web.evaluateJavascript(js, null));
             }
         } catch (Exception e) {
+            ConnLog.add(kind + " failed: " + e.getClass().getSimpleName() + (e.getMessage() != null ? " " + e.getMessage() : ""));
             notifyFile(kind, "fail");
         }
     }
@@ -740,6 +757,12 @@ public class MainActivity extends Activity {
                     notifyPage("error");
                 } else requestStart(parsed);
             });
+        }
+
+        /** Test build: which reverse code the 4.0 hubs get (see Mk6Advertiser.setReverseCodes). */
+        @JavascriptInterface
+        public void mk4Codes(int speed, int onOff) {
+            Mk6Advertiser.setReverseCodes(speed, onOff);
         }
 
         /** @param frame 6/12/18 comma separated channel values -100..100 */
