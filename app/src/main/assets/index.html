@@ -1768,6 +1768,8 @@ html[data-cb] .sf-fill.warn,html[data-cb] .sf-tip.warn{stroke:#E69F00;color:#E69
 .v2-diagn{font-size:12px;margin:10px 2px}
 #hubDiag > summary{justify-content:space-between}
 .v2-log{margin:6px 0;padding:8px 10px;max-height:220px;overflow:auto;font:11px/1.45 var(--f-mono);color:var(--fg);background:rgba(127,127,127,.12);border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text}
+.hmrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hstall{display:block;font-size:13px;margin:6px 0}
 .hrow{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:6px 0;font-size:13px}
 .v2-ins{list-style:none;margin:6px 0;padding:0;display:grid;gap:6px}
 .v2-ins li{padding:8px 10px;border-radius:8px;background:rgba(127,127,127,.12);font-size:12px;overflow-wrap:anywhere}
@@ -2453,6 +2455,7 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
             </div>
             <p class="note" id="hubTNote">MK 4.0 hubs have 4 ports (A–D) and 7 speed steps each way. H4.0 and H6.0 hubs connect directly, so choose the hub with Find hub (untested on real hubs).</p>
             <div id="hAddr" hidden></div>
+            <label class="hstall"><input type="checkbox" id="hStall" checked> Stall protection for H4.0 / H6.0 hubs (the hub stops a blocked motor)</label>
           </div>
           <div class="set-row"><span class="set-top"><span>Hub names (optional)</span></span>
             <div class="hubrow hubnames">

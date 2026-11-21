@@ -42,6 +42,8 @@ final class HubLink {
     private long statFrames;
     private long statStartedAt;
     private long lastFrameAt;
+    private boolean stall = true;
+    private String hallCfg = "{}";
 
     HubLink(Context context, BluetoothAdapter adapter, Listener listener) {
         this.context = context;
@@ -106,6 +108,7 @@ final class HubLink {
             advDone = true;
         }
         if (silent) return;
+        applyConfig();
         for (HallHub hh : halls) hh.connect();
         if (am.length == 0 && halls.isEmpty()) problem("error");
     }
@@ -203,6 +206,56 @@ final class HubLink {
         for (HallHub hh : halls) hh.close();
         running = false;
         stopping = false;
+    }
+
+    /**
+     * Options for the H-hubs from the page, as JSON:
+     * {"stall":true,"servo":[{"h":0,"p":2,"lo":-90,"hi":90,"sp":50,"u":395000}],"ends":[{"h":0,"p":1,"a":0,"b":720,"u":395000}]}
+     * h = position of the hub in the hub list, p = port 0.., angles in degrees, u = ticks per turn.
+     */
+    void configure(String json) {
+        hallCfg = json == null ? "{}" : json;
+        applyConfig();
+    }
+
+    private void applyConfig() {
+        if (spec == null || halls.isEmpty()) {
+            try { stall = new JSONObject(hallCfg).optBoolean("stall", true); } catch (JSONException e) { stall = true; }
+            return;
+        }
+        try {
+            JSONObject o = new JSONObject(hallCfg);
+            stall = o.optBoolean("stall", true);
+            JSONArray sv = o.optJSONArray("servo"), en = o.optJSONArray("ends");
+            int hi = 0;
+            for (int i = 0; i < spec.hubs.size(); i++) {
+                if (!spec.hubs.get(i).isHall()) continue;
+                double[][] sc = new double[6][];
+                int[][] ec = new int[6][];
+                for (int k = 0; sv != null && k < sv.length(); k++) {
+                    JSONObject q = sv.optJSONObject(k);
+                    int p = q == null ? -1 : q.optInt("p", -1);
+                    if (q == null || q.optInt("h", -1) != i || p < 0 || p > 5) continue;
+                    double u = q.optDouble("u", 395000) / 360.0;
+                    sc[p] = new double[]{q.optDouble("lo", -90) * u, q.optDouble("hi", 90) * u, q.optDouble("sp", 50)};
+                }
+                for (int k = 0; en != null && k < en.length(); k++) {
+                    JSONObject q = en.optJSONObject(k);
+                    int p = q == null ? -1 : q.optInt("p", -1);
+                    if (q == null || q.optInt("h", -1) != i || p < 0 || p > 5) continue;
+                    double u = q.optDouble("u", 395000) / 360.0;
+                    ec[p] = new int[]{(int) Math.round(Math.max(q.optDouble("a", 0), q.optDouble("b", 0)) * u),
+                            (int) Math.round(Math.min(q.optDouble("a", 0), q.optDouble("b", 0)) * u)};
+                }
+                if (hi < halls.size()) {
+                    halls.get(hi).setStallProtection(stall);
+                    halls.get(hi).configure(sc, ec);
+                }
+                hi++;
+            }
+        } catch (JSONException e) {
+            ConnLog.add("Bad hub options: " + e.getMessage());
+        }
     }
 
     /** Flat frame: hub i channel j at index i*6+j in the order of the hubs given to start(), -100..100. */

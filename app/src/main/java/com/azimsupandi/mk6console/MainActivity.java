@@ -758,6 +758,13 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> mk6.stop());
         }
 
+        /** Options for the H4.0 / H6.0 hubs: stall protection, servo ports and end stops (JSON, see HubLink.configure). */
+        @JavascriptInterface
+        public void hallConfig(String json) {
+            if (json == null || json.length() > 4000) return;
+            runOnUiThread(() -> mk6.configure(json));
+        }
+
         /** Connection log text (newest last). */
         @JavascriptInterface
         public String log() {

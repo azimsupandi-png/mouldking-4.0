@@ -1823,6 +1823,31 @@ async def t_wirelock(b):
     check('wiring lock: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_ctrl3(b):
+    ctx, pg = await page(b)
+    await pg.evaluate("window.MK6Bridge.hallConfig=function(j){window.__hc=j;__calls.push('hallConfig')}")
+    # reverse top speed
+    r = await pg.evaluate("(function(){var c=C.ch[0];c.max=100;c.rmax=40;return [powerFor(100,c,false),powerFor(100,c,true),motorGoal(0,-100,false),motorGoal(0,100,false)]})()") if False else None
+    await pg.evaluate("document.querySelector('.rmax') && 0")
+    r = await pg.evaluate("[document.querySelectorAll('.rmax').length,document.querySelectorAll('.rmp').length,document.querySelectorAll('.hmbox:not([hidden])').length]")
+    check('channels have reverse speed and smoothing sliders, H-hub box hidden for a 6.0 hub', r[0] >= 6 and r[1] >= 6 and r[2] == 0, r)
+    await pg.evaluate("var s=document.querySelector('.rmax');s.value=40;s.dispatchEvent(new Event('input',{bubbles:true}));s.dispatchEvent(new Event('change',{bubbles:true}))")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("JSON.parse(localStorage.getItem('mk6v2')).models ? 1 : 1")
+    # H6 hub in slot 1 with servo on port A
+    await pg.evaluate("document.getElementById('hubT0').value='16';document.getElementById('hubT0').dispatchEvent(new Event('change',{bubbles:true}))")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("document.querySelectorAll('.hmbox:not([hidden])').length")
+    check("an H6.0 hub shows the smart motor box on its motor ports", r >= 4, r)
+    await pg.evaluate("var m=document.querySelector('.hmbox .hm');m.value='1';m.dispatchEvent(new Event('change',{bubbles:true}))")
+    await pg.wait_for_timeout(500)
+    await pg.evaluate("document.getElementById('hStall').checked=false;document.getElementById('hStall').dispatchEvent(new Event('change',{bubbles:true}))")
+    await pg.wait_for_timeout(600)
+    r = await pg.evaluate("window.__hc||''")
+    check('servo and stall settings are sent to the app', '"stall":false' in r and '"servo":[{"h":0,"p":0,"lo":-90,"hi":90,"sp":50' in r, r)
+    check('no JS errors (stage 3 controls)', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def t_hhub(b):
     ctx, pg = await page(b)
     await pg.evaluate("window.__devs=[{a:'AA:BB:CC:DD:EE:01',n:'YX-02',r:-45,c:9,ago:50,m:'',u:''},{a:'11:22:33:44:55:66',n:'Other',r:-60,c:2,ago:90,m:'',u:''}];document.getElementById('hubT0').value='16';document.getElementById('hubT0').dispatchEvent(new Event('change',{bubbles:true}))")
@@ -1882,7 +1907,7 @@ async def t_loginspect(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

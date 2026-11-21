@@ -74,6 +74,14 @@ final class HallHub {
     private String lastHeartbeat;
     private long statSent;
     private boolean stallOn;
+    // per port: servo mode (position target in ticks from a -1..1 value) and end stops (hub stops the port itself)
+    private final double[][] servo = new double[6][];      // {loTicks, hiTicks, speedPct}
+    private final int[][] ends = new int[6][];             // {hiTicks, loTicks}
+    private final int[][] sentEnds = new int[6][];
+    private final boolean[] servoSeen = new boolean[6];
+    private final Integer[] targets = new Integer[6];
+    private final int[] servoSpeeds = new int[6];
+    private String lastAngleSent;
 
     HallHub(Context context, String address, int ports, Listener listener) {
         this.context = context;
@@ -86,7 +94,26 @@ final class HallHub {
     boolean isLinked() { return linked && !closed; }
     long sent() { return statSent; }
 
-    void setStallProtection(boolean on) { stallOn = on; }
+    void setStallProtection(boolean on) {
+        stallOn = on;
+        if (linked && !closed) {
+            enqueue(HallProtocol.stallProtection(on));
+            ConnLog.add("H-hub " + address + ": stall protection " + (on ? "on" : "off"));
+        }
+    }
+
+    /** Servo and end stop settings for the ports, from the page. Arrays have one entry per port, null = off. */
+    void configure(double[][] servoCfg, int[][] endCfg) {
+        for (int i = 0; i < 6; i++) {
+            double[] sv = i < servoCfg.length ? servoCfg[i] : null;
+            int[] en = i < endCfg.length ? endCfg[i] : null;
+            if (i >= ports) { sv = null; en = null; }
+            if (sv == null) servoSeen[i] = false;
+            servo[i] = sv;
+            ends[i] = en;
+        }
+        flush(false);
+    }
 
     void connect() {
         BluetoothDevice dev = null;
@@ -113,7 +140,8 @@ final class HallHub {
     }
 
     /** New values for every port, -1..1. Called often; only changes go on air. */
-    void update(float[] v) {
+    void update(float[] v0) {
+        float[] v = v0;
         lastFrameAt = SystemClock.uptimeMillis();
         boolean nz = false;
         for (int i = 0; i < ports; i++) {
@@ -121,6 +149,17 @@ final class HallHub {
             if (values[i] != 0f) nz = true;
         }
         liveNonZero = nz;
+        for (int i = 0; i < ports; i++) {
+            double[] sv = servo[i];
+            if (sv == null) { targets[i] = null; continue; }
+            float v = i < v0.length ? v0[i] : 0f;
+            // the first value only sets the starting point, so the servo does not jump when the link comes up
+            if (!servoSeen[i]) { servoSeen[i] = true; if (v == 0f) { values[i] = 0f; continue; } }
+            double f = (Math.max(-1f, Math.min(1f, v)) + 1.0) / 2.0;
+            targets[i] = (int) Math.round(sv[0] + f * (sv[1] - sv[0]));
+            servoSpeeds[i] = HallProtocol.servoSpeed((int) sv[2]);
+            values[i] = 0f;
+        }
         flush(false);
     }
 
@@ -193,11 +232,36 @@ final class HallHub {
             main.postDelayed(pendingFlush, MIN_GAP_MS);
             return;
         }
-        String msg = HallProtocol.speed(values, null);
-        if (!force && msg.equals(lastSpeedSent)) return;
+        // end points first, so the hub knows them before a limited port starts to move
+        boolean[] limited = new boolean[ports];
+        boolean endsSent = false;
+        for (int i = 0; i < ports; i++) {
+            int[] e = ends[i];
+            limited[i] = e != null;
+            if (e == null || java.util.Arrays.equals(e, sentEnds[i])) continue;
+            String m = HallProtocol.endPoints(i, e[0], e[1]);
+            enqueue(m);
+            ConnLog.add("H-hub " + address + ": " + m + " (end stops, port " + (char) ('A' + i) + ")");
+            sentEnds[i] = e.clone();
+            endsSent = true;
+        }
+        String msg = HallProtocol.speed(values, limited);
+        boolean hasServo = false;
+        for (int i = 0; i < ports; i++) if (targets[i] != null) hasServo = true;
+        String ang = hasServo ? HallProtocol.angle(java.util.Arrays.copyOf(targets, ports), java.util.Arrays.copyOf(servoSpeeds, ports)) : null;
+        boolean speedChanged = !msg.equals(lastSpeedSent);
+        boolean angleChanged = ang != null && !ang.equals(lastAngleSent);
+        if (!force && !speedChanged && !angleChanged && !endsSent) return;
         lastSendAt = now;
-        lastSpeedSent = msg;
-        enqueue(msg);
+        if (speedChanged || force) {
+            lastSpeedSent = msg;
+            enqueue(msg);
+        }
+        // the position message only when a target moves: repeating it after every speed message stops the other ports
+        if (angleChanged) {
+            lastAngleSent = ang;
+            enqueue(ang);
+        }
         statSent++;
     }
 
@@ -309,6 +373,8 @@ final class HallHub {
         ConnLog.add("H-hub " + address + ": stall protection " + (stallOn ? "on" : "off"));
         listener.onState(this, ACTIVE, null);
         lastSpeedSent = null;
+        lastAngleSent = null;
+        java.util.Arrays.fill(sentEnds, null);
         lastFrameAt = SystemClock.uptimeMillis();
         flush(true);
         main.postDelayed(keepAlive, 1000L);
