@@ -24,6 +24,8 @@ public final class ProtocolTest {
     static final byte[] ADDR = b(0xC1, 0xC2, 0xC3, 0xC4, 0xC5);
 
     public static void main(String[] args) {
+        int defaultCode = Mk6Advertiser.mk4Rev, defaultOo = Mk6Advertiser.ooRev;
+        Mk6Advertiser.setReverseCodes(0, 0); // the nibble checks below are written for code A
         // MK 6.0 connect telegram, encrypted with the standard address and seed 37
         byte[] connect = b(0x6D, 0x7B, 0xA7, 0x80, 0x80, 0x80, 0x80, 0x92);
         String capture = "6D B6 43 CF 7E 8F 47 11 88 66 59 38 D1 7A AA 26 49 5E 13 14 15 16 17 18";
@@ -87,7 +89,8 @@ public final class ProtocolTest {
         check("connect: 6.0, 4.0 and on/off = three telegrams", Mk6Advertiser.connectsFor(new int[]{0, M, O}).length == 3);
 
         // Reverse codes to try on real 4.0 hubs
-        check("code A (default): full reverse = 7, full forward = 15", Mk6Advertiser.nibble4(-100) == 7 && Mk6Advertiser.nibble4(100) == 15);
+        check("default codes are the ones found on real hubs: 4.0 sign bit (C), on/off reverse bit (A)", defaultCode == 2 && defaultOo == 0);
+        check("code A: full reverse = 7, full forward = 15", Mk6Advertiser.nibble4(-100) == 7 && Mk6Advertiser.nibble4(100) == 15);
         Mk6Advertiser.setReverseCodes(1, 1);
         check("code B: mirrored, full reverse = 1, one step back = 7, forward unchanged",
                 Mk6Advertiser.nibble4(-100) == 1 && Mk6Advertiser.nibble4(-15) == 7 && Mk6Advertiser.nibble4(100) == 15 && Mk6Advertiser.nibble4(0) == 8);
@@ -98,7 +101,8 @@ public final class ProtocolTest {
         Mk6Advertiser.setReverseCodes(2, 0);
         check("code C: forward 1..7, reverse 9..15", Mk6Advertiser.nibble4(100) == 7 && Mk6Advertiser.nibble4(-100) == 15 && Mk6Advertiser.nibble4(-15) == 9 && Mk6Advertiser.nibble4(0) == 8);
         Mk6Advertiser.setReverseCodes(9, 9);
-        check("unknown codes fall back to A", Mk6Advertiser.mk4Rev == 0 && Mk6Advertiser.ooRev == 0 && Mk6Advertiser.nibble4(-100) == 7);
+        check("unknown codes fall back to the defaults (C, A)", Mk6Advertiser.mk4Rev == 2 && Mk6Advertiser.ooRev == 0 && Mk6Advertiser.nibble4(-100) == 15 && Mk6Advertiser.nibble4(100) == 7);
+        Mk6Advertiser.setReverseCodes(0, 0);
 
         ConnLog.clear();
         ConnLog.add("first");

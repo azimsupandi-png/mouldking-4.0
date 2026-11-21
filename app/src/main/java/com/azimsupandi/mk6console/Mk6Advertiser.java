@@ -61,11 +61,12 @@ final class Mk6Advertiser {
      *            2 = sign bit: forward n, reverse 8 + n (MouldKingino).
      * 4.0 on/off: 0 = reverse bit only (OpenCrown), 1 = reverse and forward bits together.
      */
-    static volatile int mk4Rev = 0, ooRev = 0;
+    // found on real hubs: 4.0 speed hubs use the sign bit (2), on/off boxes the reverse bit (0)
+    static volatile int mk4Rev = 2, ooRev = 0;
     private static volatile boolean codesChanged;
 
     static void setReverseCodes(int speed, int onOff) {
-        int a = speed >= 0 && speed <= 2 ? speed : 0, b = onOff == 1 ? 1 : 0;
+        int a = speed >= 0 && speed <= 2 ? speed : 2, b = onOff == 1 ? 1 : 0;
         if (a == mk4Rev && b == ooRev) return;
         mk4Rev = a;
         ooRev = b;

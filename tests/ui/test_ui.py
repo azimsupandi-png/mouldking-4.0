@@ -763,6 +763,15 @@ async def t_fix5(b):
     await pg.wait_for_timeout(400)
     r = await pg.evaluate("document.getElementById('gpRaw').textContent")
     check('Gamepad raw input shows pressed buttons and axes', 'buttons pressed: 10' in r and '3=-1.00' in r, r)
+    # PS4 on Android: the touchpad is listed first as its own gamepad; the controller itself must be used
+    await pg.evaluate("""(()=>{const mk=(id)=>({connected:true,id:id,mapping:'standard',axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))});
+      const tp=mk('Wireless Controller Touchpad (STANDARD GAMEPAD Vendor: 054c)'),pad=mk('Wireless Controller (STANDARD GAMEPAD Vendor: 054c)');
+      tp.axes=[0.75,0.74,0,0];pad.buttons[11]={pressed:true,value:1};window.__pads=[tp,pad];navigator.getGamepads=()=>window.__pads;
+      __t.rt.t[0]=0;__t.C.pad.on=true;__t.C.pad.map={11:'f1'};mk6Go('m-pad')})()""")
+    await pg.wait_for_timeout(500)
+    r = await pg.evaluate("[__t.rt.t[1],__t.rt.t[0],document.getElementById('gpRaw').textContent]")
+    check('PS4: R3 on the controller drives its mapping, the touchpad does not move the sticks', r[0] == 100 and r[1] == 0, r)
+    check('PS4: raw input lists both and marks the controller in use', '\u25b6 Wireless Controller (STANDARD' in r[2] and 'Touchpad' in r[2], r[2])
     check('fix5 no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
