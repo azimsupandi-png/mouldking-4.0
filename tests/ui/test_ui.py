@@ -659,6 +659,51 @@ async def t_mk4oo(b):
     check('MK4OO no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_lpmulti(b):
+    # Light programs on several panels (one per hub) play at the same time; header/footer hide on scroll
+    ctx, pg = await page(b)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("""(()=>{const s=(id,v)=>{const e=document.getElementById(id);e.value=v;e.dispatchEvent(new Event('change'))};
+      s('hubT0','40');s('hub1','1');s('hubT1','40');s('hub2','0');s('hubT2','4')})()""")
+    await pg.evaluate("window.MK6Bridge.send=function(f){(window.__all=window.__all||[]).push(f)};document.getElementById('hubConn').click();onHubState('ready')")
+    await pg.evaluate("(it)=>{__t.C.ch.forEach(function(c,i){if(i%6<4) c.kind='light'});__t.C.layout='board';__t.C.board=__t.cleanBoard(it);__t.syncBoard();mk6Go('drive')}",
+                      [{'k': 'lx', 't': 'lp', 'c': s * 6, 'cs': [s * 6 + 1, s * 6 + 2, s * 6 + 3], 'pr': 3} for s in range(3)])
+    await pg.wait_for_timeout(400)
+    n = await pg.evaluate("document.querySelectorAll('#boardGrid .lx-pg').length")
+    check('LP three light panels with a program', n == 3, n)
+    for i in range(3):
+        await pg.evaluate("(i)=>document.querySelectorAll('#boardGrid .lx-pg')[i].click()", i)
+        await pg.wait_for_timeout(150)
+    await pg.evaluate("window.__all=[]")
+    await pg.wait_for_timeout(1200)
+    r = await pg.evaluate("[...document.querySelectorAll('#boardGrid .lx-pg')].map(b=>b.getAttribute('aria-pressed'))")
+    check('LP all three programs keep running together', r == ['true', 'true', 'true'], r)
+    r = await pg.evaluate("[0,1,2].map(h=>window.__all.some(f=>String(f).split(',').map(Number).slice(h*6,h*6+4).some(v=>v>0)))")
+    check('LP every hub gets light output while the others play', r == [True, True, True], r)
+    await pg.evaluate("document.querySelectorAll('#boardGrid .lx-pg')[1].click()")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[...document.querySelectorAll('#boardGrid .lx-pg')].map(b=>b.getAttribute('aria-pressed'))")
+    check('LP stopping one panel leaves the others running', r == ['true', 'false', 'true'], r)
+    await pg.evaluate("document.getElementById('estop').click()")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[...document.querySelectorAll('#boardGrid .lx-pg')].map(b=>b.getAttribute('aria-pressed'))")
+    check('LP E-Stop stops every program', r == ['false', 'false', 'false'], r)
+    await pg.evaluate("document.getElementById('estop').click()")
+    # header / footer hide while scrolling (portrait)
+    await pg.evaluate("mk6Go('settings')"); await pg.wait_for_timeout(400)
+    await pg.mouse.move(200, 400); await pg.mouse.wheel(0, 600); await pg.wait_for_timeout(400)
+    r = await pg.evaluate("""(()=>{const c=document.documentElement.classList,e=document.getElementById('estop').getBoundingClientRect();return [c.contains('v2-hidehd'),c.contains('v2-hideft'),e.top>=0&&e.bottom<=innerHeight]})()""")
+    check('scrolling down the page hides the header, keeps the footer and the E-Stop', r == [True, False, True], r)
+    await pg.mouse.wheel(0, -200); await pg.wait_for_timeout(400)
+    r = await pg.evaluate("[document.documentElement.classList.contains('v2-hidehd'),document.documentElement.classList.contains('v2-hideft')]")
+    check('scrolling back up hides the footer and brings the header back', r == [False, True], r)
+    await pg.evaluate("scrollTo(0,0)"); await pg.wait_for_timeout(400)
+    r = await pg.evaluate("[document.documentElement.classList.contains('v2-hidehd'),document.documentElement.classList.contains('v2-hideft')]")
+    check('at the top both header and footer show', r == [False, False], r)
+    check('LP no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def t_btypes(b):
     # Button types on the Board Turbo button, Train slider, and gamepad button types
     ctx, pg = await page(b)
@@ -1992,7 +2037,7 @@ async def t_loginspect(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_stage4, t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_mk4oo, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_stage4, t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_mk4oo, t_lpmulti, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

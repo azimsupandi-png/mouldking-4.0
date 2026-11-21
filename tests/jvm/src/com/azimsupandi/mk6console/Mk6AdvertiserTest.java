@@ -94,6 +94,41 @@ public final class Mk6AdvertiserTest {
         check("2 hubs: both hubs get neutral after watchdog", after.stream().anyMatch(b -> Arrays.equals(b, neutral(0))) && after.stream().anyMatch(b -> Arrays.equals(b, neutral(1)))
             && after.stream().allMatch(b -> Arrays.equals(b, neutral(0)) || Arrays.equals(b, neutral(1))));
 
+        // Mixed hubs at the same time: 4.0 on/off M1, 4.0 on/off M2 and 4.0 speed M3 all drive outputs together
+        byte[] AD = {(byte)0xC1,(byte)0xC2,(byte)0xC3,(byte)0xC4,(byte)0xC5};
+        int[] mods3 = {Mk6Advertiser.MK4OO, Mk6Advertiser.MK4OO + 1, Mk6Advertiser.MK4 + 2};
+        int[] f3 = {100, 0, 100, 0, 0, 0,   0, 100, 0, 100, 0, 0,   0, 0, 100, 0, 0, 0};
+        int[][] v3 = {{100, 0, 100, 0, 0, 0}, {0, 100, 0, 100, 0, 0}, {0, 0, 100, 0, 0, 0}};
+        byte[] oo3 = Mk6Crypt.rfPayload(AD, Mk6Advertiser.telegramOO(mods3, v3), 37);
+        byte[] mk3 = Mk6Crypt.rfPayload(AD, Mk6Advertiser.telegram4(mods3, v3), 37);
+        check("mixed: on/off telegram carries both boxes at once", (Mk6Advertiser.telegramOO(mods3, v3)[3] & 0xFF) == 0x22 && (Mk6Advertiser.telegramOO(mods3, v3)[4] & 0xFF) == 0x88);
+        BluetoothAdapter ad3 = new BluetoothAdapter();
+        Mk6Advertiser m3 = new Mk6Advertiser(ad3, x -> {});
+        AdvertisingSet p3 = new AdvertisingSet(), e1 = new AdvertisingSet(), e2 = new AdvertisingSet();
+        m3.start(mods3);
+        ad3.adv.started.get(0).onAdvertisingSetStarted(p3, 0, 0);
+        Handler.advance(4200);
+        check("mixed: two extra sets requested after the longer connect window", ad3.adv.started.size() == 3);
+        ad3.adv.started.get(1).onAdvertisingSetStarted(e1, 0, 0);
+        ad3.adv.started.get(2).onAdvertisingSetStarted(e2, 0, 0);
+        Handler.advance(10);
+        for (int i = 0; i < 6; i++) { m3.setFrame(f3); Handler.advance(150); }
+        check("mixed parallel: hub 1 (on/off M1) set ends on the combined on/off telegram", Arrays.equals(p3.sent.get(p3.sent.size() - 1), oo3));
+        check("mixed parallel: hub 2 (on/off M2) set ends on the same combined telegram", Arrays.equals(e1.sent.get(e1.sent.size() - 1), oo3));
+        check("mixed parallel: hub 3 (4.0 M3) set ends on the 4.0 telegram", Arrays.equals(e2.sent.get(e2.sent.size() - 1), mk3));
+        BluetoothAdapter ad4 = new BluetoothAdapter();
+        Mk6Advertiser m4 = new Mk6Advertiser(ad4, x -> {});
+        AdvertisingSet p4 = new AdvertisingSet();
+        m4.start(mods3);
+        ad4.adv.started.get(0).onAdvertisingSetStarted(p4, 0, 0);
+        Handler.advance(4200);
+        ad4.adv.started.get(1).onAdvertisingSetStarted(null, 0, 1);
+        ad4.adv.started.get(2).onAdvertisingSetStarted(null, 0, 1);
+        Handler.advance(10);
+        for (int i = 0; i < 6; i++) { m4.setFrame(f3); Handler.advance(150); }
+        List<byte[]> last = p4.sent.subList(Math.max(0, p4.sent.size() - 6), p4.sent.size());
+        check("mixed rotation: both telegrams stay on air", last.stream().anyMatch(b -> Arrays.equals(b, oo3)) && last.stream().anyMatch(b -> Arrays.equals(b, mk3)));
+
         System.out.println(fails == 0 ? "ALL PASSED" : (fails + " FAILED"));
         System.exit(fails == 0 ? 0 : 1);
     }
