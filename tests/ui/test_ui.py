@@ -1823,6 +1823,42 @@ async def t_wirelock(b):
     check('wiring lock: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_stage4(b):
+    ctx, pg = await page(b)
+    await pg.evaluate("window.__devs=[{a:'AA:BB:CC:DD:EE:02',n:'YX-01',r:-40,c:5,ago:50,m:'',u:''}];document.getElementById('hubWiz').click()")
+    await pg.wait_for_timeout(300)
+    await pg.evaluate("[...document.querySelectorAll('#wizSheet .btn')].find(x=>x.textContent.indexOf('Scan for')===0).click()")
+    await pg.wait_for_timeout(1500)
+    r = await pg.evaluate("[...document.querySelectorAll('#wizSheet li')].map(l=>l.textContent)")
+    check('wizard scan lists the YX- hub', len(r) == 1 and 'YX-01' in r[0], r)
+    await pg.evaluate("__calls.length=0;document.querySelector('#wizSheet li').click()")
+    await pg.wait_for_timeout(500)
+    r = await pg.evaluate("[document.getElementById('hubT0').value,__calls.filter(c=>c.startsWith('start:')),!!document.getElementById('wizSheet'),__calls.includes('scanStop')]")
+    check('picking the hub sets H4.0, starts the link and closes the wizard', r[0] == '14' and r[1] == ['start:H4=AA:BB:CC:DD:EE:02'] and not r[2] and r[3], r)
+    await pg.evaluate("onHubState('stopped')")
+    await ctx.close()
+    ctx, pg = await page(b)
+    await pg.evaluate("document.getElementById('hubWiz').click()")
+    await pg.evaluate("[...document.querySelectorAll('#wizSheet .btn')].find(x=>x.textContent.indexOf('My hub')===0).click()")
+    await pg.evaluate("var sl=document.querySelectorAll('#wizSheet select');sl[0].value='4';sl[1].value='1';__calls.length=0;[...document.querySelectorAll('#wizSheet .btn')].find(x=>x.textContent==='Connect').click()")
+    await pg.wait_for_timeout(500)
+    r = await pg.evaluate("__calls.filter(c=>c.startsWith('start:'))")
+    check('wizard classic path starts a 4.0 hub on module 2', r == ['start:11'], r)
+    await ctx.close()
+    # smart motors found by an H-hub become Motor M on empty ports
+    ctx, pg = await page(b)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("document.getElementById('gSkip') && document.getElementById('gSkip').click()")
+    await pg.evaluate("document.getElementById('hubT0').value='14';document.getElementById('hubT0').dispatchEvent(new Event('change',{bubbles:true}));0")
+    await pg.evaluate("window.__t.C.hubA[0]={a:'AA:BB:CC:DD:EE:03',n:'YX-01'};window.MK6Bridge.stats=function(){return JSON.stringify({mode:'single',hubs:1,ok:1,fail:0,frames:1,watchdog:0,up:1000,lastFrameAgo:10,tx:1,err:0,errAgo:-1,mods:[20],alive:[1],lat:60,smart:[[1,0,1,0]]})};document.getElementById('hubConn').click();onHubState('ready');mk6Go('hub')")
+    await pg.wait_for_timeout(2500)
+    r = await pg.evaluate("window.__t.C.pf.slice(0,4)")
+    check('smart motors on ports A and C are set to Motor M', r == ['m', '', 'm', ''], r)
+    r = await pg.evaluate("document.querySelectorAll('.cvset button, .cvpre button').length")
+    check('no JS errors (stage 4)', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def t_ctrl3(b):
     ctx, pg = await page(b)
     await pg.evaluate("window.MK6Bridge.hallConfig=function(j){window.__hc=j;__calls.push('hallConfig')}")
@@ -1907,7 +1943,7 @@ async def t_loginspect(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_stage4, t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
