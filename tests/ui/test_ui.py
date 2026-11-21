@@ -18,6 +18,8 @@ window.MK6Bridge={start:function(m){__calls.push('start:'+m)},send:function(f){_
  btSettings:function(){__calls.push('btSettings')},exportFile:function(){__calls.push('export')},importFile:function(){__calls.push('import')},
  pickWallpaper:function(){},autoBackup:function(){},pinModel:function(){},shortcuts:function(){},
  stats:function(){return JSON.stringify({mode:'single',hubs:1,ok:120,fail:2,frames:130,watchdog:0,up:65000,lastFrameAgo:40,tx:1,err:4,errAgo:5000})},
+ log:function(){return window.__log||''},clearLog:function(){window.__log='';__calls.push('clearLog')},scanStart:function(){window.__scan=true;__calls.push('scanStart')},scanStop:function(){window.__scan=false;__calls.push('scanStop')},
+ scanResults:function(){return JSON.stringify({scanning:!!window.__scan,err:0,list:window.__devs||[]})},
  theme:function(l){__calls.push('theme:'+l)},textZoom:function(p){__calls.push('zoom:'+p)},shareFile:function(n,j,t){window.__share=[n,j];__calls.push('share')}};"""
 RESULTS = []
 def check(name, ok, info=''):
@@ -1821,10 +1823,35 @@ async def t_wirelock(b):
     check('wiring lock: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_loginspect(b):
+    ctx, pg = await page(b)
+    await pg.evaluate("window.__log='12:00:00.000  Start requested: hubs 6.0 M1\\n12:00:00.050  Connect telegram: 6D 7B';window.__devs=[{a:'AA:BB:CC',n:'YX-01',r:-50,c:10,ago:100,m:'FFF0: 01 02',u:''},{a:'DD:EE:FF',n:'',r:-80,c:3,ago:200,m:'',u:''}];document.getElementById('hubConn').click();onHubState('ready');mk6Go('hub');document.getElementById('hubDiag').open=true;document.getElementById('logBox').open=true;document.getElementById('insBox').open=true")
+    await pg.wait_for_timeout(600)
+    r = await pg.evaluate("document.getElementById('connLog').textContent")
+    check('connection log shows the native log lines', 'Start requested' in r and 'Connect telegram' in r, r)
+    r = await pg.evaluate("[...document.querySelectorAll('#insList li')].map(l=>l.className+':'+l.querySelector('b').textContent)")
+    check('inspector lists devices and marks a YX- hub', len(r) == 2 and r[0].startswith('hub:YX-01') and r[1].startswith(':(no name)'), r)
+    await pg.evaluate("document.getElementById('insScan').click()")
+    await pg.wait_for_timeout(700)
+    r = await pg.evaluate("[__calls.includes('scanStart'),document.getElementById('insScan').textContent]")
+    check('Scan starts the native scan and the button says Scanning', r[0] and 'Scanning' in r[1], r)
+    await pg.evaluate("window.__copied=[];HTMLTextAreaElement.prototype.select=function(){window.__copied.push(this.value)};document.execCommand=function(){return true};document.getElementById('logCopy').click();document.getElementById('diagCopy').click()")
+    r = await pg.evaluate("window.__copied")
+    check('Copy log copies the log, Copy report adds it to the report', len(r) == 2 and r[0].startswith('12:00:00.000') and 'Connection log:' in r[1] and 'Start requested' in r[1] and 'Link:' in r[1], r)
+    await pg.evaluate("document.getElementById('logClear').click()")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[__calls.includes('clearLog'),document.getElementById('connLog').textContent]")
+    check('Clear log empties the log', r[0] and 'Nothing yet' in r[1], r)
+    await pg.evaluate("document.getElementById('insBox').open=false")
+    r = await pg.evaluate("__calls.includes('scanStop')")
+    check('closing the inspector stops the scan', r)
+    check('no JS errors (log and inspector)', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

@@ -89,7 +89,16 @@ final class Mk6Advertiser {
     private int statLastError;
     private long statLastErrorAt;
 
+    private int lastLoggedFail;
+    private long lastLoggedFailAt;
+
     private void noteFail(int status) {
+        long t = SystemClock.uptimeMillis();
+        if (status != lastLoggedFail || t - lastLoggedFailAt > 1000L) {
+            ConnLog.add("Bluetooth error " + status + " (fail count " + (statFail + 1) + ")");
+            lastLoggedFail = status;
+            lastLoggedFailAt = t;
+        }
         statFail++;
         statLastError = status;
         statLastErrorAt = SystemClock.uptimeMillis();
@@ -134,6 +143,7 @@ final class Mk6Advertiser {
         public void onAdvertisingSetStarted(AdvertisingSet advertisingSet, int txPower, int status) {
             handler.post(() -> {
                 starting = false;
+                ConnLog.add("Advertising set started: status " + status + ", tx " + txPower + " dBm");
                 if (status == ADVERTISE_SUCCESS) {
                     statTxPower = txPower;
                     statStartedAt = SystemClock.uptimeMillis();
@@ -198,6 +208,8 @@ final class Mk6Advertiser {
         public void run() {
             if (!running) return;
             connecting = false;
+            ConnLog.add("Connect window over, sending real data (" + modules.length + " hub"
+                    + (modules.length == 1 ? "" : "s") + ")");
             handler.removeCallbacks(connectFlipTask);
             if (modules.length > 1) startExtras();
             pushDirty(true);
@@ -239,6 +251,7 @@ final class Mk6Advertiser {
                 liveNonZero = false;
                 if (parallel || modules.length == 1) pushDirty(true);
                 statWatchdog++;
+                ConnLog.add("Safety stop: no frame from the app for " + WATCHDOG_MS + " ms, outputs set to 0");
                 listener.onState("watchdog");
             }
             handler.postDelayed(this, WATCHDOG_CHECK_MS);
@@ -400,7 +413,11 @@ final class Mk6Advertiser {
 
     /** @param mods hub module indices (0..2), unique, 1..3 entries */
     void start(int[] mods) {
-        if (running || starting) return;
+        if (running || starting) {
+            ConnLog.add("Start ignored: link already " + (running ? "running" : "starting"));
+            return;
+        }
+        ConnLog.add("Start requested: hubs " + (mods == null ? "none" : describe(mods)));
         if (mods == null || mods.length < 1 || mods.length > MAX_HUBS) {
             listener.onState("error");
             return;
@@ -418,15 +435,18 @@ final class Mk6Advertiser {
             }
         }
         if (adapter == null) {
+            ConnLog.add("No Bluetooth adapter on this phone");
             listener.onState("unsupported");
             return;
         }
         if (!adapter.isEnabled()) {
+            ConnLog.add("Bluetooth is off");
             listener.onState("off");
             return;
         }
         advertiser = adapter.getBluetoothLeAdvertiser();
         if (advertiser == null) {
+            ConnLog.add("This phone cannot advertise over Bluetooth LE");
             listener.onState("unsupported");
             return;
         }
@@ -441,12 +461,15 @@ final class Mk6Advertiser {
         stopping = false;
         starting = true;
         try {
+            ConnLog.add("Connect telegram: " + ConnLog.hex(allMk4() ? CONNECT4 : CONNECT));
             advertiser.startAdvertisingSet(params(), dataFor(allMk4() ? CONNECT4 : CONNECT), null, null, null, callback);
         } catch (SecurityException e) {
             starting = false;
+            ConnLog.add("Bluetooth permission denied");
             listener.onState("denied");
         } catch (RuntimeException e) {
             starting = false;
+            ConnLog.add("Could not start advertising: " + e.getClass().getSimpleName());
             listener.onState("error");
         }
     }
@@ -474,9 +497,20 @@ final class Mk6Advertiser {
         }
     }
 
+    /** "6.0 M1, 4.0 M2" style text for the log. */
+    private static String describe(int[] mods) {
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < mods.length; i++) {
+            if (i > 0) b.append(", ");
+            b.append(mods[i] >= MK4 ? "4.0 M" + (mods[i] - MK4 + 1) : "6.0 M" + (mods[i] + 1));
+        }
+        return b.toString();
+    }
+
     /** Graceful stop: send neutral to every hub first, then tear down. */
     void stop() {
         if (!running && !starting) return;
+        ConnLog.add("Stop requested");
         stopping = true;
         handler.removeCallbacks(finishConnect);
         handler.removeCallbacks(connectFlipTask);
@@ -596,10 +630,12 @@ final class Mk6Advertiser {
             return;
         }
         parallel = true;
+        ConnLog.add("All hubs on air at the same time");
         pushDirty(true);
     }
 
     private void fallBackToRotate() {
+        ConnLog.add("This phone cannot run several advertising sets: hubs take turns");
         stopExtras();
         parallel = false;
         handler.removeCallbacks(rotateTask);
@@ -640,6 +676,7 @@ final class Mk6Advertiser {
         running = false;
         starting = false;
         stopping = false;
+        ConnLog.add("Link stopped");
         listener.onState("stopped");
     }
 }

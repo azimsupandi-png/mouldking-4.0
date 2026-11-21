@@ -1767,6 +1767,12 @@ html[data-cb] .sf-fill.warn,html[data-cb] .sf-tip.warn{stroke:#E69F00;color:#E69
 .v2-diag dd.ok{color:var(--ok)}.v2-diag dd.bad{color:var(--danger)}.v2-diag dd.warn{color:var(--acc-t,var(--acc))}
 .v2-diagn{font-size:12px;margin:10px 2px}
 #hubDiag > summary{justify-content:space-between}
+.v2-log{margin:6px 0;padding:8px 10px;max-height:220px;overflow:auto;font:11px/1.45 var(--f-mono);color:var(--fg);background:rgba(127,127,127,.12);border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text}
+.v2-ins{list-style:none;margin:6px 0;padding:0;display:grid;gap:6px}
+.v2-ins li{padding:8px 10px;border-radius:8px;background:rgba(127,127,127,.12);font-size:12px;overflow-wrap:anywhere}
+.v2-ins li b{font-size:13px}.v2-ins li.hub{outline:2px solid var(--acc,#FFC400)}
+.v2-ins li small{display:block;color:var(--muted);font-family:var(--f-mono);font-size:11px;margin-top:2px}
+.v2-subd{margin:10px 2px 0}.v2-subd>summary{cursor:pointer;font-weight:600;font-size:13px;padding:6px 0}
 /* while booting nothing is drawn (the window background shows); the page is styled and laid out once the app code runs */
 html.booting body>*{content-visibility:hidden}
 /* ---------- Graphics upgrade 3 · connected: the status pill pulses green once ---------- */
@@ -2026,6 +2032,15 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
       </div>
       <dl class="v2-diag" id="diagList"></dl>
       <p class="note v2-diagn">The hub only listens and never answers, so the phone cannot measure signal strength. If a model stutters, hold the phone closer and watch Bluetooth errors.</p>
+      <details class="v2-subd" id="logBox"><summary>Connection log</summary>
+        <pre class="v2-log" id="connLog" tabindex="0"></pre>
+        <div class="rec-row"><button class="btn" id="logCopy" type="button">Copy log</button><button class="btn" id="logClear" type="button">Clear log</button></div>
+      </details>
+      <details class="v2-subd" id="insBox"><summary>Nearby Bluetooth devices</summary>
+        <p class="note">Hubs with a direct Bluetooth connection (H4.0 and H6.0) show a name like YX-01 or YX-02. Classic 4.0 and 6.0 modules only listen, so they may not appear.</p>
+        <div class="rec-row"><button class="btn" id="insScan" type="button">Scan for 30 s</button></div>
+        <ul class="v2-ins" id="insList"></ul>
+      </details>
       <div class="rec-row"><button class="btn v2-icbtn" id="diagCopy" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11.5" height="11.5" rx="2"/><path d="M15.5 8V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2"/></svg><span>Copy report</span></button></div>
     </details>
     <details class="card v2-adv v2-lk" id="hubAdv"><summary><span>Hub numbers &amp; names</span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></summary><div id="hubRows"></div></details>

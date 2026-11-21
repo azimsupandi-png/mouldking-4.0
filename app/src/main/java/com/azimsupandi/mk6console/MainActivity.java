@@ -89,6 +89,7 @@ public class MainActivity extends Activity {
     private static final int REQ_EXPORT = 42;
     private static final int REQ_IMPORT = 43;
     private static final int REQ_WALL = 44;
+    private static final int REQ_SCAN = 45;
 
     private WebView web;
     private FrameLayout root;
@@ -96,6 +97,7 @@ public class MainActivity extends Activity {
     private int barColor = 0xFF1B1E23;
     private String pendingShared;
     private Mk6Advertiser mk6;
+    private BleInspector inspector;
     private Vibrator vibrator;
     private SensorManager sm;
 
@@ -167,6 +169,7 @@ public class MainActivity extends Activity {
 
         BluetoothManager bm = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         BluetoothAdapter adapter = bm != null ? bm.getAdapter() : null;
+        inspector = new BleInspector(adapter);
         mk6 = new Mk6Advertiser(adapter, state -> {
             // The safety watchdog is an app event, not a link state: the hub stays connected.
             if ("watchdog".equals(state)) notifyApp("watchdog");
@@ -250,6 +253,7 @@ public class MainActivity extends Activity {
     protected void onPause() {
         // Safety: never keep driving a model while the app is in the background.
         mk6.stop();
+        if (inspector != null) inspector.stop();
         setTilt(false);
         // Battery: no page timers or rendering while the app is in the background.
         if (web != null) {
@@ -295,6 +299,12 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_SCAN) {
+            boolean ok = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            if (ok) inspector.start();
+            else ConnLog.add("Scan: permission refused");
+            return;
+        }
         if (requestCode != REQ_BLUETOOTH) return;
         if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED && pendingMods != null) {
             mk6.start(pendingMods);
@@ -440,6 +450,17 @@ public class MainActivity extends Activity {
             return;
         }
         mk6.start(mods);
+    }
+
+    /** Starts the Bluetooth inspector scan, asking for the scan permission first when needed. */
+    private void requestScan() {
+        String perm = Build.VERSION.SDK_INT >= 31 ? Manifest.permission.BLUETOOTH_SCAN
+                : Manifest.permission.ACCESS_FINE_LOCATION;
+        if (checkSelfPermission(perm) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{perm}, REQ_SCAN);
+            return;
+        }
+        inspector.start();
     }
 
     private void setTilt(boolean on) {
@@ -735,6 +756,34 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void stop() {
             runOnUiThread(() -> mk6.stop());
+        }
+
+        /** Connection log text (newest last). */
+        @JavascriptInterface
+        public String log() {
+            return ConnLog.dump();
+        }
+
+        @JavascriptInterface
+        public void clearLog() {
+            ConnLog.clear();
+        }
+
+        /** Starts a 30 s Bluetooth scan for the inspector. */
+        @JavascriptInterface
+        public void scanStart() {
+            runOnUiThread(() -> requestScan());
+        }
+
+        @JavascriptInterface
+        public void scanStop() {
+            runOnUiThread(() -> inspector.stop());
+        }
+
+        /** Inspector results as JSON text. */
+        @JavascriptInterface
+        public String scanResults() {
+            return inspector.json();
         }
 
         @JavascriptInterface

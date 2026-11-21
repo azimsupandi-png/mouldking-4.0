@@ -19,13 +19,15 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Safety watchdog + BLE advertiser tests (JVM, stubbed Android)
+      - name: Safety watchdog, BLE advertiser and protocol tests (JVM, stubbed Android)
         run: |
           mkdir -p build/jvmtest
           javac -d build/jvmtest $(find tests/jvm -name '*.java') \
             app/src/main/java/com/azimsupandi/mk6console/Mk6Advertiser.java \
-            app/src/main/java/com/azimsupandi/mk6console/Mk6Crypt.java
+            app/src/main/java/com/azimsupandi/mk6console/Mk6Crypt.java \
+            app/src/main/java/com/azimsupandi/mk6console/ConnLog.java
           java -cp build/jvmtest com.azimsupandi.mk6console.Mk6AdvertiserTest
+          java -cp build/jvmtest com.azimsupandi.mk6console.ProtocolTest
 
       - uses: actions/setup-python@v6
         with:
