@@ -1779,6 +1779,7 @@ html[data-cb] .sf-fill.warn,html[data-cb] .sf-tip.warn{stroke:#E69F00;color:#E69
 .v2-log{margin:6px 0;padding:8px 10px;max-height:220px;overflow:auto;font:11px/1.45 var(--f-mono);color:var(--fg);background:rgba(127,127,127,.12);border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text}
 .hmrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .wz-rows{display:grid;gap:8px;margin:4px 0 10px}
+.v2-raw{font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0;padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.35)}
 .wz-row{display:grid;grid-template-columns:52px 1fr 1.5fr;gap:8px;align-items:center}
 .wz-row b{font-size:13px}.wz-row select{min-width:0;width:100%}
 .wz-row .wz-addr{grid-column:2/4;font-size:12px;color:var(--muted,#8a93a0);overflow-wrap:anywhere}
@@ -2407,6 +2408,7 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
         <div class="gpx-trg"><b>R2</b><div class="gpx-bar" id="gpR2"></div><output id="gpR2O">0%</output></div>
         <div class="set"><label>Trigger channel (R2 forward, L2 reverse)<select id="gpTrig"></select></label></div>
         <details class="adv"><summary>Button mapping</summary><div class="set" id="gpMap" style="margin-top:8px"></div></details>
+        <details class="adv" id="gpRawBox"><summary>Raw input (for checking a controller)</summary><p class="note">Press a button or move a stick: the numbers the phone reports show here. Tell us what L3 and R3 show if they do not work.</p><pre class="v2-raw" id="gpRaw" aria-live="off">No controller.</pre></details>
         <p class="note">The left and right sticks move the joysticks on the board. Share = E-Stop, Options = release.</p>
       </section>
 

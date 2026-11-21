@@ -745,6 +745,24 @@ async def t_fix5(b):
     await pg.evaluate("(t)=>window.onImportText(t)", 'not json')
     r = await pg.evaluate("document.getElementById('toast').textContent")
     check('a bad restore file says so on any page', 'not valid' in r, r)
+    # a motor drawn on a port that was left a light channel: fixed when loaded, so reverse reaches the hub
+    ch = [{'name': 'M%d' % i, 'kind': 'light'} for i in range(18)]
+    pf = ['l', 'l', 'lt'] + [''] * 15
+    await pg.evaluate("(t)=>window.onImportText(t)", _j.dumps({'app': 'MK6 Console', 'version': 1, 'profiles': [{'name': 'LightMotor', 'cfg': {'ch': ch, 'pf': pf}}]}))
+    await pg.evaluate("(()=>{const p=__t.store.profiles.find(x=>x.name==='LightMotor');__t.switchProfile(p.id)})()")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[0,1,2].map(i=>__t.C.ch[i].kind)")
+    check('ports drawn with a motor are motor channels after loading, LED lights stay lights', r == ['slider', 'slider', 'light'], r)
+    await pg.evaluate("window.MK6Bridge.send=function(f){window.__last=String(f)};__t.rt.t[0]=-60")
+    await pg.wait_for_timeout(500)
+    r = await pg.evaluate("+String(window.__last||'0').split(',')[0]")
+    check('reverse on such a port reaches the hub', r < 0, r)
+    await pg.evaluate("""(()=>{window.__gp.buttons[10]={pressed:true,value:1};window.__gp.axes=[0,0,0.5,-1];navigator.getGamepads=()=>[window.__gp];__t.C.pad.on=true;mk6Go('m-pad')})()""")
+    await pg.wait_for_timeout(300)
+    await pg.evaluate("document.getElementById('gpRawBox').open=true")
+    await pg.wait_for_timeout(400)
+    r = await pg.evaluate("document.getElementById('gpRaw').textContent")
+    check('Gamepad raw input shows pressed buttons and axes', 'buttons pressed: 10' in r and '3=-1.00' in r, r)
     check('fix5 no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
