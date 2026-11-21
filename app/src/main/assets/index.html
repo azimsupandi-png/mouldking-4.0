@@ -1769,6 +1769,15 @@ html[data-cb] .sf-fill.warn,html[data-cb] .sf-tip.warn{stroke:#E69F00;color:#E69
 #hubDiag > summary{justify-content:space-between}
 .v2-log{margin:6px 0;padding:8px 10px;max-height:220px;overflow:auto;font:11px/1.45 var(--f-mono);color:var(--fg);background:rgba(127,127,127,.12);border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text}
 .hmrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.wz-rows{display:grid;gap:8px;margin:4px 0 10px}
+.wz-row{display:grid;grid-template-columns:52px 1fr 1.5fr;gap:8px;align-items:center}
+.wz-row b{font-size:13px}.wz-row select{min-width:0;width:100%}
+.wz-row .wz-addr{grid-column:2/4;font-size:12px;color:var(--muted,#8a93a0);overflow-wrap:anywhere}
+.wz-row .wz-addr.warn{color:#EF9F27}
+#wizSheet .rec-row{display:flex;gap:8px;margin-top:12px}#wizSheet .rec-row .btn{flex:1}
+/* toasts sit above the Undo / Redo bar while it shows, so neither hides the other */
+html.v2-unon:not(.dash) .toast{bottom:calc(84px + 64px + env(safe-area-inset-bottom,0px))}
+html.dash.v2-unon .toast{bottom:68px}
 .hstall{display:block;font-size:13px;margin:6px 0}
 .hrow{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:6px 0;font-size:13px}
 .v2-ins{list-style:none;margin:6px 0;padding:0;display:grid;gap:6px}
@@ -1979,8 +1988,9 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
       <div class="v2-hubpic" aria-hidden="true"><i></i><i></i><i></i><img src="img/pf/hub.webp" alt=""><span class="bt"><svg viewBox="0 0 24 24"><path d="M7 7.5l10 9-5 4.5v-18l5 4.5-10 9"/></svg></span></div>
       <b>No hub connected</b>
       <p>Turn the hub on, press its button for 2 seconds and hold it near the phone.</p>
-      <button class="btn" id="hubConn" type="button" aria-pressed="true">Connect</button>
-      <button class="btn" id="hubWiz" type="button">Connect wizard</button>
+      <button class="btn" id="hubGo" type="button" aria-pressed="true">Connect</button>
+      <!-- connects straight away with the hubs as set; the Connect sheet (#hubGo) presses it -->
+      <button class="btn" id="hubConn" type="button" hidden>Connect</button>
     </div>
     <section class="card v2-hubcard" id="hubCard">
       <div class="v2-hch"><h2>Mould King 6.0</h2><small id="hubSub"></small></div>
