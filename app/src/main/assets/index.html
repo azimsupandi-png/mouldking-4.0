@@ -2407,6 +2407,11 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
         <div class="gpx-trg"><b>L2</b><div class="gpx-bar" id="gpL2"></div><output id="gpL2O">0%</output></div>
         <div class="gpx-trg"><b>R2</b><div class="gpx-bar" id="gpR2"></div><output id="gpR2O">0%</output></div>
         <div class="set"><label>Trigger channel (R2 forward, L2 reverse)<select id="gpTrig"></select></label></div>
+        <details class="adv" id="gpLsBox"><summary>Left stick to channels</summary>
+          <div class="set hmrow" style="margin-top:8px"><label>Up / down<select id="gpLsA"></select></label><label>Left / right<select id="gpLsB"></select></label></div>
+          <div class="set"><label>Steering<select id="gpLsMx"><option value="0">Separate (up/down and left/right)</option><option value="1">Mixed (tank: left and right track)</option></select></label></div>
+          <p class="note">When a channel is chosen, the stick drives it directly instead of the board joystick.</p>
+        </details>
         <details class="adv" id="gpRsBox"><summary>Right stick to channels</summary>
           <div class="set hmrow" style="margin-top:8px"><label>Up / down<select id="gpRsA"></select></label><label>Left / right<select id="gpRsB"></select></label></div>
           <div class="set"><label>Steering<select id="gpRsMx"><option value="0">Separate (up/down and left/right)</option><option value="1">Mixed (tank: left and right track)</option></select></label></div>

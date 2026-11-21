@@ -793,6 +793,15 @@ async def t_fix5(b):
     r3 = await pg.evaluate("[__t.rt.t[2],__t.rt.t[3]]")
     await pg.evaluate("window.__rp.axes=[0,0,0,0]")
     check('mixed: right stick to the side turns the two tracks opposite ways', r3[0] > 80 and r3[1] < -80, r3)
+    # Left stick straight to channels too: both sticks at once, full control
+    await pg.evaluate("""(()=>{mk6Go('m-pad');document.getElementById('gpLsBox').open=true;const s=(id,v)=>{const e=document.getElementById(id);e.value=v;e.dispatchEvent(new Event('change'))};
+      s('gpLsA','0');s('gpLsB','1');s('gpRsMx','0');mk6Go('drive');window.__rp.axes=[0.9,-0.9,-0.9,0.9]})()""")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[0,1,2,3].map(i=>__t.rt.t[i])")
+    await pg.evaluate("window.__rp.axes=[0,0,0,0]"); await pg.wait_for_timeout(300)
+    r2 = await pg.evaluate("[0,1,2,3].map(i=>__t.rt.t[i])")
+    check('left and right sticks drive their four channels at the same time', r[0] > 80 and r[1] > 80 and r[2] < -80 and r[3] < -80, r)
+    check('both sticks let go put all four back to 0', r2 == [0, 0, 0, 0], r2)
     check('fix5 no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
