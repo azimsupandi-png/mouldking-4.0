@@ -1823,6 +1823,37 @@ async def t_wirelock(b):
     check('wiring lock: no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_hhub(b):
+    ctx, pg = await page(b)
+    await pg.evaluate("window.__devs=[{a:'AA:BB:CC:DD:EE:01',n:'YX-02',r:-45,c:9,ago:50,m:'',u:''},{a:'11:22:33:44:55:66',n:'Other',r:-60,c:2,ago:90,m:'',u:''}];document.getElementById('hubT0').value='16';document.getElementById('hubT0').dispatchEvent(new Event('change',{bubbles:true}))")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[C_dbg()]") if False else None
+    await pg.evaluate("__calls.length=0;document.getElementById('hubConn').click()")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[__calls.filter(c=>c.startsWith('start:')).length,!!document.querySelector('.toast,#toast')]")
+    check('H6.0 hub without an address does not start the link', r[0] == 0, r)
+    await pg.evaluate("document.querySelector('#hAddr button').click()")
+    await pg.wait_for_timeout(1500)
+    r = await pg.evaluate("[...document.querySelectorAll('#hFindList li')].map(l=>l.querySelector('b').textContent)")
+    check('Find hub lists only YX- hubs', len(r) == 1 and r[0].startswith('YX-02'), r)
+    await pg.evaluate("document.querySelector('#hFindList li').click()")
+    await pg.wait_for_timeout(400)
+    r = await pg.evaluate("[document.getElementById('hubT0').value,document.querySelector('#hAddr span').textContent,__calls.includes('scanStop')]")
+    check('choosing a hub saves its address, sets H6.0 and stops the scan', r[0] == '16' and 'AA:BB:CC:DD:EE:01' in r[1] and r[2], r)
+    await pg.evaluate("__calls.length=0;document.getElementById('hubConn').click()")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("__calls.filter(c=>c.startsWith('start:'))")
+    check('connect passes the hub as H6=address', r == ['start:H6=AA:BB:CC:DD:EE:01'], r)
+    await pg.evaluate("onHubState('ready')")
+    await pg.evaluate("document.getElementById('hub1').value='0';document.getElementById('hub1').dispatchEvent(new Event('change',{bubbles:true}))")
+    await pg.wait_for_timeout(300)
+    await pg.evaluate("__calls.length=0;onHubState('stopped');document.getElementById('hubConn').click()")
+    await pg.wait_for_timeout(300)
+    r = await pg.evaluate("__calls.filter(c=>c.startsWith('start:'))")
+    check('an H6.0 hub and a 6.0 hub start together in slot order', r == ['start:H6=AA:BB:CC:DD:EE:01,0'], r)
+    check('no JS errors (H-hub)', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def t_loginspect(b):
     ctx, pg = await page(b)
     await pg.evaluate("window.__log='12:00:00.000  Start requested: hubs 6.0 M1\\n12:00:00.050  Connect telegram: 6D 7B';window.__devs=[{a:'AA:BB:CC',n:'YX-01',r:-50,c:10,ago:100,m:'FFF0: 01 02',u:''},{a:'DD:EE:FF',n:'',r:-80,c:3,ago:200,m:'',u:''}];document.getElementById('hubConn').click();onHubState('ready');mk6Go('hub');document.getElementById('hubDiag').open=true;document.getElementById('logBox').open=true;document.getElementById('insBox').open=true")
@@ -1851,7 +1882,7 @@ async def t_loginspect(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

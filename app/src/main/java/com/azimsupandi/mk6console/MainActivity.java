@@ -96,7 +96,7 @@ public class MainActivity extends Activity {
     private boolean barLight;
     private int barColor = 0xFF1B1E23;
     private String pendingShared;
-    private Mk6Advertiser mk6;
+    private HubLink mk6;
     private BleInspector inspector;
     private Vibrator vibrator;
     private SensorManager sm;
@@ -107,7 +107,7 @@ public class MainActivity extends Activity {
     private long lastTilt;
     private boolean btReceiverOn;
 
-    private int[] pendingMods;
+    private HubSpec pendingSpec;
     private String pendingModel;
     private String pendingExport;
     private String pendingWall;
@@ -170,7 +170,7 @@ public class MainActivity extends Activity {
         BluetoothManager bm = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         BluetoothAdapter adapter = bm != null ? bm.getAdapter() : null;
         inspector = new BleInspector(adapter);
-        mk6 = new Mk6Advertiser(adapter, state -> {
+        mk6 = new HubLink(this, adapter, state -> {
             // The safety watchdog is an app event, not a link state: the hub stays connected.
             if ("watchdog".equals(state)) notifyApp("watchdog");
             else notifyPage(state);
@@ -246,7 +246,7 @@ public class MainActivity extends Activity {
             web.resumeTimers();
         }
         notifyApp("resume");
-        if (!mk6.isActive() && pendingMods == null) notifyPage("stopped");
+        if (!mk6.isActive() && pendingSpec == null) notifyPage("stopped");
     }
 
     @Override
@@ -306,12 +306,15 @@ public class MainActivity extends Activity {
             return;
         }
         if (requestCode != REQ_BLUETOOTH) return;
-        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED && pendingMods != null) {
-            mk6.start(pendingMods);
+        boolean all = grantResults.length > 0;
+        for (int g : grantResults) if (g != PackageManager.PERMISSION_GRANTED) all = false;
+        if (all && pendingSpec != null) {
+            mk6.start(pendingSpec);
         } else {
+            ConnLog.add("Bluetooth permission refused");
             notifyPage("denied");
         }
-        pendingMods = null;
+        pendingSpec = null;
     }
 
     @Override
@@ -442,14 +445,24 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void requestStart(int[] mods) {
-        if (Build.VERSION.SDK_INT >= 31
-                && checkSelfPermission(Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
-            pendingMods = mods;
-            requestPermissions(new String[]{Manifest.permission.BLUETOOTH_ADVERTISE}, REQ_BLUETOOTH);
-            return;
+    private void requestStart(HubSpec spec) {
+        if (Build.VERSION.SDK_INT >= 31) {
+            java.util.ArrayList<String> need = new java.util.ArrayList<>();
+            if (spec.advMods().length > 0
+                    && checkSelfPermission(Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
+                need.add(Manifest.permission.BLUETOOTH_ADVERTISE);
+            }
+            if (spec.hallCount() > 0
+                    && checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                need.add(Manifest.permission.BLUETOOTH_CONNECT);
+            }
+            if (!need.isEmpty()) {
+                pendingSpec = spec;
+                requestPermissions(need.toArray(new String[0]), REQ_BLUETOOTH);
+                return;
+            }
         }
-        mk6.start(mods);
+        mk6.start(spec);
     }
 
     /** Starts the Bluetooth inspector scan, asking for the scan permission first when needed. */
@@ -485,21 +498,6 @@ public class MainActivity extends Activity {
     }
 
     /** "a,b,c" -> hub module indices (1..3 entries). */
-    private static int[] parseMods(String s) {
-        if (s == null) return null;
-        String[] parts = s.split(",");
-        if (parts.length < 1 || parts.length > 3) return null;
-        int[] out = new int[parts.length];
-        try {
-            for (int i = 0; i < parts.length; i++) {
-                out[i] = Integer.parseInt(parts[i].trim());
-            }
-            return out;
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
-
     /** 6, 12 or 18 comma separated channel values, clamped to -100..100. */
     private static int[] parseFrame(String s) {
         if (s == null) return null;
@@ -718,10 +716,12 @@ public class MainActivity extends Activity {
         /** @param mods comma separated hub indices, e.g. "0" or "0,1" */
         @JavascriptInterface
         public void start(String mods) {
-            int[] parsed = parseMods(mods);
+            HubSpec parsed = HubSpec.parse(mods);
             runOnUiThread(() -> {
-                if (parsed == null) notifyPage("error");
-                else requestStart(parsed);
+                if (parsed == null) {
+                    ConnLog.add("Start refused: bad hub list '" + mods + "'");
+                    notifyPage("error");
+                } else requestStart(parsed);
             });
         }
 

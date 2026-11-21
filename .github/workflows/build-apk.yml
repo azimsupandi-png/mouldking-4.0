@@ -25,9 +25,12 @@ jobs:
           javac -d build/jvmtest $(find tests/jvm -name '*.java') \
             app/src/main/java/com/azimsupandi/mk6console/Mk6Advertiser.java \
             app/src/main/java/com/azimsupandi/mk6console/Mk6Crypt.java \
-            app/src/main/java/com/azimsupandi/mk6console/ConnLog.java
+            app/src/main/java/com/azimsupandi/mk6console/ConnLog.java \
+            app/src/main/java/com/azimsupandi/mk6console/HallProtocol.java \
+            app/src/main/java/com/azimsupandi/mk6console/HubSpec.java
           java -cp build/jvmtest com.azimsupandi.mk6console.Mk6AdvertiserTest
           java -cp build/jvmtest com.azimsupandi.mk6console.ProtocolTest
+          java -cp build/jvmtest com.azimsupandi.mk6console.HubTest
 
       - uses: actions/setup-python@v6
         with:

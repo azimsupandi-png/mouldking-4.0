@@ -49,13 +49,13 @@ try{
   function baseCfg(names){
     var ch=[];
     for(var i=0;i<NMAX;i++) ch.push({name:(names&&i<names.length)?names[i]:(i<PER?DEF[i]:'Channel '+L[i%PER]),inv:false,max:100,off:0,cv:[25,50,75],trim:0,kind:'slider',blink:'off',bright:100,stp:5,la:0,ls:0});
-    return {ch:ch,limit:100,ramp:60,zone:100,testPwr:60,dash:false,dgv:2,hubNames:['','',''],spring:true,s1:{mode:'axis',a:0,b:1,hold:false},s2:{mode:'axis',a:2,b:3,hold:false},hubs:[0,-1,-1],hubT:[6,6,6],layout:'std',board:[],tilt:{on:false,sens:45,inv:false,all:false,dz:4,ex:0,c0:null},accent:0,accentV:3,pad:{on:true,dead:12,trig:-1,map:{}},safety:{idle:60,warn:30,run:0},seq:[],rec:[]};
+    return {ch:ch,limit:100,ramp:60,zone:100,testPwr:60,dash:false,dgv:2,hubNames:['','',''],spring:true,s1:{mode:'axis',a:0,b:1,hold:false},s2:{mode:'axis',a:2,b:3,hold:false},hubs:[0,-1,-1],hubT:[6,6,6],hubA:[{a:'',n:''},{a:'',n:''},{a:'',n:''}],layout:'std',board:[],tilt:{on:false,sens:45,inv:false,all:false,dz:4,ex:0,c0:null},accent:0,accentV:3,pad:{on:true,dead:12,trig:-1,map:{}},safety:{idle:60,warn:30,run:0},seq:[],rec:[]};
   }
   // a hub is its module number plus its type (MK 6.0 or MK 4.0): the same module number may be used once per type
   function cleanHubs(h,ty){
     var out=[-1,-1,-1],s,t;ty=ty||[6,6,6];
     for(s=0;s<3;s++){var v=Math.round(+(h&&h[s]));out[s]=(v>=0&&v<=2)?v:-1}
-    for(s=1;s<3;s++) for(t=0;t<s;t++) if(out[s]>=0&&out[s]===out[t]&&ty[s]===ty[t]) out[s]=-1;
+    for(s=1;s<3;s++) for(t=0;t<s;t++) if(out[s]>=0&&out[s]===out[t]&&ty[s]===ty[t]&&ty[s]<14) out[s]=-1;
     if(out[0]<0){var m=0;while(out.some(function(x,k){return x===m&&ty[k]===ty[0]})) m++;out[0]=m}
     return out;
   }
@@ -334,7 +334,8 @@ try{
     var gh=c.stickHold===true;
     d.s1={mode:s1.mode==='tank'?'tank':'axis',a:idxOf(s1.a,0,false),b:idxOf(s1.b,1,false),hold:typeof s1.hold==='boolean'?s1.hold:gh};
     d.s2={mode:s2.mode==='tank'?'tank':'axis',a:idxOf(s2.a,2,true),b:idxOf(s2.b,3,true),hold:typeof s2.hold==='boolean'?s2.hold:gh};
-    d.hubT=[0,1,2].map(function(k){return Array.isArray(c.hubT)&&+c.hubT[k]===4?4:6});
+    d.hubT=[0,1,2].map(function(k){var t=Array.isArray(c.hubT)?+c.hubT[k]:6;return t===4||t===14||t===16?t:6});
+    d.hubA=[0,1,2].map(function(k){var q=Array.isArray(c.hubA)&&c.hubA[k]||{};var a=typeof q.a==='string'&&/^([0-9A-F]{2}:){5}[0-9A-F]{2}$/i.test(q.a)?q.a.toUpperCase():'';return {a:a,n:a&&typeof q.n==='string'?q.n.replace(/[\u0000-\u001f<>]/g,'').slice(0,12):''}});
     d.hubs=cleanHubs(Array.isArray(c.hubs)?c.hubs:[num(c.mod,0,2,0),-1,-1],d.hubT);
     d.pfp={};if(c.pfp&&typeof c.pfp==='object') Object.keys(c.pfp).forEach(function(q){var v=c.pfp[q],n=+q;if(n>=0&&n<NMAX+3&&Array.isArray(v)&&isFinite(v[0])&&isFinite(v[1])) d.pfp[n]=[Math.max(0,Math.min(1360,+v[0])),Math.max(0,Math.min(1560,+v[1]))]});
     d.pcl=[];for(var cq=0;cq<NMAX;cq++) d.pcl.push(Array.isArray(c.pcl)&&+c.pcl[cq]===50?50:20);
@@ -438,15 +439,21 @@ try{
   for(var q=0;q<NMAX;q++){rt.t.push(0);rt.o.push(0)}
 
   function slotOn(s){return C.hubs[s]>=0}
-  function isMk4(s){return !!C.hubT&&C.hubT[s]===4}
+  // a hub with 4 ports: Mould King 4.0, or the H4.0 hub that connects directly
+  function isMk4(s){return !!C.hubT&&(C.hubT[s]===4||C.hubT[s]===14)}
+  function isHall(s){return !!C.hubT&&C.hubT[s]>=14}
+  function hubAddr(s){return C.hubA&&C.hubA[s]?C.hubA[s].a:''}
   // a Mould King 4.0 hub has ports A-D only, so its E and F channels do not exist
   function isActive(i){var s=(i/PER)|0;return slotOn(s)&&!(isMk4(s)&&i%PER>=4)}
-  function hubMods(){return activeSlots().map(function(s){return isMk4(s)?10+C.hubs[s]:C.hubs[s]}).join(',')}
+  function hubMods(){return activeSlots().map(function(s){return isHall(s)?'H'+(C.hubT[s]-10)+'='+hubAddr(s):isMk4(s)?10+C.hubs[s]:C.hubs[s]}).join(',')}
+  // an H4.0 / H6.0 hub needs its Bluetooth address first (Settings, Hubs, Find hub)
+  function hubsReady(){var bad=activeSlots().filter(function(s){return isHall(s)&&!hubAddr(s)});
+    if(bad.length){toast('Hub '+(bad[0]+1)+' needs its Bluetooth address. Open Settings, tap Find hub and choose it.',6000);return false}return true}
   function activeSlots(){var o=[];for(var s=0;s<3;s++) if(slotOn(s)) o.push(s);return o}
   function activeIdx(){var o=[];for(var i=0;i<NMAX;i++) if(isActive(i)) o.push(i);return o}
   // channel tag: M1A when every hub has its own module number; H2A (hub number) when a 6.0 and a 4.0 hub share one
   function tagOf(i){var s=(i/PER)|0,sl=activeSlots();if(sl.length<2) return L[i%PER];
-    var dup=sl.some(function(a){return sl.some(function(b){return a!==b&&C.hubs[a]===C.hubs[b]})});
+    var dup=sl.some(function(a){return sl.some(function(b){return a!==b&&C.hubs[a]===C.hubs[b]})})||sl.some(isHall);
     return (dup?'H'+(s+1):'M'+(C.hubs[s]+1))+L[i%PER]}
 
   /* Transport: broadcasts through the native bridge when running inside the Android app. */
@@ -2123,6 +2130,7 @@ try{
       $('#hub'+s).value=String(C.hubs[s]);var hts=$('#hubT'+s);if(hts){hts.value=String(C.hubT[s]);hts.disabled=C.hubs[s]<0}
       var hn=$('#hubN'+s);hn.disabled=C.hubs[s]<0;hn.value=C.hubs[s]>=0?(C.hubNames[C.hubs[s]]||''):'';
     }
+    if(window.hAddrPaint) window.hAddrPaint();
     $('#zoneSel').value=String(C.zone||100);
     $('#calPwr').value=C.testPwr;$('#calPwrOut').textContent=C.testPwr+'%';
     syncLimSeg();
@@ -2177,7 +2185,7 @@ try{
     syncAll();paintLink();save();
   }
   [0,1,2].forEach(function(s){var sel=$('#hub'+s);sel.addEventListener('change',function(){onHubChange(s,+sel.value)});
-    var ty=$('#hubT'+s);if(ty) ty.addEventListener('change',function(){onHubChange(s,C.hubs[s],+ty.value===4?4:6)})});
+    var ty=$('#hubT'+s);if(ty) ty.addEventListener('change',function(){var tv=+ty.value;onHubChange(s,C.hubs[s],tv===4||tv===14||tv===16?tv:6)})});
   if(NB){
     $('#note').textContent='Frames are broadcast over Bluetooth straight to the Mould King hubs. Put each hub in Bluetooth mode, tap Connect hub and wait until it says Hub active. With several hubs each one is updated in turn, so expect slightly slower response.';
   }
@@ -2485,6 +2493,7 @@ try{
     if(RH()){
       if(S.connected){wantLink=false;NB.stop();S.connected=false;hubMsg='';stopPlay(true);if(store.prefs.linkOn){store.prefs.linkOn=false;save()}}
       else{
+        if(!hubsReady()) return;
         wantLink=true;hubMsg='Pairing…';S.connected=true;
         NB.start(hubMods());
       }
@@ -2502,7 +2511,7 @@ try{
     else if(s==='stopped'){
       S.connected=false;hubMsg='';stopPlay(true);
       if(wantLink&&RH()&&store.prefs.relink&&S.bt!==false&&!S.estop&&Date.now()-resumeAt<3000&&relinkTries<3){
-        relinkTries++;zeroAll();hubMsg='Pairing…';S.connected=true;
+        if(!hubsReady()) return;relinkTries++;zeroAll();hubMsg='Pairing…';S.connected=true;
         try{NB.start(hubMods());toast('Reconnecting the hub. Motors are at zero.',4000)}catch(e){S.connected=false;hubMsg=''}
       }
     }
@@ -6907,6 +6916,43 @@ return API;
     clearInterval(v2LogTimer);if(b.open){v2LogPaint();v2LogTimer=setInterval(v2LogPaint,1000)}})})();
   v2Click('#logCopy',function(){var t=v2LogText();if(!t){toast('The log is empty.');return}v2Copy(t,'Log copied.')});
   v2Click('#logClear',function(){try{NB&&NB.clearLog&&NB.clearLog()}catch(_){}var p=$('#connLog');if(p) p._t='';v2LogPaint()});
+  // ---- H4.0 / H6.0 hubs: choose the hub by its Bluetooth address ----
+  var hFindSlot=-1,hFindTimer=0;
+  window.hAddrPaint=function(){
+    var box=$('#hAddr');if(!box) return;box.textContent='';
+    var any=false;
+    [0,1,2].forEach(function(s){
+      if(!(C.hubs[s]>=0&&isHall(s))) return;any=true;
+      var row=document.createElement('div');row.className='hrow';
+      var t=document.createElement('span');var a=hubAddr(s);
+      t.textContent='Hub '+(s+1)+' · '+(a?((C.hubA[s].n||'hub')+' '+a):'no hub chosen');row.appendChild(t);
+      var b=document.createElement('button');b.type='button';b.className='btn';b.textContent=hFindSlot===s?'Stop':'Find hub';
+      b.addEventListener('click',function(){hFind(s)});row.appendChild(b);box.appendChild(row)});
+    var ul=document.createElement('ul');ul.id='hFindList';ul.className='v2-ins';box.appendChild(ul);
+    box.hidden=!any;hFindPaint();
+  };
+  function hFindPaint(){
+    var ul=$('#hFindList');if(!ul) return;ul.textContent='';
+    if(hFindSlot<0) return;
+    var d={list:[]};try{d=NB&&NB.scanResults?JSON.parse(NB.scanResults()||'{}'):d}catch(_){}
+    var hubs=(d.list||[]).filter(function(r){return /^YX-\d/i.test(r.n||'')});
+    if(!hubs.length){var e=document.createElement('li');e.textContent=d.scanning?'Looking for hubs. Switch the hub on and hold the phone close.':'No H4.0 / H6.0 hub found. Switch it on, close the Mould King app and try again.';ul.appendChild(e)}
+    hubs.forEach(function(r){var li=document.createElement('li');li.className='hub';li.tabIndex=0;li.setAttribute('role','button');
+      var b=document.createElement('b');b.textContent=r.n+' · '+r.a;li.appendChild(b);
+      var sm=document.createElement('small');sm.textContent=r.r+' dBm · tap to use for hub '+(hFindSlot+1);li.appendChild(sm);
+      var pick=function(){var s=hFindSlot;C.hubA[s]={a:String(r.a).toUpperCase(),n:r.n};
+        var ports=/^YX-0[26]/i.test(r.n)?16:14;if(C.hubT[s]!==ports){C.hubT[s]=ports;onHubChange(s,C.hubs[s],ports)}
+        hFindStop();save();window.hAddrPaint();syncAll();toast('Hub '+(s+1)+': '+r.n)};
+      li.addEventListener('click',pick);li.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();pick()}});ul.appendChild(li)});
+  }
+  function hFindStop(){hFindSlot=-1;clearInterval(hFindTimer);try{NB&&NB.scanStop&&NB.scanStop()}catch(_){}}
+  function hFind(s){
+    if(hFindSlot===s){hFindStop();window.hAddrPaint();return}
+    if(!(NB&&NB.scanStart)){toast('Finding a hub works in the Android app.');return}
+    hFindSlot=s;try{NB.scanStart()}catch(_){}
+    clearInterval(hFindTimer);hFindTimer=setInterval(function(){if(hFindSlot<0) return;hFindPaint();var d={};try{d=JSON.parse(NB.scanResults()||'{}')}catch(_){}if(!d.scanning){hFindStop();window.hAddrPaint()}},1000);
+    window.hAddrPaint();
+  }
   // ---- Bluetooth inspector: nearby devices, hubs highlighted ----
   var v2InsTimer=0;
   function v2InsPaint(){
@@ -7069,6 +7115,7 @@ return API;
 
   // ---- What's new, version and update check ----
   var CHANGES=[
+    {b:124,items:[["new","H4.0 and H6.0 hubs (YX-01, YX-02, YX-05, YX-06) can be added in Settings › Hubs with a direct Bluetooth connection. Use Find hub to choose yours. Not yet tested on a real hub"],["new","Hubs with different connections can run together: 6.0, 4.0 and H4.0/H6.0 in any mix"]]},
     {b:123,items:[["new","Connection log: every connect step, Bluetooth error and safety stop is kept (Home › Link diagnostics › Connection log) with Copy log; the report now includes it"],["new","Bluetooth inspector: scan for nearby devices to see names, signal and data. Hubs named YX-01 or YX-02 are marked as Mould King hubs"]]},
     {b:122,items:[["new","MK4 test: Mould King 4.0 hubs (type per hub, ports A–D), button types (Hold, Toggle, PingPong, Accelerator) on Board buttons and gamepad, Train mode for Board sliders"]]},
     {b:121,items:[["better","PS4 picture: symbols centred on each button's centre dot, D-pad spots on the key faces; blue light from the front of the pad when connected (no bar). Tilt gauge moves every frame with a glowing yellow triangle pointer; tilt sensor read twice as often"]]},
