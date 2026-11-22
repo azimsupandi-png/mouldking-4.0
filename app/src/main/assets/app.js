@@ -22,6 +22,8 @@ try{
 try{
 (function(){
   var NMAX=18, PER=6, L='ABCDEF';
+  // parts a port can show in the wiring picture (mk_ = Mould King motors)
+  var PF_OK=['m','l','xl','bg','sv','lt','mk_m','mk_l','mk_xl','mk_sv'];
   var MAX_REC_MS=90000, MAX_PTS=1800, MAX_RECS=10, MAX_MODELS=30;
   var NB=window.MK6Bridge||null;
   if(typeof document.addEventListener==='function') document.addEventListener('contextmenu',function(e){var t=e.target&&e.target.tagName;if(t==='INPUT'&&e.target.type!=='range'&&e.target.type!=='checkbox')return;if(t==='TEXTAREA')return;e.preventDefault()});
@@ -343,9 +345,9 @@ try{
     d.hubs=cleanHubs(Array.isArray(c.hubs)?c.hubs:[num(c.mod,0,2,0),-1,-1],d.hubT);
     d.pfp={};if(c.pfp&&typeof c.pfp==='object') Object.keys(c.pfp).forEach(function(q){var v=c.pfp[q],n=+q;if(n>=0&&n<NMAX+3&&Array.isArray(v)&&isFinite(v[0])&&isFinite(v[1])) d.pfp[n]=[Math.max(0,Math.min(1360,+v[0])),Math.max(0,Math.min(1560,+v[1]))]});
     d.pcl=[];for(var cq=0;cq<NMAX;cq++) d.pcl.push(Array.isArray(c.pcl)&&+c.pcl[cq]===50?50:20);
-    d.pf=[];for(var pq=0;pq<NMAX;pq++){var pv=Array.isArray(c.pf)?c.pf[pq]:'';d.pf.push(['m','l','xl','bg','sv','lt'].indexOf(pv)>=0?pv:'')}
+    d.pf=[];for(var pq=0;pq<NMAX;pq++){var pv=Array.isArray(c.pf)?c.pf[pq]:'';d.pf.push(PF_OK.indexOf(pv)>=0?pv:'')}
     // a port drawn with a motor is a motor channel: a light channel there could never run in reverse
-    if(Array.isArray(d.ch)) for(var pk=0;pk<NMAX;pk++) if(d.ch[pk]&&d.ch[pk].kind==='light'&&['m','l','xl','bg','sv'].indexOf(d.pf[pk])>=0) d.ch[pk].kind='slider';
+    if(Array.isArray(d.ch)) for(var pk=0;pk<NMAX;pk++) if(d.ch[pk]&&d.ch[pk].kind==='light'&&PF_OK.indexOf(d.pf[pk])>=0&&d.pf[pk]!=='lt') d.ch[pk].kind='slider';
     d.layout='board';
     // old 'Speed' setting (x0.4 / x0.7) multiplied the power limit; fold it in once and drop it
     if(c.speed==='slow'||c.speed==='normal') d.limit=Math.max(10,Math.round(d.limit*(c.speed==='slow'?0.4:0.7)));
@@ -452,6 +454,8 @@ try{
 
   function slotOn(s){return C.hubs[s]>=0}
   // a hub with 4 ports: Mould King 4.0, or the H4.0 hub that connects directly
+  // parts a port can show in the wiring picture; MK servo swings like the servo
+  function isSvT(t){return t==='sv'||t==='mk_sv'}
   function isMk4(s){return !!C.hubT&&(C.hubT[s]===4||C.hubT[s]===14||C.hubT[s]===40)}
   function isHall(s){return !!C.hubT&&(C.hubT[s]===14||C.hubT[s]===16)}
   // older Mould King 4.0 boxes (type 40): each port is only on or off (full power) in either direction
@@ -640,7 +644,7 @@ try{
   function trimAt(i,t){
     var tr=C.ch[i].trim||0,p=partOf(i);
     if(!tr||isLight(i)||p==='lt') return 0;
-    return (p===''||p==='sv'||Math.abs(+t||0)>0.5)?tr:0;
+    return (p===''||isSvT(p)||Math.abs(+t||0)>0.5)?tr:0;
   }
   function clamp100(v){return Math.max(-100,Math.min(100,v))}
   // one motor channel; live=false is the preview used in widget settings (no turbo, kid limit, fade, steering ease or swing)
@@ -6349,9 +6353,21 @@ var EXIT={m:[.93,.30],l:[.97,.40],xl:[.92,.32],bg:[.95,.45],sv:[.96,.40],lt:[.97
 var U=54,HS=.38,HX=680-942.5*HS,HY=770-70*HS;   // hub 9 x 5 studs (162 px per stud in the hub drawing)    // hub drawing placed with translate(HX,HY) scale(HS)
 // part length in studs (BrickArchitect sizes: Med 3x3x6, Lg 3x4x7, XL 5x5x6, Servo 3x5x7); the picture is scaled so its width spans that length
 var LEN={m:6,l:7,xl:6,bg:9.75,sv:7};
+// Mould King motors (pictures from the user's reference drawings): same fields as the parts above
+IMG.mk_m={e:[69.58, 268.55, 15.36, 31.94, 153.52],W:480,H:397};HIT.mk_m="M415,13 403,9 393,15 344,0 63,132 53,154 24,169 13,197 0,210 2,237 18,280 19,324 117,396 466,234 479,155 475,114 450,60 422,37 427,28Z";TAU.mk_m=0.12;RPM.mk_m=405;EXIT.mk_m=[0.874, 0.039];LEN.mk_m=6.6;
+IMG.mk_l={e:[70.78, 317.57, 15.57, 30.15, 153.65],W:556,H:449};HIT.mk_l="M551,113 501,74 464,81 457,41 463,31 450,14 442,11 428,17 406,1 386,2 369,15 358,35 336,39 155,121 136,145 133,169 90,190 48,163 17,174 1,200 4,220 17,231 0,260 7,296 1,333 44,368 65,405 105,415 147,447 170,446 195,420 198,401 191,386 223,372 253,385 279,384 465,299 481,277 490,275 507,287 536,279 554,252Z";TAU.mk_l=0.2;RPM.mk_l=390;EXIT.mk_l=[0.822, 0.043];LEN.mk_l=7.7;
+IMG.mk_xl={e:[118.8, 322.53, 16.21, 33.75, 153.98],W:613,H:495};HIT.mk_xl="M455,15 442,11 432,18 427,8 407,1 374,0 54,146 18,176 0,222 13,297 23,302 39,349 78,415 78,427 116,476 139,479 170,494 217,487 538,340 554,321 598,291 612,258 602,200 558,165 505,68 462,40 468,32Z";TAU.mk_xl=0.35;RPM.mk_xl=220;EXIT.mk_xl=[0.749, 0.035];LEN.mk_xl=6.6;
+IMG.mk_sv={e:[79.63, 433.36, 17.02, 37.1, 151.52],W:618,H:542};HIT.mk_sv="M536,19 524,15 514,22 488,0 464,3 42,187 22,201 0,241 9,266 8,295 1,304 8,343 1,381 11,396 26,452 75,531 145,541 324,460 341,432 344,369 373,355 382,355 432,393 465,387 486,358 487,305 511,295 567,335 585,333 606,319 617,294 617,241 607,210 602,131 578,72 567,57 543,43 549,36Z";TAU.mk_sv=0.15;RPM.mk_sv=0;EXIT.mk_sv=[0.874, 0.04];LEN.mk_sv=7.7;
 function hx(x){return HX+x*HS}function hy(y){return HY+y*HS}
 
-var POS={},POS0={},SLOT={},SXS=[40,470,900];['E','C','A'].forEach(function(k,j){SLOT[k]={x:SXS[j],y:20,w:420,h:330,top:true}});['F','D','B'].forEach(function(k,j){SLOT[k]={x:SXS[j],y:1130,w:420,h:330,top:false}});
+var POS={},POS0={},SLOT={},SXS=[40,470,900];
+// part spots around the hub: each port's part sits on the side its cable leaves the plug
+//   6.0: B D F plugs face the back (parts above the hub), A C E the front (parts below)
+//   4.0: B and A leave toward the A/B end (left), C and D toward the C/D end (right)
+function slotsFor(kind){SLOT={};
+ if(kind==='4'){SLOT.B={x:40,y:20,w:420,h:330,top:true};SLOT.C={x:900,y:20,w:420,h:330,top:true};SLOT.A={x:40,y:1130,w:420,h:330,top:false};SLOT.D={x:900,y:1130,w:420,h:330,top:false}}
+ else{['B','D','F'].forEach(function(k,j){SLOT[k]={x:SXS[j],y:20,w:420,h:330,top:true}});['A','C','E'].forEach(function(k,j){SLOT[k]={x:SXS[j],y:1130,w:420,h:330,top:false}})}
+ POS0={};Object.keys(SLOT).forEach(function(k){var sl=SLOT[k];POS0[k]=[sl.x+sl.w/2,sl.y+sl.h/2+(sl.top?-20:20)]})}
 function fit(t,k){if(typeof k!=='string') k=Object.keys(SLOT).filter(function(q){return SLOT[q]===k})[0];var d=IMG[t],sc=t==='lt'?1.15:LEN[t]*U/d.W,w=d.W*sc,h=d.H*sc,c=POS[k],x=c[0]-w/2;if(t==='bg') x=Math.max(8,Math.min(1352-w,x));return {k:sc,x:x,y:c[1]-h/2,w:w,h:h}}
 
 function partSvg(k){var s=ST[k],t=s.t;if(!t) return '';var f=fit(t,k),d=IMG[t],o='';
@@ -6374,10 +6390,27 @@ function partSvg(k){var s=ST[k],t=s.t;if(!t) return '';var f=fit(t,k),d=IMG[t],o
 // ---- 3D hub, drawn in the same line-and-flat-shade style as the motor pictures ----
 // World: x,y in the hub drawing's own px (162 px = 1 stud; plate 215..1670 x 88..885), z in studs from the hub's base.
 // Screen axes per stud: along the hub (A/B end at right, E/F end at lower left), toward the back (A/C/E row), and up.
-var SS=U,AX=[-.84*SS,.40*SS],AY=[-.66*SS,-.42*SS],AZ=[0,-.84*SS],HZ=3.4,CZ=2.25,PZ=.72,O3=[0,0];
+var SS=U,AX=[-.84*SS,.40*SS],AY=[-.66*SS,-.42*SS],AZ=[0,-.84*SS],HZ=3.4,CZ=2.25,PZ=1.15,O3=[0,0];
 // the hub is the real picture (redrawn in the motor style); its top plane maps hub-drawing px onto picture px with this affine fit
 // (least squares on the 12 stud centres, rms 5 px); HK scales the picture so one stud matches U
 var HM=[[-0.53579,-0.46667,1307.89668],[0.25023,-0.3043,143.12769]],HK=.6,HWH=[1125,962],HP=[0,0];
+// Hub pictures (the user's reference drawings). M maps the hub plan (162 px = 1 stud) onto picture px (least squares on the
+// port centres, checked on the studs); K scales the picture so a stud is U; AZ = picture px per stud upward.
+// P: port centre on the plan and the way its plug's cable leaves (the contact half sits on the port, the stud half inward).
+var HUBS={
+ '6':{img:'img/pf/hub6.webp',WH:[1329,1134],M:[[0.65034,0.45833,-178.11154],[-0.2977,0.38403,450.5431]],K:.51,AZ:93,
+  P:{B:[632,240,0,-1,'b'],D:[957,240,0,-1,'b'],F:[1270,240,0,-1,'b'],A:[632,720,0,1,'f'],C:[957,720,0,1,'f'],E:[1270,720,0,1,'f']}},
+ '4':{img:'img/pf/hub4.webp',WH:[1003,846],M:[[0.52244,0.5,2.4359],[-0.25962,0.26119,263.89208]],K:.58,AZ:88,
+  P:{B:[170,245,-1,0,'ab'],A:[170,580,-1,0,'ab'],C:[950,245,1,0,'cd'],D:[950,580,1,0,'cd']}}};
+// the user's connector pictures: size and the top centres of their two studs (stud at a = -1/2 stud first, then a = +1/2 stud)
+// 6.0: b = B D F (cable to the back), f = A C E (cable to the front); 4.0: ab = A B (cable to the A/B end), cd = C D (to the C/D end)
+// the user's connector pictures. g = [scale, x, y, port]: where the picture sits on the hub picture for that port, taken from the
+// user's own drawings (connector on the hub) and from its two studs landing on the hub studs; every other port of the same kind
+// gets the same picture moved along the hub top by the distance between the ports, so all connectors stay square to the hub.
+// 6.0: b = B D F (cable to the back), f = A C E (cable to the front); 4.0: ab = A B (to the A/B end), cd = C D (to the C/D end)
+var PLUGS={b:{W:158,H:118,g:[2.5789, 165.9, 208.53, "B"]},f:{W:159,H:118,g:[2.3435, 555.27, 234.86, "C"]},cd:{W:235,H:195,g:[1.4385, 417.19, -81.16, "C"]},ab:{W:232,H:160,g:[1.4385, 102.16, 101.7, "B"]}};
+var HKIND='',HIMG='',PORTS={};
+function hubKind(){var k=isMk4(WR.slot)?'4':'6',h=HUBS[k];HM=h.M;HK=h.K;HWH=h.WH;HIMG=h.img;PORTS=h.P;AZ=[0,-HK*h.AZ];if(HKIND!==k){HKIND=k;slotsFor(k)}}
 function W(x,y,z){return [HP[0]+HK*(HM[0][0]*x+HM[0][1]*y+HM[0][2])+(z-HZ)*AZ[0],HP[1]+HK*(HM[1][0]*x+HM[1][1]*y+HM[1][2])+(z-HZ)*AZ[1]]}
 function pt(q){return q[0].toFixed(1)+','+q[1].toFixed(1)}
 function poly(ps,fill,extra){return '<polygon points="'+ps.map(pt).join(' ')+'" fill="'+fill+'" stroke="#0b0c0e" stroke-width="4.5" stroke-linejoin="round"'+(extra||'')+'/>'}
@@ -6396,30 +6429,24 @@ function cross(c,e1,r){var M='matrix('+e1[0]+' '+e1[1]+' '+AZ[0]+' '+AZ[1]+' '+c
  return '<path d="M'+(-w)+' '+(-r)+'H'+w+'V'+(-w)+'H'+r+'V'+w+'H'+w+'V'+r+'H'+(-w)+'V'+w+'H'+(-r)+'V'+(-w)+'H'+(-w)+'Z" fill="#1b1d21" stroke="#0b0c0e" stroke-width="0.04" transform="'+M+'"/>'}
 function hub3d(){var c=[HP[0]+HWH[0]*HK*.5,HP[1]+HWH[1]*HK*.93];
  return '<ellipse cx="'+c[0]+'" cy="'+c[1]+'" rx="'+(HWH[0]*HK*.46)+'" ry="'+(HWH[1]*HK*.09)+'" fill="#000" opacity=".55" filter="url(#soft)"/>'+
-  '<image class="hubg" href="img/pf/hub.webp" x="'+HP[0].toFixed(1)+'" y="'+HP[1].toFixed(1)+'" width="'+(HWH[0]*HK)+'" height="'+(HWH[1]*HK)+'"/>'}
+  '<image class="hubg" href="'+HIMG+'" x="'+HP[0].toFixed(1)+'" y="'+HP[1].toFixed(1)+'" width="'+(HWH[0]*HK)+'" height="'+(HWH[1]*HK)+'"/>'}
 // plug footprint: 2 x 2 studs, width = port pitch so plugs touch; contact half over the port, stud half over the two hub studs
-var PX2={B:632,D:957,F:1270,A:632,C:957,E:1270};
-function plugBox(k){var top=TOP.indexOf(k)>=0,x=PX2[k];return {x0:x-162.5,x1:x+162.5,y0:top?150:480,y1:top?480:810,top:top,x:x}}
-function plugExit(k){var b=plugBox(k),y=b.top?b.y0:b.y1,p=W(b.x,y,HZ+PZ*.32),l=Math.hypot(AY[0],AY[1]),d=b.top?[-AY[0]/l,-AY[1]/l]:[AY[0]/l,AY[1]/l];return {x:p[0],y:p[1],top:!b.top,ox:d[0],oy:d[1],front:b.top}}
-function plugSvg(k){var b=plugBox(k),z0=HZ,z1=HZ+PZ,o='';
- // visible sides: the face toward the viewer (y0) and the face toward the E/F end (x1)
- o+=poly([W(b.x0,b.y0,z0),W(b.x1,b.y0,z0),W(b.x1,b.y0,z1),W(b.x0,b.y0,z1)],'url(#plF)');
- o+=poly([W(b.x1,b.y0,z0),W(b.x1,b.y1,z0),W(b.x1,b.y1,z1),W(b.x1,b.y0,z1)],'url(#plE)');
- // slots in the sides, like the real plug
- var fy=b.y0,ex=[AX[0],AX[1]],ey=[AY[0],AY[1]];
- [-.5,.5].forEach(function(f){var c=W(b.x+f*162.5,fy,z0+PZ*.42);o+='<rect x="-.2" y="-.11" width=".4" height=".22" rx=".03" fill="#26292e" stroke="#0b0c0e" stroke-width="0.04" transform="matrix('+ex[0]+' '+ex[1]+' '+AZ[0]+' '+AZ[1]+' '+c[0].toFixed(1)+' '+c[1].toFixed(1)+')"/>'});
- [.25,.75].forEach(function(f){var c=W(b.x1,b.y0+(b.y1-b.y0)*f,z0+PZ*.42);o+='<rect x="-.18" y="-.11" width=".36" height=".22" rx=".03" fill="#1f2226" stroke="#0b0c0e" stroke-width="0.04" transform="matrix('+ey[0]+' '+ey[1]+' '+AZ[0]+' '+AZ[1]+' '+c[0].toFixed(1)+' '+c[1].toFixed(1)+')"/>'});
- // top face, drawn in hub px on the plane z1
- var cy0=b.top?b.y0:b.y1-165,cy1=b.top?b.y0+165:b.y1,sy=b.top?400:560;
- o+='<g transform="'+topM(z1)+'"><rect x="'+b.x0+'" y="'+b.y0+'" width="325" height="330" fill="url(#plT)" stroke="#0b0c0e" stroke-width="9.0"/>'+
-  '<rect x="'+(b.x-118)+'" y="'+(cy0+20)+'" width="236" height="125" rx="26" fill="#b4b8be" stroke="#0b0c0e" stroke-width="9.0"/>'+
-  '<rect x="'+(b.x-92)+'" y="'+(cy0+40)+'" width="184" height="85" rx="10" fill="#26292e" stroke="#0b0c0e" stroke-width="7.5"/>';
- [[-55,1],[-18,0],[18,1],[55,0]].forEach(function(q){o+='<rect x="'+(b.x+q[0]-9)+'" y="'+(cy0+(q[1]?52:76))+'" width="18" height="30" rx="3" fill="#eceef0" stroke="#0b0c0e" stroke-width="4.5"/>'});
- o+='</g>';
- [-82.5,82.5].forEach(function(dx){o+=stud3(b.x+dx,sy,z1,46,.2,'#6d7178','#a2a6ac')});
- o+='<polygon class="sock" data-p="'+k+'" points="'+[W(b.x0,b.y0,z1),W(b.x1,b.y0,z1),W(b.x1,b.y1,z1),W(b.x0,b.y1,z1)].map(pt).join(' ')+'" fill="transparent" style="cursor:pointer"/>';
- return o}
-function portHit(k){var b=plugBox(k),c=W(b.x,b.top?240:720,HZ);return '<circle class="sock" data-p="'+k+'" cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" r="44" fill="transparent" style="cursor:pointer"/>'}
+// PF plug, 2 x 2 studs: contact half on the port, stud half on the two studs inward, cable leaving from the contact end.
+// Drawn in the plug's own frame on the hub plan: a along the port (side s), b along the cable way (o); the hub picture decides the view.
+var PLW=162.5,PLI=243.75,PLO=81.25;
+function plg(k){var q=PORTS[k];return {p:[q[0],q[1]],o:[q[2],q[3]],s:[-q[3],q[2]]}}
+function LP(g,a,b){return [g.p[0]+g.s[0]*a+g.o[0]*b,g.p[1]+g.s[1]*a+g.o[1]*b]}
+function plugExit(k){var g=plg(k),c=LP(g,0,PLO),z=HZ+PZ*.32,p=W(c[0],c[1],z),q=W(c[0]+g.o[0]*100,c[1]+g.o[1]*100,z),dx=q[0]-p[0],dy=q[1]-p[1],l=Math.hypot(dx,dy)||1;
+ return {x:p[0],y:p[1],ox:dx/l,oy:dy/l,top:!!(SLOT[k]&&SLOT[k].top)}}
+function plugSvg(k){var g=plg(k),P=PLUGS[PORTS[k][4]],cn=[LP(g,-PLW,-PLI),LP(g,PLW,-PLI),LP(g,PLW,PLO),LP(g,-PLW,PLO)];
+ var q=P.g,r=PORTS[q[3]],dx=PORTS[k][0]-r[0],dy=PORTS[k][1]-r[1],c=HK*q[0],sn=0;
+ var tx=HP[0]+HK*(q[1]+HM[0][0]*dx+HM[0][1]*dy),ty=HP[1]+HK*(q[2]+HM[1][0]*dx+HM[1][1]*dy);
+ return '<image href="img/pf/plug_'+PORTS[k][4]+'.webp" width="'+P.W+'" height="'+P.H+'" transform="matrix('+[c,sn,-sn,c,tx,ty].map(function(v){return v.toFixed(4)}).join(' ')+')" pointer-events="none"/>'+
+  '<polygon class="sock" data-p="'+k+'" points="'+cn.map(function(c){return W(c[0],c[1],HZ+PZ)}).map(pt).join(' ')+'" fill="transparent" style="cursor:pointer"/>'}
+function portHit(k){var q=PORTS[k],c=W(q[0],q[1],HZ);return '<circle class="sock" data-p="'+k+'" cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" r="44" fill="transparent" style="cursor:pointer"/>'}
+// cables that leave a plug up the screen pass behind the plugs, the others in front
+var CABB=[],CABF=[];
+function cabSides(){CABB=[];CABF=[];Object.keys(PORTS).forEach(function(k){if(!ST[k]||ST[k].na) return;(plugExit(k).oy<0?CABB:CABF).push(k)})}
 var CW=SS*.42;   // cable width taken from the diagram: four cores fill the plug's cable tab
 
 function roundRun(P,r){var out=[P[0]];
@@ -6454,7 +6481,7 @@ function routeAll(){
  function X(a,b,c,d){function o(p,q,r){return (q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0])}return o(a,b,c)*o(a,b,d)<0&&o(c,d,a)*o(c,d,b)<0}
  function cross(Rr){var n=0,ks=Object.keys(Rr);for(var i=0;i<ks.length;i++)for(var j=i+1;j<ks.length;j++){var P=Rr[ks[i]],Q=Rr[ks[j]];for(var a=0;a<P.length-1;a++)for(var b=0;b<Q.length-1;b++) if(X(P[a],P[a+1],Q[b],Q[b+1])) n++}return n}
  var perms=[[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];ROUTES={};
- [['A','C','E'],['F','D','B']].forEach(function(g){var ks=g.filter(function(k){return ST[k].t}),best=null,bn=1e9;
+ [Object.keys(SLOT).filter(function(k){return SLOT[k].top}),Object.keys(SLOT).filter(function(k){return !SLOT[k].top})].forEach(function(g){var ks=g.filter(function(k){return ST[k].t}),best=null,bn=1e9;
   perms.forEach(function(pm){var Rr={};ks.forEach(function(k,i){Rr[k]=routeOf(k,pm[i])});var all={};for(var q in ROUTES) all[q]=ROUTES[q];for(var q2 in Rr) all[q2]=Rr[q2];var n=cross(all)*1000;ks.forEach(function(k){var P=Rr[k];for(var i=0;i<P.length-1;i++) n+=(Math.abs(P[i+1][0]-P[i][0])+Math.abs(P[i+1][1]-P[i][1]))/1000});if(n<bn){bn=n;best=Rr}});
   if(best) for(var k in best) ROUTES[k]=best[k]})}
 var GR3='<linearGradient id="hTop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#eef0f2"/><stop offset="1" stop-color="#dcdfe3"/></linearGradient>'+
@@ -6468,9 +6495,9 @@ var GR3='<linearGradient id="hTop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" 
  '<linearGradient id="hbE" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34383d"/><stop offset=".3" stop-color="#5f646b"/><stop offset=".45" stop-color="#7f848b"/><stop offset=".65" stop-color="#474b51"/><stop offset="1" stop-color="#2c2f33"/></linearGradient>'+
  '<linearGradient id="hcF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#eceef1"/><stop offset=".55" stop-color="#ffffff"/><stop offset="1" stop-color="#cdd1d6"/></linearGradient>'+
  '<linearGradient id="hcE" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d7dbe0"/><stop offset=".45" stop-color="#bfc4ca"/><stop offset="1" stop-color="#9fa5ac"/></linearGradient>'+
- '<linearGradient id="plF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a8e94"/><stop offset="1" stop-color="#63676d"/></linearGradient>'+
- '<linearGradient id="plE" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5b5f65"/><stop offset="1" stop-color="#44474c"/></linearGradient>'+
- '<linearGradient id="plT" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a6aab0"/><stop offset="1" stop-color="#8b8f96"/></linearGradient>';
+ '<linearGradient id="plF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6e7278"/><stop offset="1" stop-color="#53575d"/></linearGradient>'+
+ '<linearGradient id="plE" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4c5055"/><stop offset="1" stop-color="#383b40"/></linearGradient>'+
+ '<linearGradient id="plT" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6a6e74"/><stop offset="1" stop-color="#585c62"/></linearGradient>';
 // cable length along the drawn route: U scene units = 1 stud = 0.8 cm
 function cableCm(k){var P=ROUTES[k];if(!P) return 0;var L=0;for(var i=1;i<P.length;i++) L+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);return L/U*.8}
 function cableMax(k){var i=ST[k].i;return (Array.isArray(C.pcl)&&C.pcl[i]===50)?50:20}
@@ -6489,10 +6516,10 @@ function layout(){
  HUBR=[Math.min.apply(0,xs)+O3[0],top,Math.max.apply(0,xs)+O3[0],bot];
  routeAll();
 }
-Object.keys(SLOT).forEach(function(k){var sl=SLOT[k];POS0[k]=[sl.x+sl.w/2,sl.y+sl.h/2+(sl.top?-20:20)];POS[k]=POS0[k].slice()});
-var PARTS={m:'Motor M',l:'Motor L',xl:'Motor XL',bg:'Buggy motor',sv:'Servo',lt:'LED lights'};
+slotsFor('6');Object.keys(POS0).forEach(function(k){POS[k]=POS0[k].slice()});
+var PARTS={m:'Motor M',l:'Motor L',xl:'Motor XL',bg:'Buggy motor',sv:'Servo',lt:'LED lights',mk_m:'MK Motor M',mk_l:'MK Motor L',mk_xl:'MK Motor XL',mk_sv:'MK Servo'};
 
-function render(){layout();var s='<defs>'+DEFS.replace(/^<defs>|<\/defs>$/g,'')+'<radialGradient id="lampG"><stop offset="0" stop-color="#fff8d0" stop-opacity="1"/><stop offset=".35" stop-color="#ffd84a" stop-opacity=".6"/><stop offset="1" stop-color="#ffd84a" stop-opacity="0"/></radialGradient></defs>';
+function render(){hubKind();layout();var s='<defs>'+DEFS.replace(/^<defs>|<\/defs>$/g,'')+'<radialGradient id="lampG"><stop offset="0" stop-color="#fff8d0" stop-opacity="1"/><stop offset=".35" stop-color="#ffd84a" stop-opacity=".6"/><stop offset="1" stop-color="#ffd84a" stop-opacity="0"/></radialGradient></defs>';
  // LEGO baseplate background (1 stud pitch = U) so the true scale reads at a glance
  s+='<rect x="0" y="0" width="1360" height="1560" fill="url(#plate)"/>';
  // empty ports: a dashed spot where a part can be dropped; filled ports: a soft floor shadow under the part
@@ -6507,7 +6534,10 @@ function render(){layout();var s='<defs>'+DEFS.replace(/^<defs>|<\/defs>$/g,'')+
  function cab(k){s+=cabSvg(k)}
  
  // back row first (cables leave behind the plugs), then the front row with its cables on top
- s+='<g id="cabB">';['A','C','E'].forEach(function(k){cab(k)});s+='</g>';['A','C','E','B','D','F'].forEach(function(k){s+=ST[k].t?plugSvg(k):portHit(k)});s+='<g id="cabF">';['B','D','F'].forEach(function(k){cab(k)});s+='</g>';
+ cabSides();s+='<g id="cabB" pointer-events="none">';CABB.forEach(function(k){cab(k)});s+='</g>';
+ // plugs back to front, so a nearer plug overlaps the one behind it
+ Object.keys(PORTS).filter(function(k){return ST[k]&&!ST[k].na}).sort(function(a,b){return W(PORTS[a][0],PORTS[a][1],HZ)[1]-W(PORTS[b][0],PORTS[b][1],HZ)[1]}).forEach(function(k){s+=ST[k].t?plugSvg(k):portHit(k)});
+ s+='<g id="cabF" pointer-events="none">';CABF.forEach(function(k){cab(k)});s+='</g>';
  // scale bar: 5 studs = 4 cm
  s+='<g transform="translate(40 1535)"><path d="M0 0h'+(5*U)+'M0 -8v16M'+(5*U)+' -8v16" stroke="#8a93a0" stroke-width="2"/>';for(var q=1;q<5;q++) s+='<path d="M'+(q*U)+' -4v8" stroke="#8a93a0" stroke-width="1.5"/>';
  s+='<text x="0" y="-16" font-size="24" fill="#8a93a0" font-family="Inter,Arial" font-weight="700">'+tr2('5 studs = 4 cm')+'</text></g>';
@@ -6535,12 +6565,12 @@ function render(){layout();var s='<defs>'+DEFS.replace(/^<defs>|<\/defs>$/g,'')+
 // ======================================================================
 var ST={};
 function partAt(i){return (Array.isArray(C.pf)&&C.pf[i])||''}
-function wrBuildST(){var old=ST;ST={};
+function wrBuildST(){var old=ST;ST={};hubKind();
  for(var p=0;p<PER;p++){var k=LT.charAt(p),i=WR.slot*PER+p,na=isMk4(WR.slot)&&p>=4,t=na?null:(partAt(i)||null),o=old[k];
   var keep=o&&o.i===i&&o.t===t;
   // na: the port does not exist on this hub (E and F on a Mould King 4.0)
   ST[k]={t:t,i:i,na:na,v:keep?o.v:0,w:keep?o.w:0,ang:keep?o.ang:0,flow:0,idle:false};
-  var sp=C.pfp&&C.pfp[i];POS[k]=Array.isArray(sp)?sp.slice():POS0[k].slice();if(t) inView(k)}}
+  var sp=C.pfp&&C.pfp[i];POS[k]=Array.isArray(sp)?sp.slice():(POS0[k]||[680,745]).slice();if(t) inView(k)}}
 // keep the whole part, and its label under it, inside the picture so it can always be grabbed again
 function inView(k){var t=ST[k].t;if(!t) return;var d=IMG[t],sc=t==='lt'?1.15:LEN[t]*U/d.W,w=d.W*sc,h=d.H*sc;
  POS[k]=[Math.max(w/2+8,Math.min(1352-w/2,POS[k][0])),Math.max(h/2+8,Math.min(1560-80-h/2,POS[k][1]))]}
@@ -6577,7 +6607,7 @@ function movePart(k,from,dx,dy){POS[k]=[from[0]+dx,from[1]+dy];inView(k);
  var mx=POS[k][0]-from[0],my=POS[k][1]-from[1];
  ['mvP','mvL','sh'].forEach(function(id){var el=WR.root.getElementById(id+k);if(el) el.setAttribute('transform','translate('+mx.toFixed(1)+' '+my.toFixed(1)+')')});
  routeAll();var b=WR.root.getElementById('cabB'),f=WR.root.getElementById('cabF');
- if(b) b.innerHTML=['A','C','E'].map(cabSvg).join('');if(f) f.innerHTML=['B','D','F'].map(cabSvg).join('');WR.idleReset=true}
+ if(b) b.innerHTML=CABB.map(cabSvg).join('');if(f) f.innerHTML=CABF.map(cabSvg).join('');WR.idleReset=true}
 function setHub(from,dx,dy){var hw=HWH[0]*HK/2,hh=HWH[1]*HK/2;if(!C.pfp||typeof C.pfp!=='object') C.pfp={};
  C.pfp[NMAX+WR.slot]=[Math.round(Math.max(hw,Math.min(1360-hw,from[0]+dx))),Math.round(Math.max(hh+40,Math.min(1560-hh,from[1]+dy)))]}
 // a part dropped on the hub is pushed just off it, the shortest way
@@ -6597,9 +6627,9 @@ function wrLockPaint(){var b=document.getElementById('wrLock'),on=!!store.prefs.
 function hubGets(i){return Math.max(-100,Math.min(100,(+rt.o[i]||0)*(C.ch[i]&&C.ch[i].inv?-1:1)))}
 function animPort(k,x,dt){var t=x.t,d=IMG[t],R=WR.root;
  var tgt=hubGets(x.i);x.v+=(tgt-x.v)*Math.min(1,dt*(t==='lt'?14:10));if(Math.abs(x.v)<.3&&!tgt) x.v=0;
- var f=Math.abs(x.v)/100,idle=!x.v&&!x.w&&(t!=='sv'||Math.abs(x.ang)<.05);if(idle&&x.idle) return f;x.idle=idle;
+ var f=Math.abs(x.v)/100,idle=!x.v&&!x.w&&(!isSvT(t)||Math.abs(x.ang)<.05);if(idle&&x.idle) return f;x.idle=idle;
  var trav=0;
- if(t==='sv'){var step=Math.max(-300*dt,Math.min(300*dt,x.v*.9-x.ang));x.ang+=step;trav=step}
+ if(isSvT(t)){var step=Math.max(-300*dt,Math.min(300*dt,x.v*.9-x.ang));x.ang+=step;trav=step}
  else if(t!=='lt'){var wt=RPM[t]*6*x.v/100;x.w+=(wt-x.w)*Math.min(1,dt/TAU[t]);if(Math.abs(x.w)<12&&!wt) x.w=0;trav=x.w/60;x.ang=(x.ang+x.w*dt)%360}
  // axle discs: up to LAY fading copies spread over the turn of this frame (motion blur)
  discsOf(d).forEach(function(e,q){var kk=k+(q?'_'+q:''),n=Math.max(1,Math.min(LAY,Math.ceil(Math.abs(trav)/6)));
@@ -6625,7 +6655,7 @@ function wrFrame(ts){WR.raf=0;
 // ======================================================================
 // Port panel (shared by every hub picture; WCUR is the picture that owns it)
 // ======================================================================
-var CYCLE=['','m','l','xl','bg','sv','lt'];
+var CYCLE=['','m','l','xl','bg','sv','lt','mk_m','mk_l','mk_xl','mk_sv'];
 function own(){if(WCUR&&WCUR!==API) WCUR.WR.cur=null;WCUR=API}
 function wrOpen(k){if(!ST[k]||ST[k].na) return;own();WR.cur=k;wrPanel()}
 function wrPanel(){var box=document.getElementById('wrPanel');if(!box||WCUR!==API) return;var k=WR.cur;if(!k||!ST[k]){wrPanelHide();return}
@@ -6635,7 +6665,7 @@ function wrPanel(){var box=document.getElementById('wrPanel');if(!box||WCUR!==AP
  wrGrid(box,k);box.querySelector('.wr-holds').hidden=false;
  wrPanelMore(box,i,x.t,x.t?cableCm(k):0);wrPanelPaint()}
 function wrPanelPaint(){var box=document.getElementById('wrPanel');if(!box||box.hidden||WCUR!==API||!WR.cur||!ST[WR.cur]) return;var x=ST[WR.cur];
- wrLiveBar(box,x.i);v2T(box.querySelector('.wr-pv'),x.t==='sv'?Math.round(x.ang)+'°':Math.round(hubGets(x.i))+'%')}
+ wrLiveBar(box,x.i);v2T(box.querySelector('.wr-pv'),isSvT(x.t)?Math.round(x.ang)+'°':Math.round(hubGets(x.i))+'%')}
 // six cards, one per port of this hub: letter, picture, part and channel name
 function wrGrid(box,cur){var g=box.querySelector('.wr-grid');if(!g) return;var o='';
  LT.split('').forEach(function(k){var x=ST[k];if(!x||x.na) return;var t=x.t||'';
@@ -6661,7 +6691,7 @@ function wrInit(){if(WR.root) return true;var host=WR.hostEl||document.getElemen
  return true}
 // everything the picture is drawn from; when it changes the picture is drawn again
 function wrKey(){var nm=[];for(var p=0;p<PER;p++) nm.push((C.ch[WR.slot*PER+p]||{}).name);
- return [WR.slot,(C.pf||[]).join(','),JSON.stringify(C.pfp||{}),store.prefs.lang,store.active,(C.pcl||[]).join(','),nm.join(',')].join('|')}
+ return [WR.slot,(C.hubT||[]).join(','),(C.pf||[]).join(','),JSON.stringify(C.pfp||{}),store.prefs.lang,store.active,(C.pcl||[]).join(','),nm.join(',')].join('|')}
 function wrTick(){if(!wrInit()) return;WR.on=true;wrLockPaint();var key=wrKey();if(WR.key!==key){WR.key=key;wrRender();wrPanel()}
  if(!WR.raf) WR.raf=requestAnimationFrame(wrFrame)}
 // Tidy: every part glides back to its own side of the hub, the hub to the middle
@@ -6716,9 +6746,9 @@ return API;
    [].forEach.call(mo.querySelectorAll('.wr-cbs button'),function(b){var on=+b.getAttribute('data-l')===mx;b.classList.toggle('sel',on);b.setAttribute('aria-pressed',String(on))});
    var cl=mo.querySelector('.wr-cl');v2T(cl,Math.round(cm)+' cm');cl.classList.toggle('bad',lng);mo.querySelector('.wr-cw').hidden=!lng;
    v2T(box.querySelector('.wr-mxv'),C.ch[i].max+'%');
-   var tr=box.querySelector('.wr-trow');tr.hidden=t!=='sv'&&t!=='m'&&t!=='l'&&t!=='xl'&&t!=='bg';
+   var tr=box.querySelector('.wr-trow');tr.hidden=!t||t==='lt';
    v2T(box.querySelector('.wr-tmv'),((C.ch[i].trim||0)>0?'+':'')+(C.ch[i].trim||0));
-   tr.querySelector('span').firstChild.nodeValue=tr2(t==='sv'?'Centre trim':'Trim (runs straight)')+' ';
+   tr.querySelector('span').firstChild.nodeValue=tr2(isSvT(t)?'Centre trim':'Trim (runs straight)')+' ';
    var ad=WR_ADDS[t]||[];[].forEach.call(mo.querySelectorAll('.wr-adds button'),function(b){b.hidden=ad.indexOf(b.getAttribute('data-w'))<0});
    var ts=box.querySelector('.wr-test');if(ts&&!ts._on) ts.value=0}
   function wrGuard(){if(!S.connected){toast(RH()?'Connect the hub first.':'Turn on Practice mode or connect the hub first.');return false}if(S.estop){toast('Release E-Stop first.');return false}return true}
@@ -6756,9 +6786,9 @@ return API;
   function wrChkRun(){var i=WCK.q[WCK.n];if(i===undefined){WCK.st='done';wrChkPaint();return}
    if(!wrGuard()){WCK.st='ask';wrChkPaint();return}
    WCK.st='run';wrChkPaint();var pw=C.testPwr||60;noteInput();setT(i,pw,false);
-   if(C.pf[i]==='sv') WCK.tm=setTimeout(function(){setT(i,-pw,false);WCK.tm=setTimeout(function(){setT(i,0,false);WCK.st='ask';wrChkPaint()},600)},600);
+   if(isSvT(C.pf[i])) WCK.tm=setTimeout(function(){setT(i,-pw,false);WCK.tm=setTimeout(function(){setT(i,0,false);WCK.st='ask';wrChkPaint()},600)},600);
    else WCK.tm=setTimeout(function(){setT(i,0,false);WCK.st='ask';wrChkPaint()},1000)}
-  function wrChkName(i){return tagOf(i)+' · '+tr2(({m:'Motor M',l:'Motor L',xl:'Motor XL',bg:'Buggy motor',sv:'Servo',lt:'LED lights'})[C.pf[i]]||'')+' · '+C.ch[i].name}
+  function wrChkName(i){return tagOf(i)+' · '+tr2(({m:'Motor M',l:'Motor L',xl:'Motor XL',bg:'Buggy motor',sv:'Servo',lt:'LED lights',mk_m:'MK Motor M',mk_l:'MK Motor L',mk_xl:'MK Motor XL',mk_sv:'MK Servo'})[C.pf[i]]||'')+' · '+C.ch[i].name}
   function wrChkPaint(){var box=document.getElementById('wrChkBox');if(!box) return;if(!WCK){box.hidden=true;return}box.hidden=false;var i=WCK.q[WCK.n],h='';
    var prog='<div class="wr-ckp">'+WCK.q.map(function(q,n){return '<i class="'+(n<WCK.n?'ok':n===WCK.n&&WCK.st!=='done'?'on':'')+'">'+tagOf(q)+'</i>'}).join('')+'</div>';
    if(WCK.st==='done'){h=prog+'<b>'+tr2('Wiring check done')+'</b><p>'+WCK.ok+' '+tr2('right')+' · '+WCK.sw+' '+tr2('swapped')+' · '+WCK.bad+' '+tr2('to check')+'</p><div class="wr-ckb"><button class="btn" data-a="x">'+tr2('Close')+'</button></div>'}

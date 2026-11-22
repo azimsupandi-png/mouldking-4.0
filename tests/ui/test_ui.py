@@ -2181,10 +2181,38 @@ async def t_rings(b):
     check('rings no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_wire2(b):
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'W',cfg:{layout:'board',hubs:[0,-1,-1],hubT:[6,6,6],pf:['mk_m','mk_l','mk_xl','mk_sv','bg','lt','','','','','','','','','','','',''],board:[{k:'s',c:0,w:1}]}},{id:'m2',name:'W4',cfg:{layout:'board',hubs:[0,-1,-1],hubT:[4,6,6],pf:['mk_l','m','sv','mk_m','','','','','','','','','','','','','',''],board:[{k:'s',c:0,w:1}]}}],prefs:{seen:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("mk6Go('hub')"); await pg.wait_for_timeout(700)
+    R = "(function(){var R=document.getElementById('wrHost').shadowRoot;return [R.querySelector('.hubg').getAttribute('href'),[...R.querySelectorAll('image[href*=plug_]')].map(i=>i.getAttribute('href').replace('img/pf/plug_','').replace('.webp','')).sort().join(','),[...R.querySelectorAll('.pt image')].map(i=>i.getAttribute('href').replace('img/pf/','').replace('.webp','')).sort().join(',')]})()"
+    r = await pg.evaluate(R)
+    check('6.0 wiring: hub 6.0 picture, the given connectors (3 back, 3 front)', r[0].endswith('hub6.webp') and r[1] == 'b,b,b,f,f,f', r)
+    check('6.0 wiring: the four MK motors show next to the old parts', r[2] == 'bg,lt,mk_l,mk_m,mk_sv,mk_xl', r[2])
+    await pg.evaluate("__t.switchProfile('m2');mk6Go('hub')"); await pg.wait_for_timeout(700)
+    r = await pg.evaluate(R)
+    check('4.0 wiring: hub 4.0 picture, four ports with their connectors', r[0].endswith('hub4.webp') and r[1] == 'ab,ab,cd,cd' and r[2] == 'm,mk_l,mk_m,sv', r)
+    r = await pg.evaluate("[...document.getElementById('wrHost').shadowRoot.querySelectorAll('.slot')].map(g=>g.getAttribute('data-p'))")
+    check('4.0 wiring: no E or F spots', 'E' not in r and 'F' not in r, r)
+    await pg.evaluate("__t.switchProfile('m1');mk6Go('hub')"); await pg.wait_for_timeout(700)
+    await pg.evaluate("document.getElementById('wrHost').shadowRoot.querySelector('.pt[data-p=D]').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:5,clientY:5,pointerId:1}));window.dispatchEvent(new PointerEvent('pointerup',{clientX:5,clientY:5,pointerId:1}))"); await pg.wait_for_timeout(300)
+    names = []
+    for _ in range(11):
+        await pg.evaluate("document.querySelector('#wrPanel .wr-grid button[data-p=D]').click()"); await pg.wait_for_timeout(120)
+        names.append(await pg.evaluate("document.querySelector('#wrPanel .wr-grid button[data-p=D] b').textContent"))
+    check('a port cycles through every part, old and MK', all(n in names for n in ['Motor M', 'Servo', 'LED lights', 'MK Motor M', 'MK Motor L', 'MK Motor XL', 'MK Servo']), names)
+    check('wire2 no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_stage4, t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_mk4oo, t_lpmulti, t_fix5, t_rings, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_stage4, t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_mk4oo, t_lpmulti, t_fix5, t_rings, t_wire2, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
