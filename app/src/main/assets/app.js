@@ -6405,12 +6405,11 @@ var HUBS={
   P:{B:[170,245,-1,0,'ab'],A:[170,580,-1,0,'ab'],C:[950,245,1,0,'cd'],D:[950,580,1,0,'cd']}}};
 // the user's connector pictures: size and the top centres of their two studs (stud at a = -1/2 stud first, then a = +1/2 stud)
 // 6.0: b = B D F (cable to the back), f = A C E (cable to the front); 4.0: ab = A B (cable to the A/B end), cd = C D (to the C/D end)
-// the user's connector pictures. g = [scale, x, y, port]: where the picture sits on the hub picture for that port, taken from the
-// user's own drawings (connector on the hub) and from its two studs landing on the hub studs; every other port of the same kind
-// gets the same picture moved along the hub top by the distance between the ports, so all connectors stay square to the hub.
-// 6.0: b = B D F (cable to the back), f = A C E (cable to the front); 4.0: ab = A B (to the A/B end), cd = C D (to the C/D end)
-// ex: where the cable leaves the connector in its picture
-var PLUGS={b:{W:158,H:118,ex:[27,20],g:[2.5789, 165.9, 208.53, "B"]},f:{W:159,H:118,ex:[149,92],g:[2.3435, 555.27, 234.86, "C"]},cd:{W:235,H:195,ex:[205,20],g:[1.4385, 417.19, -81.16, "C"]},ab:{W:232,H:160,ex:[50,118],g:[1.4385, 102.16, 101.7, "B"]}};
+// the user's connector pictures (cut from his drawings of a connector on the hub). m maps picture px onto the hub picture
+// for port p: scale and a slight shear so both studs land on the hub studs they grip, at the connector's height; the other
+// ports of the same kind get the same picture moved along the hub top by the distance between the ports.
+// 6.0: b = B D F (cable to the back), f = A C E (to the front); 4.0: ab = A B (to the A/B end), cd = C D (to the C/D end); ex = cable mouth
+var PLUGS={b:{W:557,H:437,ex:[64, 20],m:[0.62227, 0.05652, -0.08808, 0.74372, 216.67907, 161.56439],p:"B"},f:{W:560,H:403,ex:[500, 300],m:[0.62075, 0.05608, -0.08762, 0.74188, 552.63349, 212.26487],p:"C"},cd:{W:576,H:466,ex:[520, 90],m:[0.58345, -0.00618, -0.03933, 0.57607, 424.90506, -76.81483],p:"C"},ab:{W:892,H:643,ex:[100, 450],m:[0.37482, 0.02371, -0.02642, 0.40868, 103.39014, 77.82004],p:"B"}};
 var HKIND='',HIMG='',PORTS={};
 function hubKeep(){var h=HUBS[HKIND];if(!h||!h.keep) return '';var w=HWH[0]*HK,hh=HWH[1]*HK;
  return '<clipPath id="hkeep">'+h.keep.map(function(e){return '<ellipse cx="'+(HP[0]+e[0]*HK).toFixed(1)+'" cy="'+(HP[1]+e[1]*HK).toFixed(1)+'" rx="'+(e[2]*HK).toFixed(1)+'" ry="'+(e[3]*HK).toFixed(1)+'" transform="rotate('+e[4]+' '+(HP[0]+e[0]*HK).toFixed(1)+' '+(HP[1]+e[1]*HK).toFixed(1)+')"/>'}).join('')+'</clipPath>'+
@@ -6442,14 +6441,15 @@ var PLW=162.5,PLI=243.75,PLO=81.25;
 function plg(k){var q=PORTS[k];return {p:[q[0],q[1]],o:[q[2],q[3]],s:[-q[3],q[2]]}}
 function LP(g,a,b){return [g.p[0]+g.s[0]*a+g.o[0]*b,g.p[1]+g.s[1]*a+g.o[1]*b]}
 // where a connector picture sits on screen for port k: scale c, shift tx, ty
-function plugT(k){var P=PLUGS[PORTS[k][4]],q=P.g,r=PORTS[q[3]],dx=PORTS[k][0]-r[0],dy=PORTS[k][1]-r[1];
- return {P:P,c:HK*q[0],tx:HP[0]+HK*(q[1]+HM[0][0]*dx+HM[0][1]*dy),ty:HP[1]+HK*(q[2]+HM[1][0]*dx+HM[1][1]*dy)}}
+function plugT(k){var P=PLUGS[PORTS[k][4]],m=P.m,r=PORTS[P.p],dx=PORTS[k][0]-r[0],dy=PORTS[k][1]-r[1];
+ return {P:P,m:[HK*m[0],HK*m[1],HK*m[2],HK*m[3],HP[0]+HK*(m[4]+HM[0][0]*dx+HM[0][1]*dy),HP[1]+HK*(m[5]+HM[1][0]*dx+HM[1][1]*dy)]}}
+function plugPt(T,x,y){var m=T.m;return [m[0]*x+m[2]*y+m[4],m[1]*x+m[3]*y+m[5]]}
 function plugExit(k){var g=plg(k),c=LP(g,0,PLO),z=HZ+PZ*.32,p=W(c[0],c[1],z),q=W(c[0]+g.o[0]*100,c[1]+g.o[1]*100,z),dx=q[0]-p[0],dy=q[1]-p[1],l=Math.hypot(dx,dy)||1;
- var T=plugT(k);if(T.P.ex) p=[T.tx+T.c*T.P.ex[0],T.ty+T.c*T.P.ex[1]];
+ var T=plugT(k);if(T.P.ex) p=plugPt(T,T.P.ex[0],T.P.ex[1]);
  return {x:p[0],y:p[1],ox:dx/l,oy:dy/l,top:!!(SLOT[k]&&SLOT[k].top)}}
 function plugSvg(k){var g=plg(k),P=PLUGS[PORTS[k][4]],cn=[LP(g,-PLW,-PLI),LP(g,PLW,-PLI),LP(g,PLW,PLO),LP(g,-PLW,PLO)];
- var T=plugT(k),c=T.c,sn=0,tx=T.tx,ty=T.ty;
- return '<image href="img/pf/plug_'+PORTS[k][4]+'.webp" width="'+P.W+'" height="'+P.H+'" transform="matrix('+[c,sn,-sn,c,tx,ty].map(function(v){return v.toFixed(4)}).join(' ')+')" pointer-events="none"/>'+
+ var T=plugT(k);
+ return '<image href="img/pf/plug_'+PORTS[k][4]+'.webp" width="'+P.W+'" height="'+P.H+'" transform="matrix('+T.m.map(function(v){return v.toFixed(4)}).join(' ')+')" pointer-events="none"/>'+
   '<polygon class="sock" data-p="'+k+'" points="'+cn.map(function(c){return W(c[0],c[1],HZ+PZ)}).map(pt).join(' ')+'" fill="transparent" style="cursor:pointer"/>'}
 function portHit(k){var q=PORTS[k],c=W(q[0],q[1],HZ);return '<circle class="sock" data-p="'+k+'" cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" r="44" fill="transparent" style="cursor:pointer"/>'}
 // cables that leave a plug up the screen pass behind the plugs, the others in front
