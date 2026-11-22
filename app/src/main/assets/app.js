@@ -6398,8 +6398,9 @@ var HM=[[-0.53579,-0.46667,1307.89668],[0.25023,-0.3043,143.12769]],HK=.6,HWH=[1
 // port centres, checked on the studs); K scales the picture so a stud is U; AZ = picture px per stud upward.
 // P: port centre on the plan and the way its plug's cable leaves (the contact half sits on the port, the stud half inward).
 var HUBS={
- '6':{img:'img/pf/hub6.webp',WH:[1329,1134],M:[[0.65034,0.45833,-178.11154],[-0.2977,0.38403,450.5431]],K:.51,AZ:93,
+ '6':{img:'img/pf/hub6.webp',WH:[1329,1134],M:[[0.65034,0.45833,-178.11154],[-0.2977,0.38403,450.5431]],K:.51,AZ:93,keep:[[243,468,62,40,0],[360,558,64,26,33]],
   P:{B:[632,240,0,-1,'b'],D:[957,240,0,-1,'b'],F:[1270,240,0,-1,'b'],A:[632,720,0,1,'f'],C:[957,720,0,1,'f'],E:[1270,720,0,1,'f']}},
+ // keep: spots of the hub picture (centre x, y, radii, turn) drawn again over the connectors so they always show (power button, USB)
  '4':{img:'img/pf/hub4.webp',WH:[1003,846],M:[[0.52244,0.5,2.4359],[-0.25962,0.26119,263.89208]],K:.58,AZ:88,
   P:{B:[170,245,-1,0,'ab'],A:[170,580,-1,0,'ab'],C:[950,245,1,0,'cd'],D:[950,580,1,0,'cd']}}};
 // the user's connector pictures: size and the top centres of their two studs (stud at a = -1/2 stud first, then a = +1/2 stud)
@@ -6408,8 +6409,12 @@ var HUBS={
 // user's own drawings (connector on the hub) and from its two studs landing on the hub studs; every other port of the same kind
 // gets the same picture moved along the hub top by the distance between the ports, so all connectors stay square to the hub.
 // 6.0: b = B D F (cable to the back), f = A C E (cable to the front); 4.0: ab = A B (to the A/B end), cd = C D (to the C/D end)
-var PLUGS={b:{W:158,H:118,g:[2.5789, 165.9, 208.53, "B"]},f:{W:159,H:118,g:[2.3435, 555.27, 234.86, "C"]},cd:{W:235,H:195,g:[1.4385, 417.19, -81.16, "C"]},ab:{W:232,H:160,g:[1.4385, 102.16, 101.7, "B"]}};
+// ex: where the cable leaves the connector in its picture
+var PLUGS={b:{W:158,H:118,ex:[27,20],g:[2.5789, 165.9, 208.53, "B"]},f:{W:159,H:118,ex:[149,92],g:[2.3435, 555.27, 234.86, "C"]},cd:{W:235,H:195,ex:[205,20],g:[1.4385, 417.19, -81.16, "C"]},ab:{W:232,H:160,ex:[50,118],g:[1.4385, 102.16, 101.7, "B"]}};
 var HKIND='',HIMG='',PORTS={};
+function hubKeep(){var h=HUBS[HKIND];if(!h||!h.keep) return '';var w=HWH[0]*HK,hh=HWH[1]*HK;
+ return '<clipPath id="hkeep">'+h.keep.map(function(e){return '<ellipse cx="'+(HP[0]+e[0]*HK).toFixed(1)+'" cy="'+(HP[1]+e[1]*HK).toFixed(1)+'" rx="'+(e[2]*HK).toFixed(1)+'" ry="'+(e[3]*HK).toFixed(1)+'" transform="rotate('+e[4]+' '+(HP[0]+e[0]*HK).toFixed(1)+' '+(HP[1]+e[1]*HK).toFixed(1)+')"/>'}).join('')+'</clipPath>'+
+  '<image href="'+HIMG+'" x="'+HP[0].toFixed(1)+'" y="'+HP[1].toFixed(1)+'" width="'+w+'" height="'+hh+'" clip-path="url(#hkeep)" pointer-events="none"/>'}
 function hubKind(){var k=isMk4(WR.slot)?'4':'6',h=HUBS[k];HM=h.M;HK=h.K;HWH=h.WH;HIMG=h.img;PORTS=h.P;AZ=[0,-HK*h.AZ];if(HKIND!==k){HKIND=k;slotsFor(k)}}
 function W(x,y,z){return [HP[0]+HK*(HM[0][0]*x+HM[0][1]*y+HM[0][2])+(z-HZ)*AZ[0],HP[1]+HK*(HM[1][0]*x+HM[1][1]*y+HM[1][2])+(z-HZ)*AZ[1]]}
 function pt(q){return q[0].toFixed(1)+','+q[1].toFixed(1)}
@@ -6436,11 +6441,14 @@ function hub3d(){var c=[HP[0]+HWH[0]*HK*.5,HP[1]+HWH[1]*HK*.93];
 var PLW=162.5,PLI=243.75,PLO=81.25;
 function plg(k){var q=PORTS[k];return {p:[q[0],q[1]],o:[q[2],q[3]],s:[-q[3],q[2]]}}
 function LP(g,a,b){return [g.p[0]+g.s[0]*a+g.o[0]*b,g.p[1]+g.s[1]*a+g.o[1]*b]}
+// where a connector picture sits on screen for port k: scale c, shift tx, ty
+function plugT(k){var P=PLUGS[PORTS[k][4]],q=P.g,r=PORTS[q[3]],dx=PORTS[k][0]-r[0],dy=PORTS[k][1]-r[1];
+ return {P:P,c:HK*q[0],tx:HP[0]+HK*(q[1]+HM[0][0]*dx+HM[0][1]*dy),ty:HP[1]+HK*(q[2]+HM[1][0]*dx+HM[1][1]*dy)}}
 function plugExit(k){var g=plg(k),c=LP(g,0,PLO),z=HZ+PZ*.32,p=W(c[0],c[1],z),q=W(c[0]+g.o[0]*100,c[1]+g.o[1]*100,z),dx=q[0]-p[0],dy=q[1]-p[1],l=Math.hypot(dx,dy)||1;
+ var T=plugT(k);if(T.P.ex) p=[T.tx+T.c*T.P.ex[0],T.ty+T.c*T.P.ex[1]];
  return {x:p[0],y:p[1],ox:dx/l,oy:dy/l,top:!!(SLOT[k]&&SLOT[k].top)}}
 function plugSvg(k){var g=plg(k),P=PLUGS[PORTS[k][4]],cn=[LP(g,-PLW,-PLI),LP(g,PLW,-PLI),LP(g,PLW,PLO),LP(g,-PLW,PLO)];
- var q=P.g,r=PORTS[q[3]],dx=PORTS[k][0]-r[0],dy=PORTS[k][1]-r[1],c=HK*q[0],sn=0;
- var tx=HP[0]+HK*(q[1]+HM[0][0]*dx+HM[0][1]*dy),ty=HP[1]+HK*(q[2]+HM[1][0]*dx+HM[1][1]*dy);
+ var T=plugT(k),c=T.c,sn=0,tx=T.tx,ty=T.ty;
  return '<image href="img/pf/plug_'+PORTS[k][4]+'.webp" width="'+P.W+'" height="'+P.H+'" transform="matrix('+[c,sn,-sn,c,tx,ty].map(function(v){return v.toFixed(4)}).join(' ')+')" pointer-events="none"/>'+
   '<polygon class="sock" data-p="'+k+'" points="'+cn.map(function(c){return W(c[0],c[1],HZ+PZ)}).map(pt).join(' ')+'" fill="transparent" style="cursor:pointer"/>'}
 function portHit(k){var q=PORTS[k],c=W(q[0],q[1],HZ);return '<circle class="sock" data-p="'+k+'" cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" r="44" fill="transparent" style="cursor:pointer"/>'}
@@ -6537,6 +6545,7 @@ function render(){hubKind();layout();var s='<defs>'+DEFS.replace(/^<defs>|<\/def
  cabSides();s+='<g id="cabB" pointer-events="none">';CABB.forEach(function(k){cab(k)});s+='</g>';
  // plugs back to front, so a nearer plug overlaps the one behind it
  Object.keys(PORTS).filter(function(k){return ST[k]&&!ST[k].na}).sort(function(a,b){return W(PORTS[a][0],PORTS[a][1],HZ)[1]-W(PORTS[b][0],PORTS[b][1],HZ)[1]}).forEach(function(k){s+=ST[k].t?plugSvg(k):portHit(k)});
+ s+=hubKeep();
  s+='<g id="cabF" pointer-events="none">';CABF.forEach(function(k){cab(k)});s+='</g>';
  // scale bar: 5 studs = 4 cm
  s+='<g transform="translate(40 1535)"><path d="M0 0h'+(5*U)+'M0 -8v16M'+(5*U)+' -8v16" stroke="#8a93a0" stroke-width="2"/>';for(var q=1;q<5;q++) s+='<path d="M'+(q*U)+' -4v8" stroke="#8a93a0" stroke-width="1.5"/>';
