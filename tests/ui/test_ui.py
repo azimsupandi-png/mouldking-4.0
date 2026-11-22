@@ -689,6 +689,11 @@ async def t_lpmulti(b):
     await pg.wait_for_timeout(300)
     r = await pg.evaluate("[...document.querySelectorAll('#boardGrid .lx-pg')].map(b=>b.getAttribute('aria-pressed'))")
     check('LP E-Stop stops every program', r == ['false', 'false', 'false'], r)
+    await pg.set_viewport_size({'width': 844, 'height': 390}); await pg.wait_for_timeout(500)
+    r = await pg.evaluate("(()=>{const b=document.getElementById('esBanner'),r=b.getBoundingClientRect();return [document.documentElement.classList.contains('dash'),getComputedStyle(b).display,r.top>=0&&r.bottom<=innerHeight&&r.height>20]})()")
+    check('landscape dashboard shows the red E-Stop banner', r == [True, 'block', True], r)
+    await pg.evaluate("document.getElementById('esBanner').click()")
+    await pg.set_viewport_size({'width': 390, 'height': 844}); await pg.wait_for_timeout(400)
     await pg.evaluate("document.getElementById('estop').click()")
     # E-Stop is the Volume Up key: the button is gone, a second press does not release, the red banner does
     r = await pg.evaluate("[getComputedStyle(document.getElementById('estop')).display,(window.mk6VolUp(),__t.S.estop),(window.mk6VolUp(),__t.S.estop),!document.getElementById('esBanner').hidden]")
@@ -710,16 +715,10 @@ async def t_lpmulti(b):
     await ctx.close()
 
 async def t_fix5(b):
-    # reverse code choices, L3 / R3 from Android, restore result shown on any page, restore of more than 10 models
+    # L3 / R3 from Android, restore result shown on any page, restore of more than 10 models
     ctx, pg = await page(b)
-    await pg.evaluate("window.MK6Bridge.mk4Codes=function(a,o){__calls.push('codes:'+a+','+o)};mk6Go('settings')")
-    await pg.evaluate("(()=>{const e=document.getElementById('m4r');e.value='1';e.dispatchEvent(new Event('change'))})()")
-    await pg.evaluate("(()=>{const e=document.getElementById('oor');e.value='1';e.dispatchEvent(new Event('change'))})()")
-    r = await pg.evaluate("__calls.filter(c=>c.startsWith('codes:'))")
-    check('reverse code choices go to Android at once', r[-2:] == ['codes:1,0', 'codes:1,1'], r)
-    r = await pg.evaluate("JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>/mk6/.test(k)&&/prefs|store|cfg/i.test(k))||'{}')||'{}')")
-    r = await pg.evaluate("[document.getElementById('m4r').value,document.getElementById('oor').value]")
-    check('reverse code choices stay set', r == ['1', '1'], r)
+    r = await pg.evaluate("[!!document.getElementById('m4r'),!!document.getElementById('oor')]")
+    check('no reverse code test pickers in the main app', r == [False, False], r)
     # L3 sent by Android counts as button 10 for the mapping
     await pg.evaluate("""(()=>{window.__gp={connected:true,id:'pad',mapping:'standard',axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))};
       navigator.getGamepads=()=>[window.__gp]})()""")
@@ -802,6 +801,14 @@ async def t_fix5(b):
     r2 = await pg.evaluate("[0,1,2,3].map(i=>__t.rt.t[i])")
     check('left and right sticks drive their four channels at the same time', r[0] > 80 and r[1] > 80 and r[2] < -80 and r[3] < -80, r)
     check('both sticks let go put all four back to 0', r2 == [0, 0, 0, 0], r2)
+    # each stick says what it drives, on its card and on the controller picture
+    await pg.evaluate("__t.C.pad.ls={a:0,b:1,mx:false};__t.C.pad.rs={a:2,b:3,mx:true};mk6Go('m-pad')"); await pg.wait_for_timeout(500)
+    r = await pg.evaluate("[document.getElementById('gpLM').textContent,document.getElementById('gpRM').textContent,document.getElementById('gpPic').textContent]")
+    check('stick cards name the channels each stick drives', r[0].startswith('\u2195 ') and '\u2194' in r[0] and 'TANK' in r[1], r[:2])
+    check('controller picture shows what each stick drives', 'L \u2195' in r[2] and 'R ' in r[2] and 'TANK' in r[2], r[2][-80:])
+    await pg.evaluate("__t.C.pad.rs={a:-1,b:-1,mx:false};mk6Go('settings');mk6Go('m-pad')"); await pg.wait_for_timeout(400)
+    r = await pg.evaluate("document.getElementById('gpRM').textContent")
+    check('a stick that drives nothing says so', r == 'Not used', r)
     check('fix5 no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
@@ -2135,10 +2142,49 @@ async def t_loginspect(b):
     check('no JS errors (log and inspector)', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_rings(b):
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = """(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'Big excavator',cfg:{layout:'board',limit:100,ramp:100,hubs:[0,1,2],hubT:[6,4,40],board:[{k:'s',c:0,w:1}]}},{id:'m2',name:'Tow truck',cfg:{icon:'truck'}},{id:'m3',name:'crane',cfg:{}}],prefs:{seen:true}}))})();"""
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.wait_for_timeout(500)
+    R = "[...document.querySelectorAll('#v2Pill .pring')].map(r=>r.querySelector('b').textContent+':'+r.getAttribute('data-st'))"
+    r = await pg.evaluate(R)
+    check('pill has one ring per hub, named by hub type', r == ['6.0:off', '4.0:off', 'O/O:off'], r)
+    r = await pg.evaluate("getComputedStyle(document.querySelector('#v2Pill .pdot')).display")
+    check('rings take the place of the status dot', r == 'none', r)
+    await pg.evaluate("window.MK6Bridge.send=function(){};mk6Go('home');document.getElementById('hubConn').click()")
+    await pg.wait_for_timeout(400)
+    r = await pg.evaluate(R)
+    check('rings show pairing while the hub link starts', all(x.endswith(':busy') for x in r), r)
+    await pg.evaluate("onHubState('ready');mk6Go('drive')")
+    await pg.wait_for_timeout(400)
+    r = await pg.evaluate(R)
+    check('rings turn active with the hub link', all(x.endswith(':on') for x in r), r)
+    await pg.evaluate("var r=document.querySelector('#boardGrid .bdw[data-k=s] input[type=range]');r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));r.value=70;r.dispatchEvent(new Event('input',{bubbles:true}))")
+    await pg.wait_for_timeout(1500)
+    r = await pg.evaluate("[...document.querySelectorAll('#v2Pill .pring')].map(r=>[r.getAttribute('data-lv')||'',parseInt(r.querySelector('.ra').getAttribute('stroke-dasharray'))])")
+    check('the ring of the hub that runs fills with its output, the others stay empty', r[0][0] in ('g', 'o') and r[0][1] > 30 and r[1] == ['', 0] and r[2] == ['', 0], r)
+    r = await pg.evaluate("[...document.querySelectorAll('.v2-mchip .v2-knob, #scrHome .v2-knob')].map(k=>k.textContent)")
+    check('model without photo or icon shows its initials', len(r) > 0 and all(x == 'BE' for x in r), r)
+    await pg.evaluate("__t.switchProfile('m3');mk6Go('home')")
+    await pg.wait_for_timeout(600)
+    r = await pg.evaluate("[[...document.querySelectorAll('.v2-mchip .v2-knob, #scrHome .v2-knob')].map(k=>k.textContent),[...document.querySelectorAll('#v2Pill .pring')].length]")
+    check('one-word model gets its first two letters; a model on one hub gets one ring', r[0] and all(x == 'CR' for x in r[0]) and r[1] == 1, r)
+    await pg.evaluate("__t.switchProfile('m2');mk6Go('home')")
+    await pg.wait_for_timeout(600)
+    r = await pg.evaluate("[...document.querySelectorAll('.v2-mchip .v2-knob, #scrHome .v2-knob')].map(k=>!!k.querySelector('svg.mi')&&!k.querySelector('.ini'))")
+    check('a model icon still shows instead of initials', r and all(r), r)
+    check('rings no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_stage4, t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_mk4oo, t_lpmulti, t_fix5, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_stage4, t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_mk4oo, t_lpmulti, t_fix5, t_rings, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

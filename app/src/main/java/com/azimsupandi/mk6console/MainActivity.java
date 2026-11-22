@@ -759,12 +759,6 @@ public class MainActivity extends Activity {
             });
         }
 
-        /** Test build: which reverse code the 4.0 hubs get (see Mk6Advertiser.setReverseCodes). */
-        @JavascriptInterface
-        public void mk4Codes(int speed, int onOff) {
-            Mk6Advertiser.setReverseCodes(speed, onOff);
-        }
-
         /** @param frame 6/12/18 comma separated channel values -100..100 */
         @JavascriptInterface
         public void send(String frame) {

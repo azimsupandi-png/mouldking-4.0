@@ -671,6 +671,9 @@ textarea.txt{padding:8px;font-family:var(--f-mono);font-size:12px;line-height:1.
 :root.dash body{position:fixed;left:0;top:0;right:0;bottom:0;width:100%}
 :root.dash main{padding-top:6px;padding-bottom:4px;padding-left:8px;padding-right:8px}
 :root.dash .bar-banner{display:none}
+/* E-Stop is the Volume Up key now, so its red banner (tap = release) must show on the dashboard too:
+   a floating pill under the top bar that leaves the widgets where they are */
+:root.dash #esBanner:not([hidden]){display:block;position:fixed;left:50%;top:calc(var(--barh,56px) + 8px);transform:translateX(-50%);z-index:70;width:max-content;max-width:min(92vw,760px);border-radius:999px;padding:12px 26px;font-size:15px;box-shadow:0 8px 24px rgba(0,0,0,.55),0 0 0 2px rgba(255,255,255,.18) inset}
 #lostBanner{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:60;max-width:90vw;background:#3a1416;color:#ff8a88;border:1.5px solid #E24B4A;border-radius:10px;padding:6px 14px;font-size:13px;font-weight:800;letter-spacing:.04em;text-align:center}
 .snaplist{display:flex;flex-direction:column;gap:6px;margin-top:6px}
 .snaprow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid var(--line,#3a404b);border-radius:10px;font-size:13px}
@@ -1459,6 +1462,26 @@ html[data-v] .v2-pill{display:inline-flex}
 .v2-pill[data-st=on] .ptx{color:var(--fg)}.v2-pill[data-st=busy] .ptx{color:var(--acc)}
 .v2-pill .pbat{flex:none;font:600 12px var(--f-mono,monospace);font-style:normal;color:var(--muted);margin-left:2px}
 .v2-pill .pbat:empty{display:none}
+.v2-pill .prings{display:none;gap:6px;align-items:center;flex:none}
+.v2-pill.rings .prings{display:flex}
+.v2-pill.rings[data-bt=on] .pbt,.v2-pill.rings .pdv,.v2-pill.rings .pdot{display:none}
+.v2-pill.rings{padding-left:6px;gap:8px}
+.v2-pill.rings[data-st=on] .ptx{color:#34d399}
+.pring{position:relative;flex:none;width:30px;height:30px;font-style:normal}
+.pring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
+.pring circle{fill:none;stroke-width:3}
+.pring .rt{fill:#0a0c10;stroke:rgba(150,160,175,.32)}
+.pring .ra{stroke:#1D9E75;stroke-linecap:round;transition:stroke-dasharray .2s}
+.pring[data-st=on] .rt{stroke:rgba(29,158,117,.55)}
+.pring:not([data-lv=g]):not([data-lv=o]):not([data-lv=r]) .ra{display:none}
+.pring[data-lv=o] .ra{stroke:#EF9F27}.pring[data-lv=r] .ra{stroke:#E24B4A}
+.pring[data-st=busy] .rt{stroke:#EF9F27;animation:v2blink 1s ease-in-out infinite}
+.pring[data-st=lost] .rt{stroke:#E24B4A}
+.pring b{position:absolute;inset:0;display:grid;place-items:center;font:800 9px var(--f-body);color:#e8e8ea;letter-spacing:-.02em}
+.pring[data-st=off] b{color:#8a93a0}
+html[data-ui=light]:not(.dash) .pring .rt{fill:none}html[data-ui=light]:not(.dash) .pring b{color:var(--fg)}html[data-ui=light]:not(.dash) .pring[data-st=off] b{color:var(--muted)}html[data-ui=light]:not(.dash) .v2-pill.rings[data-st=on] .ptx{color:#0b6b4f}
+html.dash-l .pring{width:26px;height:26px}html.dash-l .pring b{font-size:8px}
+html[data-cb] .pring[data-st=on] .rt{stroke:rgba(86,180,233,.55)}html[data-cb] .pring .ra{stroke:#56B4E9}html[data-cb] .pring[data-st=lost] .rt,html[data-cb] .pring[data-lv=r] .ra{stroke:#D55E00}
 .v2-pill .pbat.low{color:#E24B4A}
 .v2-pill:active{background:var(--panel)}
 html.dash-l .v2-pill{min-height:36px}
@@ -1581,6 +1604,8 @@ html[data-ui=light]:not(.dash) .lx-lb.on{background:#fff4c2;border-color:#d9a400
 .v2-icb .ic{width:24px;height:24px}.v2-icb .mi{width:30px;height:30px;fill:#ffc400}.v2-icb[aria-pressed=true] .mi{filter:drop-shadow(0 0 4px rgba(255,196,0,.45))}.v2-icb[aria-pressed=true]{border-color:var(--acc);color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
 .v2-noic{font-weight:800}
 .v2-knob.has-av{display:grid;place-items:center;overflow:hidden;background:#1d222b}
+.v2-av.ini{background:linear-gradient(135deg,#ffc400,#c26a00);color:#1a1406;font:800 15px/1 var(--f-body);letter-spacing:-.02em;box-shadow:inset 0 2px 3px rgba(255,255,255,.45)}
+.v2-knob.sm .v2-av.ini{font-size:9.5px;letter-spacing:-.04em}
 .v2-av{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;overflow:hidden}
 .v2-av img{width:100%;height:100%;object-fit:cover}.v2-av.ic{color:#ffd84a}.v2-av.ic .ic{width:68%;height:68%}.v2-av.ic .mi{width:62%;height:62%;fill:#ffc400}
 .v2-thw{position:relative}.v2-mph{display:block;width:100%;aspect-ratio:2/1;object-fit:cover;border-radius:10px}
@@ -1779,6 +1804,8 @@ html[data-cb] .sf-fill.warn,html[data-cb] .sf-tip.warn{stroke:#E69F00;color:#E69
 .v2-log{margin:6px 0;padding:8px 10px;max-height:220px;overflow:auto;font:11px/1.45 var(--f-mono);color:var(--fg);background:rgba(127,127,127,.12);border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text}
 .hmrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .wz-rows{display:grid;gap:8px;margin:4px 0 10px}
+.gpx-map{font:800 12px/1.3 ui-monospace,monospace;color:#ffd84a;text-align:center;margin:2px 0 6px;min-height:16px}
+.gpx-map.off{color:var(--muted,#8a93a0);font-weight:600}
 .v2-raw{font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0;padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.35)}
 .wz-row{display:grid;grid-template-columns:52px 1fr 1.5fr;gap:8px;align-items:center}
 .wz-row b{font-size:13px}.wz-row select{min-width:0;width:100%}
@@ -2393,7 +2420,7 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
         <button class="v2-li v2-sw" type="button" role="switch" aria-checked="true" id="sGpOn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h10a4 4 0 0 1 3.8 5.2l-1 3a2.5 2.5 0 0 1-4.3.7L14 15h-4l-1.5 1.9a2.5 2.5 0 0 1-4.3-.7l-1-3A4 4 0 0 1 7 8z"/></svg><span>Use gamepad</span><i class="tg" aria-hidden="true"></i></button>
         <input id="gpOn" type="checkbox" checked hidden>
         <div class="gpx-lbl">Sticks <em>live from the gamepad</em></div>
-        <div class="gpx-sticks"><div class="bdw padw gpx-w"><div class="bdw-h"><span><i class="bdw-chip">L3</i>Left stick</span></div><div class="pad gpx-pad" id="gpL"><i class="gpx-dz"></i><div class="knob rest"></div></div><div class="gpx-val" id="gpLV">0 · 0</div></div><div class="bdw padw gpx-w"><div class="bdw-h"><span><i class="bdw-chip">R3</i>Right stick</span></div><div class="pad gpx-pad" id="gpR"><i class="gpx-dz"></i><div class="knob rest"></div></div><div class="gpx-val" id="gpRV">0 · 0</div></div></div>
+        <div class="gpx-sticks"><div class="bdw padw gpx-w"><div class="bdw-h"><span><i class="bdw-chip">L3</i>Left stick</span></div><div class="gpx-map" id="gpLM" aria-live="off"></div><div class="pad gpx-pad" id="gpL"><i class="gpx-dz"></i><div class="knob rest"></div></div><div class="gpx-val" id="gpLV">0 · 0</div></div><div class="bdw padw gpx-w"><div class="bdw-h"><span><i class="bdw-chip">R3</i>Right stick</span></div><div class="gpx-map" id="gpRM" aria-live="off"></div><div class="pad gpx-pad" id="gpR"><i class="gpx-dz"></i><div class="knob rest"></div></div><div class="gpx-val" id="gpRV">0 · 0</div></div></div>
         <div class="set" style="margin-top:4px">
           <div class="set-row"><label for="gpDead"><span class="set-top"><span>Stick dead zone</span><output id="gpDeadOut">12%</output></span></label>
             <input id="gpDead" type="range" min="5" max="40" step="1" value="12"></div>
@@ -2487,11 +2514,7 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
               <label>Hub 3<select id="hub2"><option value="-1">Off</option><option value="0">M1</option><option value="1">M2</option><option value="2">M3</option></select><select id="hubT2" class="hubT" aria-label="Hub 3 type"><option value="6">MK 6.0</option><option value="4">MK 4.0</option><option value="40">MK 4.0 on/off</option><option value="14">H4.0 (direct)</option><option value="16">H6.0 (direct)</option></select></label>
             </div>
             <p class="note" id="hubTNote">MK 4.0 hubs have 4 ports (A–D) and 7 speed steps each way. Older MK 4.0 on/off boxes only switch each port on or off (full power). H4.0 and H6.0 hubs connect directly, so choose the hub with Find hub (untested on real hubs).</p>
-            <div class="hmrow" id="m4rRow">
-              <label><span>4.0 reverse code (test)</span><select id="m4r"><option value="0">A · BC2 / OpenCrown</option><option value="1">B · mirrored (8 − n)</option><option value="2">C · sign bit (8 + n) · default</option></select></label>
-              <label><span>4.0 on/off reverse code (test)</span><select id="oor"><option value="0">A · reverse bit · default</option><option value="1">B · reverse + on bits</option></select></label>
-            </div>
-            <p class="note">If reverse does nothing on a 4.0 hub, try B, then C. The connection log shows the bytes sent.</p>
+
             <div id="hAddr" hidden></div>
             <label class="hstall"><input type="checkbox" id="hStall" checked> Stall protection for H4.0 / H6.0 hubs (the hub stops a blocked motor)</label>
           </div>

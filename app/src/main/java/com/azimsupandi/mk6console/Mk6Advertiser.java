@@ -55,8 +55,8 @@ final class Mk6Advertiser {
     static final int ONOFF_THRESHOLD = 20;
 
     /*
-     * Reverse codes to try on real 4.0 hubs (test build: the references disagree and the first
-     * hubs did not reverse with the BC2 / OpenCrown codes).
+     * Reverse codes for the 4.0 hubs. The published references disagree; tests on real hubs
+     * settled on 2 for 4.0 speed hubs and 0 for on/off boxes (the defaults). The others stay for the tests.
      * 4.0 speed: 0 = reverse step n -> n (BC2, OpenCrown), 1 = 8 - n (mirrors forward 8 + n),
      *            2 = sign bit: forward n, reverse 8 + n (MouldKingino).
      * 4.0 on/off: 0 = reverse bit only (OpenCrown), 1 = reverse and forward bits together.
