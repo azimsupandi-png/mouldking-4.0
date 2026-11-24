@@ -550,7 +550,7 @@ async def t_buggy(b):
     await pg.evaluate("for(var n=0;n<8;n++){var g=document.querySelector('#wrPanel .wr-grid [data-p=B]');if(g.getAttribute('data-t')==='bg')break;g.click()}"); await pg.wait_for_timeout(300)
     CRO = "(function(){var R=document.getElementById('wrHost').shadowRoot;return [R.getElementById('croB_0').getAttribute('transform'),R.getElementById('croB_1_0').getAttribute('transform')]})()"
     r = await pg.evaluate("(function(){var R=document.getElementById('wrHost').shadowRoot;return [!!R.querySelector('#ptB image[href*=\"bg.webp\"]'),!!R.getElementById('croB_0'),!!R.getElementById('croB_1_0'),JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.pf[1]]})()")
-    g = await pg.evaluate("[...document.querySelectorAll('#wrPanel .wr-grid button')].map(b=>b.getAttribute('data-p')).join('')+'|'+!!document.querySelector('#wrPanel .wr-wig')")
+    g = await pg.evaluate("[...document.querySelectorAll('#wrPanel .wr-grid button:not(.wr-add)')].map(b=>b.getAttribute('data-p')).join('')+'|'+!!document.querySelector('#wrPanel .wr-wig')")
     h0 = await pg.evaluate("for(var n=0;n<8;n++){var g=document.querySelector('#wrPanel .wr-grid [data-p=B]');if(g.getAttribute('data-t')==='')break;g.click()};[document.querySelector('#wrPanel .wr-holds').hidden,document.querySelector('#wrPanel .wr-tst').hidden]")
     check('110 Nothing on the port: Hold buttons and test slider still shown', h0 == [False, False], h0)
     await pg.evaluate("for(var n=0;n<8;n++){var g=document.querySelector('#wrPanel .wr-grid [data-p=B]');if(g.getAttribute('data-t')==='bg')break;g.click()}")
