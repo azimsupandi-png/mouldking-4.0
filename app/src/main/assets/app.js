@@ -6407,7 +6407,7 @@ var HUBS={
 // his motor drawing (4.0 A/B). Each drawing is laid over the hub picture with one straight transform found from the hub
 // itself, so the connector sits exactly where he drew it; the other ports get the same picture moved by the port spacing.
 // 6.0: b = B D F (cable to the back), f = A C E (to the front); 4.0: ab = A B (mouth to the A/B end), cd = C D (to the C/D end)
-var PLUGS={b:{W:557,H:437,ex:[20,95]},f:{W:560,H:403,ex:[470,250]},cd:{W:234,H:187,ex:[200,60]},ab:{W:231,H:158,ex:[40,100]}};
+var PLUGS={b:{W:557,H:437,ex:[20,95]},f:{W:560,H:403,ex:[470,305]},cd:{W:234,H:187,ex:[200,60]},ab:{W:231,H:158,ex:[30,104]}};
 // where each port's connector picture sits on the hub picture (svg matrix a b c d e f, hub picture px)
 var PLUGM={'6':{A:[0.6681,0.0526,-0.1709,0.8052,394.2215,282.8829],B:[0.6635,0.0568,-0.1727,0.8043,244.7578,133.4669],C:[0.6681,0.0526,-0.1709,0.8052,598.9058,186.1291],D:[0.6635,0.0568,-0.1727,0.8043,449.4421,36.7131],E:[0.6681,0.0526,-0.1709,0.8052,803.5901,89.3752],F:[0.6635,0.0568,-0.1727,0.8043,654.1264,-60.0407]},'4':{A:[1.5113,0.0000,0.0000,1.5113,251.5492,202.7933],B:[1.5113,0.0000,0.0000,1.5113,82.7953,120.8508],C:[1.4500,0.0012,-0.0012,1.4500,417.0759,-65.2843],D:[1.4500,0.0012,-0.0012,1.4500,585.8298,16.6582]}};
 var HKIND='',HIMG='',PORTS={};
@@ -6451,7 +6451,7 @@ function plugSvg(k){var g=plg(k),P=PLUGS[PORTS[k][4]],cn=[LP(g,-PLW,-PLI),LP(g,P
 function portHit(k){var q=PORTS[k],c=W(q[0],q[1],HZ);return '<circle class="sock" data-p="'+k+'" cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" r="44" fill="transparent" style="cursor:pointer"/>'}
 // cables that leave a plug up the screen pass behind the plugs, the others in front
 var CABB=[],CABF=[];
-function cabSides(){CABB=[];CABF=[];Object.keys(PORTS).forEach(function(k){if(!ST[k]||ST[k].na) return;(plugExit(k).oy<0?CABB:CABF).push(k)})}
+function cabSides(){CABB=[];CABF=[];Object.keys(PORTS).forEach(function(k){if(!ST[k]||ST[k].na) return;(plugExit(k).oy<0&&PORTS[k][4]!=='ab'?CABB:CABF).push(k)})}
 var CW=SS*.62;   // cable width taken from the diagram: four cores fill the plug's cable tab
 
 function roundRun(P,r){var out=[P[0]];
@@ -6467,7 +6467,7 @@ function roundRun(P,r){var out=[P[0]];
 function segHit(a,b,r){var x0=r[0],y0=r[1],x1=r[2],y1=r[3],t0=0,t1=1,dx=b[0]-a[0],dy=b[1]-a[1],P=[-dx,dx,-dy,dy],Q=[a[0]-x0,x1-a[0],a[1]-y0,y1-a[1]];
  for(var i=0;i<4;i++){if(P[i]===0){if(Q[i]<0) return false}else{var t=Q[i]/P[i];if(P[i]<0){if(t>t1) return false;if(t>t0) t0=t}else{if(t<t0) return false;if(t<t1) t1=t}}}return t1-t0>.02}
 function routeOf(k,off){var t=ST[k].t,f=fit(t,k),ex=EXIT[t],e=plugExit(k),A=[e.x,e.y],B=[f.x+ex[0]*f.w,f.y+ex[1]*f.h],G=SS*.5;
- var p1=[A[0]+e.ox*SS*.75,A[1]+e.oy*SS*.75],Bq=[B[0]+SS*.7,B[1]],H=HUBR,back=!!e.top;
+ var pk=PORTS[k]&&PORTS[k][4],lead=pk==='ab'?1.2:e.top?.75:1.7,rt=pk==='ab'?-.5236:e.top?0:.3491,ux=e.ox*Math.cos(rt)-e.oy*Math.sin(rt),uy=e.ox*Math.sin(rt)+e.oy*Math.cos(rt),p1=[A[0]+ux*SS*lead,A[1]+uy*SS*lead],Bq=[B[0]+SS*.7,B[1]],H=HUBR,back=!!e.top;
  var L=back?H[1]-SS*.6-off*G:H[3]+SS*.6+off*G,Lo=back?H[3]+SS*.6+off*G:H[1]-SS*.6-off*G,xl=H[0]-SS*.6-off*G,xr=H[2]+SS*.6+off*G;
  var C=[[p1,[p1[0],Bq[1]],Bq],[p1,[p1[0],L],[Bq[0],L],Bq]];
  [xl,xr].forEach(function(xs){C.push([p1,[p1[0],L],[xs,L],[xs,Bq[1]],Bq]);C.push([p1,[p1[0],L],[xs,L],[xs,Lo],[Bq[0],Lo],Bq])});
@@ -6540,10 +6540,10 @@ function render(){hubKind();layout();var s='<defs>'+DEFS.replace(/^<defs>|<\/def
  
  // back row first (cables leave behind the plugs), then the front row with its cables on top
  cabSides();s+='<g id="cabB" pointer-events="none">';CABB.forEach(function(k){cab(k)});s+='</g>';
- // every cable starts inside its connector: drawn before the plugs, it shows coming out of the connector mouth
- s+='<g id="cabF" pointer-events="none">';CABF.forEach(function(k){cab(k)});s+='</g>';
  // plugs back to front, so a nearer plug overlaps the one behind it
  Object.keys(PORTS).filter(function(k){return ST[k]&&!ST[k].na}).sort(function(a,b){return W(PORTS[a][0],PORTS[a][1],HZ)[1]-W(PORTS[b][0],PORTS[b][1],HZ)[1]}).forEach(function(k){s+=ST[k].t?plugSvg(k):portHit(k)});
+ // front cables leave the slot at the bottom of the connector's front face, straight out toward the viewer (as in the user's drawing)
+ s+='<g id="cabF" pointer-events="none">';CABF.forEach(function(k){cab(k)});s+='</g>';
  // scale bar: 5 studs = 4 cm
  s+='<g transform="translate(40 1535)"><path d="M0 0h'+(5*U)+'M0 -8v16M'+(5*U)+' -8v16" stroke="#8a93a0" stroke-width="2"/>';for(var q=1;q<5;q++) s+='<path d="M'+(q*U)+' -4v8" stroke="#8a93a0" stroke-width="1.5"/>';
  s+='<text x="0" y="-16" font-size="24" fill="#8a93a0" font-family="Inter,Arial" font-weight="700">'+tr2('5 studs = 4 cm')+'</text></g>';
