@@ -6407,9 +6407,9 @@ var HUBS={
 // his motor drawing (4.0 A/B). Each drawing is laid over the hub picture with one straight transform found from the hub
 // itself, so the connector sits exactly where he drew it; the other ports get the same picture moved by the port spacing.
 // 6.0: b = B D F (cable to the back), f = A C E (to the front); 4.0: ab = A B (mouth to the A/B end), cd = C D (to the C/D end)
-var PLUGS={b:{W:429,H:367,ex:[40,95]},f:{W:439,H:334,ex:[372,252]},cd:{W:234,H:187,ex:[200,60]},ab:{W:231,H:158,ex:[30,104]}};
+var PLUGS={b:{W:429,H:367,ex:[40,95]},f:{W:439,H:334,ex:[372,252]},cd:{W:394,H:347,ex:[280,140]},ab:{W:391,H:318,ex:[110,184]}};
 // where each port's connector picture sits on the hub picture (svg matrix a b c d e f, hub picture px)
-var PLUGM={'6':{A:[0.5450,0,0,0.5450,252.00,183.00],B:[0.5450,0,0,0.5450,128.00,101.00],C:[0.5450,0,0,0.5450,378.00,119.00],D:[0.5450,0,0,0.5450,253.00,37.00],E:[0.5450,0,0,0.5450,502.00,55.00],F:[0.5450,0,0,0.5450,378.00,-27.00]},'4':{A:[1.5113,0.0000,0.0000,1.5113,251.5492,202.7933],B:[1.5113,0.0000,0.0000,1.5113,82.7953,120.8508],C:[1.4500,0.0012,-0.0012,1.4500,417.0759,-65.2843],D:[1.4500,0.0012,-0.0012,1.4500,585.8298,16.6582]}};
+var PLUGM={'6':{A:[0.5450,0,0,0.5450,252.00,183.00],B:[0.5450,0,0,0.5450,128.00,101.00],C:[0.5450,0,0,0.5450,378.00,119.00],D:[0.5450,0,0,0.5450,253.00,37.00],E:[0.5450,0,0,0.5450,502.00,55.00],F:[0.5450,0,0,0.5450,378.00,-27.00]},'4':{A:[1.5113,0.0000,0.0000,1.5113,130.6452,81.8893],B:[1.5113,0.0000,0.0000,1.5113,-38.1087,-0.0532],C:[1.4500,0.0012,-0.0012,1.4500,301.1719,-181.3803],D:[1.4500,0.0012,-0.0012,1.4500,469.9258,-99.4378]}};
 var HKIND='',HIMG='',PORTS={};
 function hubKind(){var k=isMk4(WR.slot)?'4':'6',h=HUBS[k];HM=h.M;HK=h.K;HWH=h.WH;HIMG=h.img;PORTS=h.P;AZ=[0,-HK*h.AZ];if(HKIND!==k){HKIND=k;slotsFor(k)}}
 function W(x,y,z){return [HP[0]+HK*(HM[0][0]*x+HM[0][1]*y+HM[0][2])+(z-HZ)*AZ[0],HP[1]+HK*(HM[1][0]*x+HM[1][1]*y+HM[1][2])+(z-HZ)*AZ[1]]}
@@ -6434,17 +6434,28 @@ function hub3d(){var c=[HP[0]+HWH[0]*HK*.5,HP[1]+HWH[1]*HK*.93];
 // blue status LED next to the USB port (6.0) or inside the middle push button (4.0): it blinks the hub's number (hub 1 once, hub 2 twice, hub 3 three times,
 // quickly) and pauses, with a blue glow pulse on every blink
 function hubLed(){var h=HUBS[HKIND];if(!h||!h.led) return '';var n=Math.max(1,Math.min(3,(WR.slot|0)+1)),c=[HP[0]+HK*h.led[0],HP[1]+HK*h.led[1]],rx=HK*h.led[2],ry=HK*h.led[3];
- var on='',dur=2.2,step=.22,kt=[0],vs=[0];for(var i=0;i<n;i++){var t0=i*step/dur,t1=(i*step+step*.55)/dur;kt.push(t0+.001,t1);vs.push(1,0)}kt.push(1);vs.push(0);
- var KT=kt.map(function(v){return v.toFixed(3)}).join(';'),V=vs.join(';'),V2=vs.map(function(v){return v?.9:0}).join(';'),R2=vs.map(function(v){return v?(rx*(h.ledPoly?2.4:4.2)).toFixed(1):(rx*1.4).toFixed(1)}).join(';');
- var an=function(attr,vals){return '<animate attributeName="'+attr+'" dur="'+dur+'s" repeatCount="indefinite" calcMode="discrete" keyTimes="'+KT+'" values="'+vals+'"/>'};
- return '<g class="hubled" pointer-events="none"><defs><radialGradient id="ledg"><stop offset="0" stop-color="#7fd0ff" stop-opacity=".95"/><stop offset=".45" stop-color="#1e8cff" stop-opacity=".55"/><stop offset="1" stop-color="#1e8cff" stop-opacity="0"/></radialGradient></defs>'+
-  '<circle cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" r="'+(rx*1.4).toFixed(1)+'" fill="url(#ledg)" opacity="0">'+an('opacity',V2)+an('r',R2)+'</circle>'+
-  (h.ledPoly?
-   // 4.0: the LED shines through the push button in the middle of the hub
-   (function(){var pts=h.ledPoly.map(function(q){return (HP[0]+HK*q[0]).toFixed(1)+','+(HP[1]+HK*q[1]).toFixed(1)}).join(' ');
-    return '<polygon points="'+pts+'" fill="#1e8cff" opacity="0" stroke-linejoin="round">'+an('opacity',vs.map(function(v){return v?.55:0}).join(';'))+'</polygon>'})():
-   '<ellipse cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" rx="'+rx.toFixed(1)+'" ry="'+ry.toFixed(1)+'" fill="#0d3f8a" stroke="#0b0c0e" stroke-width="1"/>'+
-   '<ellipse cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" rx="'+rx.toFixed(1)+'" ry="'+ry.toFixed(1)+'" fill="#4fb8ff" opacity="0">'+an('opacity',V)+'</ellipse>')+'</g>'}
+ // smooth blink: quick rise, short hold, soft fall; n blinks then a pause
+ var dur=2.4,step=.26,rise=.04,hold=.07,fall=.1,kt=[0],vs=[0];
+ for(var i=0;i<n;i++){var t=i*step;kt.push((t)/dur,(t+rise)/dur,(t+rise+hold)/dur,(t+rise+hold+fall)/dur);vs.push(0,1,1,0)}
+ kt.push(1);vs.push(0);
+ var KT=kt.map(function(v){return v.toFixed(4)}).join(';');
+ function an(attr,lo,hi){return '<animate attributeName="'+attr+'" dur="'+dur+'s" repeatCount="indefinite" calcMode="linear" keyTimes="'+KT+'" values="'+vs.map(function(v){return (lo+(hi-lo)*v).toFixed(2)}).join(';')+'"/>'}
+ var big=h.ledPoly?2.6:7.5,id='led'+HKIND,cx=c[0].toFixed(1),cy=c[1].toFixed(1);
+ var o='<g class="hubled" pointer-events="none"><defs>'+
+  '<radialGradient id="'+id+'h"><stop offset="0" stop-color="#5fd4ff" stop-opacity=".9"/><stop offset=".35" stop-color="#1f7bff" stop-opacity=".55"/><stop offset=".7" stop-color="#2b3cff" stop-opacity=".18"/><stop offset="1" stop-color="#2b3cff" stop-opacity="0"/></radialGradient>'+
+  '<radialGradient id="'+id+'c"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#d8f4ff"/><stop offset=".75" stop-color="#3fb6ff"/><stop offset="1" stop-color="#0a6cff"/></radialGradient>'+
+  '<filter id="'+id+'b" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="'+(rx*.9).toFixed(1)+'"/></filter></defs>';
+ // wide soft halo and a tighter bloom, both breathing with each blink
+ o+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+(rx*big*1.5).toFixed(1)+'" ry="'+(rx*big*1.1).toFixed(1)+'" fill="url(#'+id+'h)" opacity="0">'+an('opacity',0,.85)+'</ellipse>';
+ o+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+(rx*2.2).toFixed(1)+'" ry="'+(ry*2.2).toFixed(1)+'" fill="#3aa8ff" filter="url(#'+id+'b)" opacity="0">'+an('opacity',0,.9)+'</ellipse>';
+ if(h.ledPoly){var pts=h.ledPoly.map(function(q){return (HP[0]+HK*q[0]).toFixed(1)+','+(HP[1]+HK*q[1]).toFixed(1)}).join(' ');
+  // 4.0: the LED lights the push button from inside
+  o+='<polygon points="'+pts+'" fill="url(#'+id+'c)" stroke="#7fd8ff" stroke-width="1.2" stroke-linejoin="round" opacity="0">'+an('opacity',0,.92)+'</polygon>';}
+ else{
+  o+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+rx.toFixed(1)+'" ry="'+ry.toFixed(1)+'" fill="#0b2f6b" stroke="#0b0c0e" stroke-width="1"/>';
+  o+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+rx.toFixed(1)+'" ry="'+ry.toFixed(1)+'" fill="url(#'+id+'c)" opacity="0">'+an('opacity',0,1)+'</ellipse>';
+  o+='<ellipse cx="'+(c[0]-rx*.3).toFixed(1)+'" cy="'+(c[1]-ry*.35).toFixed(1)+'" rx="'+(rx*.35).toFixed(1)+'" ry="'+(ry*.3).toFixed(1)+'" fill="#ffffff" opacity=".35"/>';}
+ return o+'</g>'}
 // plug footprint: 2 x 2 studs, width = port pitch so plugs touch; contact half over the port, stud half over the two hub studs
 // PF plug, 2 x 2 studs: contact half on the port, stud half on the two studs inward, cable leaving from the contact end.
 // Drawn in the plug's own frame on the hub plan: a along the port (side s), b along the cable way (o); the hub picture decides the view.
