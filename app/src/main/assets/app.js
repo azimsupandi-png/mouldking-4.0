@@ -3,6 +3,21 @@
 
 document.documentElement.classList.remove('booting');
 
+/* Port colour tags A-F: one colour per channel letter, shared by the wiring plugs, the wiring labels and the dashboard chips */
+var PCOL={A:'#E24B4A',B:'#1D9E75',C:'#3A9BDC',D:'#FFC400',E:'#9B5DE5',F:'#A0663C'};
+function pcolOf(t){var m=/([A-F])\+?$/.exec(String(t||'').trim());return m?PCOL[m[1]]:''}
+function pcolInk(c){return c===PCOL.D?'#141414':'#ffffff'}
+(function(){
+  var q=0;
+  function paint(){q=0;var n=document.querySelectorAll('.bdw-chip,.ch-head .tag');
+    for(var i=0;i<n.length;i++){var e=n[i],c=pcolOf(e.textContent);if(e._pc===c) continue;e._pc=c;
+      if(c){e.style.background=c;e.style.color=pcolInk(c);if(e.classList.contains('tag')) e.style.borderLeftColor=c}
+      else{e.style.background='';e.style.color='';e.style.borderLeftColor=''}}}
+  function soon(){if(!q) q=requestAnimationFrame(paint)}
+  try{new MutationObserver(soon).observe(document.documentElement,{childList:true,subtree:true,characterData:true})}catch(e){}
+  if(document.readyState!=='loading') soon();else document.addEventListener('DOMContentLoaded',soon);
+})();
+
 /* ---- block 1 ---- */
 try{
 (function(){
@@ -6399,7 +6414,7 @@ var HM=[[-0.53579,-0.46667,1307.89668],[0.25023,-0.3043,143.12769]],HK=.6,HWH=[1
 // AZ = picture px per stud upward, K scales the picture. P: centre of each port's contact half on the plan and the way its
 // cable leaves; the stud half of the connector sits on the two hub studs inward.
 var HUBS={
- '6':{led:[308.8,361.8,7.5,4.6],img:'img/pf/hub6.webp',WH:[870,734],M:[[0.384615, 0.390769, -730.536], [-0.196923, 0.181538, 365.845]],K:0.82,AZ:63,
+ '6':{led:[325.7,372.4,7.5,4.6],img:'img/pf/hub6.webp',WH:[887,752],M:[[0.384615, 0.390769, -694.551], [-0.196923, 0.181538, 365.845]],K:0.82,AZ:63,
   P:{A:[1541.74,1382.68,0,1,'f'],B:[1541.74,895.18,0,-1,'b'],C:[1867.6,1382.68,0,1,'f'],D:[1867.6,895.18,0,-1,'b'],E:[2192.03,1382.68,0,1,'f'],F:[2192.03,895.18,0,-1,'b']}},
  '4':{led:[531,227,22,13],ledPoly:[[470,224],[527,199],[594,227],[533,255]],img:'img/pf/hub4.webp',WH:[1003,846],M:[[0.508856, 0.519224, -1521.952875], [-0.248186, 0.252122, 425.916552]],K:0.58,AZ:103.198,
   P:{A:[1950.0,1746.15,-1,0,'ab'],B:[1950.0,1420.86,-1,0,'ab'],C:[2762.5,1420.86,1,0,'cd'],D:[2762.5,1746.15,1,0,'cd']}}};
@@ -6409,7 +6424,7 @@ var HUBS={
 // 6.0: b = B D F (cable to the back), f = A C E (to the front); 4.0: ab = A B (mouth to the A/B end), cd = C D (to the C/D end)
 var PLUGS={b:{W:429,H:367,ex:[40,95]},f:{W:439,H:334,ex:[372,252]},cd:{W:394,H:347,ex:[280,140]},ab:{W:391,H:318,ex:[110,184]}};
 // where each port's connector picture sits on the hub picture (svg matrix a b c d e f, hub picture px)
-var PLUGM={'6':{A:[0.5450,0,0,0.5450,252.00,183.00],B:[0.5450,0,0,0.5450,128.00,101.00],C:[0.5450,0,0,0.5450,378.00,119.00],D:[0.5450,0,0,0.5450,253.00,37.00],E:[0.5450,0,0,0.5450,502.00,55.00],F:[0.5450,0,0,0.5450,378.00,-27.00]},'4':{A:[1.5113,0.0000,0.0000,1.5113,130.6452,81.8893],B:[1.5113,0.0000,0.0000,1.5113,-38.1087,-0.0532],C:[1.4500,0.0012,-0.0012,1.4500,301.1719,-181.3803],D:[1.4500,0.0012,-0.0012,1.4500,469.9258,-99.4378]}};
+var PLUGM={'6':{A:[0.5850,0,0,0.5850,280.98,176.00],B:[0.5750,0,0,0.5750,160.98,96.00],C:[0.5800,0,0,0.5800,405.98,112.00],D:[0.5750,0,0,0.5750,284.98,32.00],E:[0.5800,0,0,0.5800,529.98,49.00],F:[0.5750,0,0,0.5750,408.98,-31.00]},'4':{A:[1.5113,0.0000,0.0000,1.5113,130.6452,81.8893],B:[1.5113,0.0000,0.0000,1.5113,-38.1087,-0.0532],C:[1.4500,0.0012,-0.0012,1.4500,301.1719,-181.3803],D:[1.4500,0.0012,-0.0012,1.4500,469.9258,-99.4378]}};
 var HKIND='',HIMG='',PORTS={};
 function hubKind(){var k=isMk4(WR.slot)?'4':'6',h=HUBS[k];HM=h.M;HK=h.K;HWH=h.WH;HIMG=h.img;PORTS=h.P;AZ=[0,-HK*h.AZ];if(HKIND!==k){HKIND=k;slotsFor(k)}}
 function W(x,y,z){return [HP[0]+HK*(HM[0][0]*x+HM[0][1]*y+HM[0][2])+(z-HZ)*AZ[0],HP[1]+HK*(HM[1][0]*x+HM[1][1]*y+HM[1][2])+(z-HZ)*AZ[1]]}
@@ -6469,10 +6484,19 @@ function plugPt(T,x,y){var m=T.m;return [m[0]*x+m[2]*y+m[4],m[1]*x+m[3]*y+m[5]]}
 function plugExit(k){var g=plg(k),c=LP(g,0,PLO),z=HZ+PZ*.32,p=W(c[0],c[1],z),q=W(c[0]+g.o[0]*100,c[1]+g.o[1]*100,z),dx=q[0]-p[0],dy=q[1]-p[1],l=Math.hypot(dx,dy)||1;
  var T=plugT(k);if(T.P.ex) p=plugPt(T,T.P.ex[0],T.P.ex[1]);
  return {x:p[0],y:p[1],ox:dx/l,oy:dy/l,top:!!(SLOT[k]&&SLOT[k].top)}}
+// colour tag on the plug head, drawn in the plug picture's own pixels so it follows the plug exactly
+var PTAG={f:{c:[348,146],a:[100,-54.4],b:[63,32.7],sa:.47,sb:.45},b:{c:[86,46],a:[101.7,-55.3],b:[63,32.7],sa:.45,sb:.40}};
+function plugTag(k,T){var t=PTAG[PORTS[k][4]],col=PCOL[k];if(!t||!col) return '';
+ var P=function(i,j){return plugPt(T,t.c[0]+i*t.a[0]+j*t.b[0],t.c[1]+i*t.a[1]+j*t.b[1])},A=t.sa,B=t.sb;
+ var q=[P(-A,-B),P(A,-B),P(A,B),P(-A,B)].map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1)}).join(' ');
+ var o=P(0,0),ux=P(1,0),vy=P(0,1),la=[(ux[0]-o[0]),(ux[1]-o[1])],lb=[(vy[0]-o[0]),(vy[1]-o[1])],na=Math.hypot(la[0],la[1]),fs=Math.hypot(lb[0],lb[1])*B*1.35;
+ var m=[la[0]/na,la[1]/na,lb[0]/Math.hypot(lb[0],lb[1]),lb[1]/Math.hypot(lb[0],lb[1]),o[0],o[1]].map(function(v){return v.toFixed(4)}).join(' ');
+ return '<polygon points="'+q+'" fill="'+col+'" stroke="#111" stroke-width="'+(HK*3).toFixed(2)+'" stroke-linejoin="round" pointer-events="none"/>'+
+  '<text transform="matrix('+m+')" x="0" y="'+(fs*.36).toFixed(1)+'" text-anchor="middle" font-size="'+fs.toFixed(1)+'" font-weight="800" fill="'+pcolInk(col)+'" font-family="Inter,Arial" pointer-events="none">'+k+'</text>'}
 function plugSvg(k){var g=plg(k),P=PLUGS[PORTS[k][4]],cn=[LP(g,-PLW,-PLI),LP(g,PLW,-PLI),LP(g,PLW,PLO),LP(g,-PLW,PLO)];
  var T=plugT(k);
  return '<image href="img/pf/plug_'+PORTS[k][4]+'.webp" width="'+P.W+'" height="'+P.H+'" transform="matrix('+T.m.map(function(v){return v.toFixed(4)}).join(' ')+')" pointer-events="none"/>'+
-  '<polygon class="sock" data-p="'+k+'" points="'+cn.map(function(c){return W(c[0],c[1],HZ+PZ)}).map(pt).join(' ')+'" fill="transparent" style="cursor:pointer"/>'}
+  plugTag(k,T)+'<polygon class="sock" data-p="'+k+'" points="'+cn.map(function(c){return W(c[0],c[1],HZ+PZ)}).map(pt).join(' ')+'" fill="transparent" style="cursor:pointer"/>'}
 function portHit(k){var q=PORTS[k],c=W(q[0],q[1],HZ);return '<circle class="sock" data-p="'+k+'" cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" r="44" fill="transparent" style="cursor:pointer"/>'}
 // cables that leave a plug up the screen pass behind the plugs, the others in front
 var CABB=[],CABF=[];
@@ -6579,7 +6603,7 @@ function render(){hubKind();layout();var s='<defs>'+DEFS.replace(/^<defs>|<\/def
  // label: port letter and part on the first line, the channel's own name on the second
  Object.keys(SLOT).forEach(function(k){var t=ST[k].t;if(!t) return;var txt=tr2(PARTS[t]),nm=String((C.ch[ST[k].i]||{}).name||''),fs=26,w=58+Math.max(txt.length*fs*.56,nm.length*(fs-3)*.55),f=fit(t,k),x=f.x+f.w/2-w/2,y=f.y+f.h+4;
   s+='<g id="mvL'+k+'" pointer-events="none"><rect x="'+x+'" y="'+y+'" width="'+w.toFixed(0)+'" height="'+(nm?72:42)+'" rx="21" fill="#0d1014" fill-opacity=".86" stroke="#3a414d" stroke-width="2"/>'+
-   '<text x="'+(x+16)+'" y="'+(y+30)+'" font-size="'+fs+'" font-weight="900" fill="#ffd84a" font-family="Inter,Arial">'+k+'</text>'+
+   '<text x="'+(x+16)+'" y="'+(y+30)+'" font-size="'+fs+'" font-weight="900" fill="'+(PCOL[k]||'#ffd84a')+'" font-family="Inter,Arial">'+k+'</text>'+
    '<text x="'+(x+46)+'" y="'+(y+30)+'" font-size="'+(fs-2)+'" font-weight="700" fill="#e8e8ea" font-family="Inter,Arial">'+txt+'</text>'+
    (nm?'<text class="lbn" x="'+(x+46)+'" y="'+(y+60)+'" font-size="'+(fs-3)+'" font-weight="700" fill="#ffd84a" font-family="Inter,Arial">'+wesc(nm)+'</text>':'')+'</g>'});
  s=s.replace('<defs>','<defs>'+GR3+'<radialGradient id="btnBlk" cx="38%" cy="32%" r="70%"><stop offset="0" stop-color="#4a4e55"/><stop offset=".55" stop-color="#1a1c20"/><stop offset="1" stop-color="#08090b"/></radialGradient><pattern id="plate" width="'+U+'" height="'+U+'" patternUnits="userSpaceOnUse" x="'+(HX%U)+'" y="'+(HY%U)+'"><rect width="'+U+'" height="'+U+'" fill="#151920"/><circle cx="'+U/2+'" cy="'+(U/2+2)+'" r="'+(U*.3)+'" fill="#0e1116"/><circle cx="'+U/2+'" cy="'+U/2+'" r="'+(U*.3)+'" fill="#1a1f27" stroke="#20262f" stroke-width="1.5"/></pattern><filter id="soft" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="10"/></filter><linearGradient id="plugTop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6a7079"/><stop offset=".5" stop-color="#50555d"/><stop offset="1" stop-color="#3a3e45"/></linearGradient><radialGradient id="studD" cx="38%" cy="32%" r="70%"><stop offset="0" stop-color="#8a919b"/><stop offset=".6" stop-color="#555a62"/><stop offset="1" stop-color="#34383e"/></radialGradient><linearGradient id="plugG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a818b"/><stop offset=".5" stop-color="#4b5059"/><stop offset="1" stop-color="#2e3238"/></linearGradient>');
