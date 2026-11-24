@@ -6401,7 +6401,7 @@ var HM=[[-0.53579,-0.46667,1307.89668],[0.25023,-0.3043,143.12769]],HK=.6,HWH=[1
 var HUBS={
  '6':{led:[308.8,361.8,7.5,4.6],img:'img/pf/hub6.webp',WH:[870,734],M:[[0.384615, 0.390769, -730.536], [-0.196923, 0.181538, 365.845]],K:0.82,AZ:63,
   P:{A:[1541.74,1382.68,0,1,'f'],B:[1541.74,895.18,0,-1,'b'],C:[1867.6,1382.68,0,1,'f'],D:[1867.6,895.18,0,-1,'b'],E:[2192.03,1382.68,0,1,'f'],F:[2192.03,895.18,0,-1,'b']}},
- '4':{img:'img/pf/hub4.webp',WH:[1003,846],M:[[0.508856, 0.519224, -1521.952875], [-0.248186, 0.252122, 425.916552]],K:0.58,AZ:103.198,
+ '4':{led:[531,227,22,13],ledPoly:[[470,224],[527,199],[594,227],[533,255]],img:'img/pf/hub4.webp',WH:[1003,846],M:[[0.508856, 0.519224, -1521.952875], [-0.248186, 0.252122, 425.916552]],K:0.58,AZ:103.198,
   P:{A:[1950.0,1746.15,-1,0,'ab'],B:[1950.0,1420.86,-1,0,'ab'],C:[2762.5,1420.86,1,0,'cd'],D:[2762.5,1746.15,1,0,'cd']}}};
 // the user's connectors, cut straight from his drawings of a connector on the hub (6.0: his close-ups of a connector on B and on C; 4.0: on C) and from
 // his motor drawing (4.0 A/B). Each drawing is laid over the hub picture with one straight transform found from the hub
@@ -6430,17 +6430,21 @@ function cross(c,e1,r){var M='matrix('+e1[0]+' '+e1[1]+' '+AZ[0]+' '+AZ[1]+' '+c
  return '<path d="M'+(-w)+' '+(-r)+'H'+w+'V'+(-w)+'H'+r+'V'+w+'H'+w+'V'+r+'H'+(-w)+'V'+w+'H'+(-r)+'V'+(-w)+'H'+(-w)+'Z" fill="#1b1d21" stroke="#0b0c0e" stroke-width="0.04" transform="'+M+'"/>'}
 function hub3d(){var c=[HP[0]+HWH[0]*HK*.5,HP[1]+HWH[1]*HK*.93];
  return '<ellipse cx="'+c[0]+'" cy="'+c[1]+'" rx="'+(HWH[0]*HK*.46)+'" ry="'+(HWH[1]*HK*.09)+'" fill="#000" opacity=".55" filter="url(#soft)"/>'+
-  '<image class="hubg" href="'+HIMG+'" x="'+HP[0].toFixed(1)+'" y="'+HP[1].toFixed(1)+'" width="'+(HWH[0]*HK)+'" height="'+(HWH[1]*HK)+'"/>'+hubLed()}
-// blue status LED next to the USB port (6.0 picture): it blinks the hub's number (hub 1 once, hub 2 twice, hub 3 three times,
+  '<image class="hubg" href="'+HIMG+'" x="'+HP[0].toFixed(1)+'" y="'+HP[1].toFixed(1)+'" width="'+(HWH[0]*HK)+'" height="'+(HWH[1]*HK)+'"/>'+(HKIND==='4'?'':hubLed())}
+// blue status LED next to the USB port (6.0) or inside the middle push button (4.0): it blinks the hub's number (hub 1 once, hub 2 twice, hub 3 three times,
 // quickly) and pauses, with a blue glow pulse on every blink
 function hubLed(){var h=HUBS[HKIND];if(!h||!h.led) return '';var n=Math.max(1,Math.min(3,(WR.slot|0)+1)),c=[HP[0]+HK*h.led[0],HP[1]+HK*h.led[1]],rx=HK*h.led[2],ry=HK*h.led[3];
  var on='',dur=2.2,step=.22,kt=[0],vs=[0];for(var i=0;i<n;i++){var t0=i*step/dur,t1=(i*step+step*.55)/dur;kt.push(t0+.001,t1);vs.push(1,0)}kt.push(1);vs.push(0);
- var KT=kt.map(function(v){return v.toFixed(3)}).join(';'),V=vs.join(';'),V2=vs.map(function(v){return v?.9:0}).join(';'),R2=vs.map(function(v){return v?(rx*4.2).toFixed(1):(rx*1.4).toFixed(1)}).join(';');
+ var KT=kt.map(function(v){return v.toFixed(3)}).join(';'),V=vs.join(';'),V2=vs.map(function(v){return v?.9:0}).join(';'),R2=vs.map(function(v){return v?(rx*(h.ledPoly?2.4:4.2)).toFixed(1):(rx*1.4).toFixed(1)}).join(';');
  var an=function(attr,vals){return '<animate attributeName="'+attr+'" dur="'+dur+'s" repeatCount="indefinite" calcMode="discrete" keyTimes="'+KT+'" values="'+vals+'"/>'};
  return '<g class="hubled" pointer-events="none"><defs><radialGradient id="ledg"><stop offset="0" stop-color="#7fd0ff" stop-opacity=".95"/><stop offset=".45" stop-color="#1e8cff" stop-opacity=".55"/><stop offset="1" stop-color="#1e8cff" stop-opacity="0"/></radialGradient></defs>'+
   '<circle cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" r="'+(rx*1.4).toFixed(1)+'" fill="url(#ledg)" opacity="0">'+an('opacity',V2)+an('r',R2)+'</circle>'+
-  '<ellipse cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" rx="'+rx.toFixed(1)+'" ry="'+ry.toFixed(1)+'" fill="#0d3f8a" stroke="#0b0c0e" stroke-width="1"/>'+
-  '<ellipse cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" rx="'+rx.toFixed(1)+'" ry="'+ry.toFixed(1)+'" fill="#4fb8ff" opacity="0">'+an('opacity',V)+'</ellipse></g>'}
+  (h.ledPoly?
+   // 4.0: the LED shines through the push button in the middle of the hub
+   (function(){var pts=h.ledPoly.map(function(q){return (HP[0]+HK*q[0]).toFixed(1)+','+(HP[1]+HK*q[1]).toFixed(1)}).join(' ');
+    return '<polygon points="'+pts+'" fill="#1e8cff" opacity="0" stroke-linejoin="round">'+an('opacity',vs.map(function(v){return v?.55:0}).join(';'))+'</polygon>'})():
+   '<ellipse cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" rx="'+rx.toFixed(1)+'" ry="'+ry.toFixed(1)+'" fill="#0d3f8a" stroke="#0b0c0e" stroke-width="1"/>'+
+   '<ellipse cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" rx="'+rx.toFixed(1)+'" ry="'+ry.toFixed(1)+'" fill="#4fb8ff" opacity="0">'+an('opacity',V)+'</ellipse>')+'</g>'}
 // plug footprint: 2 x 2 studs, width = port pitch so plugs touch; contact half over the port, stud half over the two hub studs
 // PF plug, 2 x 2 studs: contact half on the port, stud half on the two studs inward, cable leaving from the contact end.
 // Drawn in the plug's own frame on the hub plan: a along the port (side s), b along the cable way (o); the hub picture decides the view.
@@ -6554,6 +6558,7 @@ function render(){hubKind();layout();var s='<defs>'+DEFS.replace(/^<defs>|<\/def
  Object.keys(PORTS).filter(function(k){return ST[k]&&!ST[k].na}).sort(function(a,b){return W(PORTS[a][0],PORTS[a][1],HZ)[1]-W(PORTS[b][0],PORTS[b][1],HZ)[1]}).forEach(function(k){s+=ST[k].t?plugSvg(k):portHit(k)});
  // front cables leave the slot at the bottom of the connector's front face, straight out toward the viewer (as in the user's drawing)
  s+='<g id="cabF" pointer-events="none">';CABF.forEach(function(k){cab(k)});s+='</g>';
+ if(HKIND==='4') s+=hubLed();   // 4.0: the button LED shows over the connectors around it
  // scale bar: 5 studs = 4 cm
  s+='<g transform="translate(40 1535)"><path d="M0 0h'+(5*U)+'M0 -8v16M'+(5*U)+' -8v16" stroke="#8a93a0" stroke-width="2"/>';for(var q=1;q<5;q++) s+='<path d="M'+(q*U)+' -4v8" stroke="#8a93a0" stroke-width="1.5"/>';
  s+='<text x="0" y="-16" font-size="24" fill="#8a93a0" font-family="Inter,Arial" font-weight="700">'+tr2('5 studs = 4 cm')+'</text></g>';
