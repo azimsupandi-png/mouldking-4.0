@@ -6394,26 +6394,21 @@ var SS=U,AX=[-.84*SS,.40*SS],AY=[-.66*SS,-.42*SS],AZ=[0,-.84*SS],HZ=3.4,CZ=2.25,
 // the hub is the real picture (redrawn in the motor style); its top plane maps hub-drawing px onto picture px with this affine fit
 // (least squares on the 12 stud centres, rms 5 px); HK scales the picture so one stud matches U
 var HM=[[-0.53579,-0.46667,1307.89668],[0.25023,-0.3043,143.12769]],HK=.6,HWH=[1125,962],HP=[0,0];
-// Hub pictures (the user's reference drawings). M maps the hub plan (162 px = 1 stud) onto picture px (least squares on the
-// port centres, checked on the studs); K scales the picture so a stud is U; AZ = picture px per stud upward.
-// P: port centre on the plan and the way its plug's cable leaves (the contact half sits on the port, the stud half inward).
+// Hub pictures: the user's renders of the 6.0 and 4.0 hubs. Their camera was read off the matching wireframe views (the two
+// top-face axes, square studs, vertical up); M maps the hub plan (162.5 px = 1 stud) onto the hub top in picture px,
+// AZ = picture px per stud upward, K scales the picture. P: centre of each port's contact half on the plan and the way its
+// cable leaves; the stud half of the connector sits on the two hub studs inward.
 var HUBS={
- '6':{img:'img/pf/hub6.webp',WH:[1329,1134],M:[[0.65034,0.45833,-178.11154],[-0.2977,0.38403,450.5431]],K:.51,AZ:93,keep:[[243,468,62,40,0],[360,558,64,26,33]],
-  P:{B:[632,240,0,-1,'b'],D:[957,240,0,-1,'b'],F:[1270,240,0,-1,'b'],A:[632,720,0,1,'f'],C:[957,720,0,1,'f'],E:[1270,720,0,1,'f']}},
- // keep: spots of the hub picture (centre x, y, radii, turn) drawn again over the connectors so they always show (power button, USB)
- '4':{img:'img/pf/hub4.webp',WH:[1003,846],M:[[0.52244,0.5,2.4359],[-0.25962,0.26119,263.89208]],K:.58,AZ:88,
-  P:{B:[170,245,-1,0,'ab'],A:[170,580,-1,0,'ab'],C:[950,245,1,0,'cd'],D:[950,580,1,0,'cd']}}};
-// the user's connector pictures: size and the top centres of their two studs (stud at a = -1/2 stud first, then a = +1/2 stud)
-// 6.0: b = B D F (cable to the back), f = A C E (cable to the front); 4.0: ab = A B (cable to the A/B end), cd = C D (to the C/D end)
-// the user's connector, drawn from four sides (his drawing). Each side view was re-projected face by face (top, left, right)
-// into the hub picture's own view, so it stands square on the hub: off = picture corner from the near-left bottom corner of
-// the connector's 2x2 spot on the hub top, ex = where its cable leaves, both in hub picture px.
-// 6.0: b = B D F (cable to the back), f = A C E (to the front); 4.0: ab = A B (to the A/B end), cd = C D (to the C/D end)
-var PLUGS={b:{W:412,H:350,off:[-6.98,-217.74],ex:[52.84,-70.02]},f:{W:403,H:317,off:[-4.86,-184.91],ex:[307.48,23.18]},cd:{W:349,H:281,off:[-3.66,-189.08],ex:[291.67,-65.15]},ab:{W:348,H:253,off:[-7.05,-161.40],ex:[40.62,-6.99]}};
+ '6':{img:'img/pf/hub6.webp',WH:[1401,1193],M:[[0.668728, 0.506353, -1113.192733], [-0.313255, 0.413708, 464.477415]],K:0.49,AZ:107.091,
+  P:{A:[1478.07,1439.48,0,1,'f'],B:[1478.07,950.62,0,-1,'b'],C:[1801.72,1439.48,0,1,'f'],D:[1801.72,950.62,0,-1,'b'],E:[2126.72,1439.48,0,1,'f'],F:[2126.72,950.62,0,-1,'b']}},
+ '4':{img:'img/pf/hub4.webp',WH:[1098,921],M:[[0.55587, 0.558967, -1671.459417], [-0.271116, 0.269614, 467.777724]],K:0.55,AZ:112.024,
+  P:{A:[1963.74,1786.69,-1,0,'ab'],B:[1963.74,1459.27,-1,0,'ab'],C:[2773.82,1459.27,1,0,'cd'],D:[2773.82,1786.69,1,0,'cd']}}};
+// the user's connector, drawn from four sides (his drawing). Each side view is re-projected face by face (top, left, right)
+// into the hub camera, so it stands square on its 2x2 spot: off = picture corner from the near-left bottom corner of the spot
+// on the hub top, ex = where its cable leaves, both in hub picture px.
+// 6.0: b = B D F (housing to the back), f = A C E (mouth to the front); 4.0: ab = A B (mouth to the A/B end), cd = C D (housing to the C/D end)
+var PLUGS={b:{W:427,H:372,off:[-6.78,-230.03],ex:[54.33,-73.40]},f:{W:419,H:337,off:[-4.03,-195.05],ex:[327.57,27.70]},cd:{W:376,H:296,off:[-4.78,-201.46],ex:[316.91,-71.62]},ab:{W:376,H:268,off:[-7.81,-173.03],ex:[54.50,-4.96]}};
 var HKIND='',HIMG='',PORTS={};
-function hubKeep(){var h=HUBS[HKIND];if(!h||!h.keep) return '';var w=HWH[0]*HK,hh=HWH[1]*HK;
- return '<clipPath id="hkeep">'+h.keep.map(function(e){return '<ellipse cx="'+(HP[0]+e[0]*HK).toFixed(1)+'" cy="'+(HP[1]+e[1]*HK).toFixed(1)+'" rx="'+(e[2]*HK).toFixed(1)+'" ry="'+(e[3]*HK).toFixed(1)+'" transform="rotate('+e[4]+' '+(HP[0]+e[0]*HK).toFixed(1)+' '+(HP[1]+e[1]*HK).toFixed(1)+')"/>'}).join('')+'</clipPath>'+
-  '<image href="'+HIMG+'" x="'+HP[0].toFixed(1)+'" y="'+HP[1].toFixed(1)+'" width="'+w+'" height="'+hh+'" clip-path="url(#hkeep)" pointer-events="none"/>'}
 function hubKind(){var k=isMk4(WR.slot)?'4':'6',h=HUBS[k];HM=h.M;HK=h.K;HWH=h.WH;HIMG=h.img;PORTS=h.P;AZ=[0,-HK*h.AZ];if(HKIND!==k){HKIND=k;slotsFor(k)}}
 function W(x,y,z){return [HP[0]+HK*(HM[0][0]*x+HM[0][1]*y+HM[0][2])+(z-HZ)*AZ[0],HP[1]+HK*(HM[1][0]*x+HM[1][1]*y+HM[1][2])+(z-HZ)*AZ[1]]}
 function pt(q){return q[0].toFixed(1)+','+q[1].toFixed(1)}
