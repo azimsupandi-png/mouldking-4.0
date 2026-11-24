@@ -6403,11 +6403,11 @@ var HUBS={
   P:{A:[1541.74,1382.68,0,1,'f'],B:[1541.74,895.18,0,-1,'b'],C:[1867.6,1382.68,0,1,'f'],D:[1867.6,895.18,0,-1,'b'],E:[2192.03,1382.68,0,1,'f'],F:[2192.03,895.18,0,-1,'b']}},
  '4':{img:'img/pf/hub4.webp',WH:[1003,846],M:[[0.508856, 0.519224, -1521.952875], [-0.248186, 0.252122, 425.916552]],K:0.58,AZ:103.198,
   P:{A:[1950.0,1746.15,-1,0,'ab'],B:[1950.0,1420.86,-1,0,'ab'],C:[2762.5,1420.86,1,0,'cd'],D:[2762.5,1746.15,1,0,'cd']}}};
-// the user's connector, drawn from four sides (his drawing). Each side view is re-projected face by face (top, left, right)
-// into the hub camera, so it stands square on its 2x2 spot: off = picture corner from the near-left bottom corner of the spot
+// the user's connector, drawn from four sides (his drawing). Each view is placed with one straight transform (never bent):
+// vertical edges stay vertical, scale and the X/Y axis angles fitted to the hub camera, centred on its 2x2 spot: off = picture corner from the near-left bottom corner of the spot
 // on the hub top, ex = where its cable leaves, both in hub picture px.
 // 6.0: b = B D F (housing to the back), f = A C E (mouth to the front); 4.0: ab = A B (mouth to the A/B end), cd = C D (housing to the C/D end)
-var PLUGS={b:{W:404,H:353,off:[-5.79,-219.48],ex:[51.17,-69.99]},f:{W:399,H:327,off:[-4.85,-191.56],ex:[311.57,26.44]},cd:{W:348,H:274,off:[-6.10,-186.06],ex:[291.94,-65.59]},ab:{W:348,H:249,off:[-8.34,-159.38],ex:[50.62,-3.85]}};
+var PLUGS={b:{W:377,H:298,off:[-6.79,-180.48],ex:[45.34,-63.29]},f:{W:377,H:280,off:[-4.85,-160.56],ex:[317.39,17.51]},cd:{W:347,H:270,off:[-4.10,-183.06],ex:[292.36,-65.00]},ab:{W:348,H:246,off:[-7.34,-157.38],ex:[50.12,-4.78]}};
 var HKIND='',HIMG='',PORTS={};
 function hubKind(){var k=isMk4(WR.slot)?'4':'6',h=HUBS[k];HM=h.M;HK=h.K;HWH=h.WH;HIMG=h.img;PORTS=h.P;AZ=[0,-HK*h.AZ];if(HKIND!==k){HKIND=k;slotsFor(k)}}
 function W(x,y,z){return [HP[0]+HK*(HM[0][0]*x+HM[0][1]*y+HM[0][2])+(z-HZ)*AZ[0],HP[1]+HK*(HM[1][0]*x+HM[1][1]*y+HM[1][2])+(z-HZ)*AZ[1]]}
