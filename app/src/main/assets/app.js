@@ -6441,7 +6441,7 @@ function hubLed(){var h=HUBS[HKIND];if(!h||!h.led) return '';var n=Math.max(1,Ma
  var KT=kt.map(function(v){return v.toFixed(4)}).join(';');
  function an(attr,lo,hi){return '<animate attributeName="'+attr+'" dur="'+dur+'s" repeatCount="indefinite" calcMode="linear" keyTimes="'+KT+'" values="'+vs.map(function(v){return (lo+(hi-lo)*v).toFixed(2)}).join(';')+'"/>'}
  var big=h.ledPoly?2.6:7.5,id='led'+HKIND,cx=c[0].toFixed(1),cy=c[1].toFixed(1);
- var o='<g class="hubled" pointer-events="none"><defs>'+
+ var o='<g class="hubled" data-slot="'+(WR.slot|0)+'" pointer-events="none" style="display:'+(window.mk6HubOn&&window.mk6HubOn[WR.slot|0]?'':'none')+'"><defs>'+
   '<radialGradient id="'+id+'h"><stop offset="0" stop-color="#5fd4ff" stop-opacity=".9"/><stop offset=".35" stop-color="#1f7bff" stop-opacity=".55"/><stop offset=".7" stop-color="#2b3cff" stop-opacity=".18"/><stop offset="1" stop-color="#2b3cff" stop-opacity="0"/></radialGradient>'+
   '<radialGradient id="'+id+'c"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#d8f4ff"/><stop offset=".75" stop-color="#3fb6ff"/><stop offset="1" stop-color="#0a6cff"/></radialGradient>'+
   '<filter id="'+id+'b" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="'+(rx*.9).toFixed(1)+'"/></filter></defs>';
@@ -6970,7 +6970,7 @@ return API;
     if(box._k!==key){box._k=key;box.innerHTML=sl.map(function(q){
       return '<i class="pring" data-st="off"><svg viewBox="0 0 30 30"><circle class="rt" cx="15" cy="15" r="12.5"/><circle class="ra" cx="15" cy="15" r="12.5" pathLength="100" stroke-dasharray="0 100"/></svg><b>'+(RING_TAG[C.hubT?C.hubT[q]:6]||'6.0')+'</b></i>'}).join('')}
     pl.classList.toggle('rings',sl.length>0);
-    if(!sl.length) return;
+    if(!sl.length){window.mk6HubOn={};var wh0=document.getElementById('wrHost');if(wh0&&wh0.shadowRoot) wh0.shadowRoot.querySelectorAll('.hubled').forEach(function(g){g.style.display='none'});return}
     var d=LK.d||{},act=activeIdx();
     sl.forEach(function(q,ix){var r=box.children[ix];if(!r) return;var mx=0;
       for(var i=q*PER;i<q*PER+PER;i++) if(act.indexOf(i)>=0) mx=Math.max(mx,Math.abs(rt.o[i]||0));
@@ -6978,6 +6978,9 @@ return API;
       if(r.getAttribute('data-st')!==rs) r.setAttribute('data-st',rs);
       var lv=rs==='on'&&mx>0?(mx<=55?'g':mx<=80?'o':'r'):'';if((r._lv||'')!==lv){r._lv=lv;r.setAttribute('data-lv',lv)}
       var da=(rs==='on'?Math.round(mx):0)+' 100',a=r.querySelector('.ra');if(a._da!==da){a._da=da;a.setAttribute('stroke-dasharray',da)}});
+    // wiring status LED: lit only while that hub is active
+    var on={};sl.forEach(function(q,ix){var r=box.children[ix];on[q]=!!r&&r.getAttribute('data-st')==='on'});window.mk6HubOn=on;
+    var wh=document.getElementById('wrHost');if(wh&&wh.shadowRoot) wh.shadowRoot.querySelectorAll('.hubled').forEach(function(g){var v=on[+g.getAttribute('data-slot')]?'':'none';if(g.style.display!==v) g.style.display=v});
   }
   function v2Paint(){
     var busy=S.connected&&hubMsg==='Pairing…', real=RH();
