@@ -6352,6 +6352,9 @@ var DEFS='<defs>'+
 var IMG={m:{e:[94.33,440.16,21.95,57.7,162.05],W:900,H:677},l:{e:[83.4,459.65,18.81,50.01,162.03],W:900,H:676},xl:{e:[140.93,452.66,18.83,49.42,162.23],W:900,H:721},bg:{es:[[176.32,362.57,23.62,33.76,22.48],[294.34,325.22,23.68,33.77,23.09]],red:1,W:900,H:493},sv:{e:[82.9,595.64,18.94,49.24,161.34],W:900,H:757},lt:{lamps:[[0.012,0.66],[0.152,0.867]],W:408,H:286}};
 // outline of the visible part in each picture (traced from its alpha): taps land on the part, not on the clear corners of its picture
 var HIT={"m": "M858,118 829,102 785,48 739,12 739,0 639,0 637,14 144,178 118,196 106,222 44,245 13,305 0,306 0,405 14,407 23,458 23,543 100,611 144,676 222,676 226,661 885,443 886,350 899,349 899,194 886,193Z", "l": "M899,171 886,171 840,126 779,119 774,62 726,12 726,0 646,0 627,40 262,155 231,194 221,225 127,249 85,208 39,208 0,227 0,304 18,310 18,334 0,343 0,502 50,536 78,599 124,615 178,661 179,675 248,675 269,631 274,586 338,572 387,597 418,597 750,485 771,452 807,453 820,471 899,451Z", "xl": "M662,0 566,0 564,14 218,133 97,163 55,182 35,219 22,222 15,249 0,250 0,408 26,416 54,515 90,590 90,616 118,644 136,690 187,707 188,720 293,720 294,707 780,546 817,502 876,467 887,443 899,443 899,316 887,316 821,258 763,112 669,34Z", "bg": "M899,160 885,158 850,109 811,91 732,91 679,69 623,12 623,0 520,0 520,12 491,29 452,90 374,115 346,115 291,90 216,108 156,184 77,209 12,266 0,266 0,429 147,475 196,473 211,480 211,492 317,492 317,480 341,467 387,405 492,380 548,403 620,395 687,458 725,479 726,492 806,492 807,479 847,460 884,386 899,382Z", "sv": "M774,0 685,0 678,16 158,194 103,202 27,236 13,272 0,273 0,583 13,584 52,693 97,756 211,756 212,743 439,669 471,599 476,521 540,509 601,573 641,580 683,553 694,528 693,451 747,440 826,511 864,507 899,489 899,194 886,193 853,83 802,57Z", "lt": "M0,168 0,212 27,212 36,228 54,229 62,272 87,272 88,285 148,285 151,270 277,222 324,226 407,204 407,127 380,116 355,85 322,85 306,55 264,19 260,0 160,0 160,12 104,69 92,149Z"};
+// shown turning speed: the real rpm slowed down so the eye can follow it (a real 400 rpm axle turns too far between two frames
+// and looks the same at any speed); slow, medium and fast now look clearly different
+var VSPD=.12;
 var TAU={m:.12,l:.2,xl:.35,bg:.3,sv:.15,lt:.1},LAY=6;
 function mul(a,b){return [a[0]*b[0]+a[2]*b[1],a[1]*b[0]+a[3]*b[1],a[0]*b[2]+a[2]*b[3],a[1]*b[2]+a[3]*b[3],a[0]*b[4]+a[2]*b[5]+a[4],a[1]*b[4]+a[3]*b[5]+a[5]]}
 function rotM(d){var r=d*Math.PI/180,c=Math.cos(r),s=Math.sin(r);return [c,s,-s,c,0,0]}
@@ -6456,7 +6459,7 @@ var STKH={'6':.98,'4':.98};   // rise of a stacked plug, in studs (one connector
 function stackPorts(){var h=HUBS[HKIND];PORTS={};Object.keys(h.P).forEach(function(k){PORTS[k]=h.P[k]});
  Object.keys(SLOT).forEach(function(k){if(isStk(k)){delete SLOT[k];delete POS0[k]}});
  Object.keys(ST).forEach(function(k){if(!isStk(k)) return;var b=baseOf(k);PORTS[k]=h.P[b];SLOT[k]=SLOT[b];POS0[k]=POS0[b].slice()})}
-function hubKind(){var k=isMk4(WR.slot)?'4':'6',h=HUBS[k];HM=h.M;HK=h.K;HWH=h.WH;HIMG=h.img;PORTS=h.P;AZ=[0,-HK*h.AZ];CW=SS*.62*HK/(k==='4'?.58:.82);   // cable keeps the same fill of the plug's cable slot at any hub size
+function hubKind(){var k=isMk4(WR.slot)?'4':'6',h=HUBS[k];HM=h.M;HK=h.K;HWH=h.WH;HIMG=h.img;PORTS=h.P;AZ=[0,-HK*h.AZ];CW=STUD*.6;   // one cable width for every hub (about 0.6 stud, true scale)
  if(HKIND!==k){HKIND=k;slotsFor(k)}stackPorts()}
 function W(x,y,z){return [HP[0]+HK*(HM[0][0]*x+HM[0][1]*y+HM[0][2])+(z-HZ)*AZ[0],HP[1]+HK*(HM[1][0]*x+HM[1][1]*y+HM[1][2])+(z-HZ)*AZ[1]]}
 function pt(q){return q[0].toFixed(1)+','+q[1].toFixed(1)}
@@ -6729,7 +6732,7 @@ function animPort(k,x,dt){var t=x.t,d=IMG[t],R=WR.root;
  var f=Math.abs(x.v)/100,idle=!x.v&&!x.w&&(!isSvT(t)||Math.abs(x.ang)<.05);if(idle&&x.idle) return f;x.idle=idle;
  var trav=0;
  if(isSvT(t)){var step=Math.max(-300*dt,Math.min(300*dt,x.v*.9-x.ang));x.ang+=step;trav=step}
- else if(t!=='lt'){var wt=RPM[t]*6*x.v/100;x.w+=(wt-x.w)*Math.min(1,dt/TAU[t]);if(Math.abs(x.w)<12&&!wt) x.w=0;trav=x.w/60;x.ang=(x.ang+x.w*dt)%360}
+ else if(t!=='lt'){var wt=RPM[t]*6*x.v/100*VSPD;x.w+=(wt-x.w)*Math.min(1,dt/TAU[t]);if(Math.abs(x.w)<12&&!wt) x.w=0;trav=x.w/60;x.ang=(x.ang+x.w*dt)%360}
  // axle discs: up to LAY fading copies spread over the turn of this frame (motion blur)
  discsOf(d).forEach(function(e,q){var kk=k+(q?'_'+q:''),n=Math.max(1,Math.min(LAY,Math.ceil(Math.abs(trav)/6)));
   for(var j=0;j<LAY;j++){var el=R.getElementById('ly'+kk+'_'+j);if(!el) continue;
