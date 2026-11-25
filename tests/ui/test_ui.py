@@ -2211,6 +2211,9 @@ async def t_wire2(b):
     await pg.evaluate("window.MK6Bridge.send=function(){};document.getElementById('hubConn').click();onHubState('ready');mk6Go('hub')"); await pg.wait_for_timeout(1500)
     r = await pg.evaluate("getComputedStyle(document.getElementById('wrHost').shadowRoot.querySelector('.hubled')).display")
     check('hub LED lights once the hub is active', r != 'none', r)
+    await pg.evaluate("document.getElementById('hubConn').click()"); await pg.wait_for_timeout(600)
+    r = await pg.evaluate("getComputedStyle(document.getElementById('wrHost').shadowRoot.querySelector('.hubled')).display")
+    check('hub LED goes dark when the link is turned off', r == 'none', r)
     check('wire2 no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 

@@ -7042,7 +7042,10 @@ return API;
     if(box._k!==key){box._k=key;box.innerHTML=sl.map(function(q){
       return '<i class="pring" data-st="off"><svg viewBox="0 0 30 30"><circle class="rt" cx="15" cy="15" r="12.5"/><circle class="ra" cx="15" cy="15" r="12.5" pathLength="100" stroke-dasharray="0 100"/></svg><b>'+(RING_TAG[C.hubT?C.hubT[q]:6]||'6.0')+'</b></i>'}).join('')}
     pl.classList.toggle('rings',sl.length>0);
-    if(!sl.length){window.mk6HubOn={};var wh0=document.getElementById('wrHost');if(wh0&&wh0.shadowRoot) wh0.shadowRoot.querySelectorAll('.hubled').forEach(function(g){g.style.display='none'});return}
+    // wiring status LED: blinks whenever the link is up (a real hub after pairing, or Practice / Simulation on), on every hub of the model
+    var lit={};if(st==='on') [0,1,2].forEach(function(q){if(C.hubs[q]>=0) lit[q]=true});window.mk6HubOn=lit;
+    var whL=document.getElementById('wrHost');if(whL&&whL.shadowRoot) whL.shadowRoot.querySelectorAll('.hubled').forEach(function(g){var v=lit[+g.getAttribute('data-slot')]?'':'none';if(g.style.display!==v) g.style.display=v});
+    if(!sl.length) return;
     var d=LK.d||{},act=activeIdx();
     sl.forEach(function(q,ix){var r=box.children[ix];if(!r) return;var mx=0;
       for(var i=q*PER;i<q*PER+PER;i++) if(act.indexOf(i)>=0) mx=Math.max(mx,Math.abs(rt.o[i]||0));
@@ -7050,9 +7053,6 @@ return API;
       if(r.getAttribute('data-st')!==rs) r.setAttribute('data-st',rs);
       var lv=rs==='on'&&mx>0?(mx<=55?'g':mx<=80?'o':'r'):'';if((r._lv||'')!==lv){r._lv=lv;r.setAttribute('data-lv',lv)}
       var da=(rs==='on'?Math.round(mx):0)+' 100',a=r.querySelector('.ra');if(a._da!==da){a._da=da;a.setAttribute('stroke-dasharray',da)}});
-    // wiring status LED: blinks while the hub is on and the link is established (pairing done), whether or not a motor is running
-    var on={};sl.forEach(function(q){on[q]=st==='on'});window.mk6HubOn=on;
-    var wh=document.getElementById('wrHost');if(wh&&wh.shadowRoot) wh.shadowRoot.querySelectorAll('.hubled').forEach(function(g){var v=on[+g.getAttribute('data-slot')]?'':'none';if(g.style.display!==v) g.style.display=v});
   }
   function v2Paint(){
     var busy=S.connected&&hubMsg==='Pairing…', real=RH();
