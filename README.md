@@ -10,7 +10,8 @@ min Android 8 (API 26).
 | Path | What |
 |---|---|
 | `app/src/main/assets/index.html` | UI markup + CSS |
-| `app/src/main/assets/app.js` | UI code, loaded after the first frame |
+| `app/src/main/js/*.js` | UI code in 9 parts (models, channels/timelines, sticks/settings/link, dashboard widgets, gamepad/language, screens, wiring, hub tools, extras): edit these |
+| `app/src/main/assets/app.js` | the parts joined in name order (`python3 tools/join_js.py`; Gradle does it before each build), loaded after the first frame |
 | `app/src/main/assets/img/` | Knob images |
 | `app/src/main/java/.../MainActivity.java` | WebView host + `MK6Bridge` (BLE start/stop/stats, haptics, tilt, files, wallpaper, backups, shortcuts, theme bars, text size, sharing); edge-to-edge insets |
 | `app/src/main/java/.../ShareProvider.java` | Read-only provider for sharing one model file with other apps |
