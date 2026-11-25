@@ -2581,6 +2581,8 @@ try{
   /* ---------- Link, E-STOP, frames ---------- */
   var link=$('#link'), live=$('#live'), last=null, lastSend=0, sent=0, t0=performance.now(), lines=[];
   var hubMsg='';
+  // hub status LED in the wiring: lit only while the status shows Hub active (link up, pairing done)
+  function hubLinkUp(){return !!S.connected&&hubMsg!=='Pairing…'}
   var HUB_TEXT={off:'Bluetooth is off',btoff:'Bluetooth was switched off',denied:'Permission denied',unsupported:'BLE advertising not supported',error:'Bluetooth error'};
   S.bt=true;
   function paintBt(){
@@ -6479,7 +6481,7 @@ function hub3d(){var c=[HP[0]+HWH[0]*HK*.5,HP[1]+HWH[1]*HK*.93];
 // quickly) and pauses, with a blue glow pulse on every blink
 function hubLed(){var h=HUBS[HKIND];if(!h||!h.led) return '';var hm=(C.hubs&&C.hubs[WR.slot|0]>=0)?C.hubs[WR.slot|0]:(WR.slot|0),n=Math.max(1,Math.min(3,hm+1)),c=[HP[0]+HK*h.led[0],HP[1]+HK*h.led[1]],rx=HK*h.led[2],ry=HK*h.led[3];
  // smooth blink: quick rise, short hold, soft fall; n blinks then a pause
- var dur=2.4,step=.26,rise=.04,hold=.07,fall=.1,kt=[0],vs=[0];
+ var step=.26,dur=n*step+.9,rise=.04,hold=.07,fall=.1,kt=[0],vs=[0];
  for(var i=0;i<n;i++){var t=i*step;kt.push((t)/dur,(t+rise)/dur,(t+rise+hold)/dur,(t+rise+hold+fall)/dur);vs.push(0,1,1,0)}
  kt.push(1);vs.push(0);
  var KT=kt.map(function(v){return v.toFixed(4)}).join(';');
@@ -6487,7 +6489,7 @@ function hubLed(){var h=HUBS[HKIND];if(!h||!h.led) return '';var hm=(C.hubs&&C.h
  // the blink is driven from the frame loop (style.opacity), so it runs the same on every WebView; data-hi is the peak opacity
  function an(attr,lo,hi){return ''}
  var big=h.ledPoly?2.6:7.5,id='led'+HKIND,cx=c[0].toFixed(1),cy=c[1].toFixed(1);
- var o='<g class="hubled" data-slot="'+(WR.slot|0)+'" pointer-events="none" style="display:'+(window.mk6HubOn&&window.mk6HubOn[WR.slot|0]?'':'none')+'"><defs>'+
+ var o='<g class="hubled" data-slot="'+(WR.slot|0)+'" pointer-events="none" style="display:'+(hubLinkUp()?'':'none')+'"><defs>'+
   '<radialGradient id="'+id+'h"><stop offset="0" stop-color="#5fd4ff" stop-opacity=".9"/><stop offset=".35" stop-color="#1f7bff" stop-opacity=".55"/><stop offset=".7" stop-color="#2b3cff" stop-opacity=".18"/><stop offset="1" stop-color="#2b3cff" stop-opacity="0"/></radialGradient>'+
   '<radialGradient id="'+id+'c"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#d8f4ff"/><stop offset=".75" stop-color="#3fb6ff"/><stop offset="1" stop-color="#0a6cff"/></radialGradient>'+
   '<filter id="'+id+'b" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="'+(rx*.9).toFixed(1)+'"/></filter></defs>';
@@ -6745,7 +6747,10 @@ function wrFrame(ts){WR.raf=0;
  var dt=Math.min(.05,(ts-(WR.last||ts))/1000),any=false;WR.last=ts;
  Object.keys(ST).forEach(function(k){if(ST[k].t&&animPort(k,ST[k],dt)>.01) any=true});
  // hub status LED: n quick blinks then a pause (hubLed sets the pattern), while the link is up
- var hl=WR.root.querySelector('.hubled');if(hl&&hl.style.display!=='none'&&WR.ledK){var K=WR.ledK,u=(ts/1000%K.dur)/K.dur,v=0;
+ var hl=WR.root.querySelector('.hubled'),lu=hubLinkUp();
+ if(hl){var dv=lu?'':'none';if(hl.style.display!==dv) hl.style.display=dv}
+ if(lu&&!WR.ledOn) WR.ledT0=ts;WR.ledOn=lu;   // the pattern starts with a blink the moment the hub turns active
+ if(hl&&lu&&WR.ledK){var K=WR.ledK,u=(((ts-(WR.ledT0||0))/1000)%K.dur)/K.dur,v=0;
   for(var j=1;j<K.kt.length;j++){if(u<=K.kt[j]){var a=K.kt[j-1],b2=K.kt[j];v=K.vs[j-1]+(K.vs[j]-K.vs[j-1])*(b2>a?(u-a)/(b2-a):1);break}}
   var lb=hl.querySelectorAll('.lb');for(var j2=0;j2<lb.length;j2++){var o=(+lb[j2].getAttribute('data-hi')*v).toFixed(2);if(lb[j2]._o!==o){lb[j2]._o=o;lb[j2].style.opacity=o}}}
  var led=WR.root.getElementById('pLed');if(led) led.setAttribute('fill',!S.connected?'#59606c':any?(Math.sin(ts/166)>0?'#3dffb0':'#1D9E75'):'#3b9cff');
@@ -7049,7 +7054,7 @@ return API;
       return '<i class="pring" data-st="off"><svg viewBox="0 0 30 30"><circle class="rt" cx="15" cy="15" r="12.5"/><circle class="ra" cx="15" cy="15" r="12.5" pathLength="100" stroke-dasharray="0 100"/></svg><b>'+(RING_TAG[C.hubT?C.hubT[q]:6]||'6.0')+'</b></i>'}).join('')}
     pl.classList.toggle('rings',sl.length>0);
     // wiring status LED: blinks whenever the link is up (a real hub after pairing, or Practice / Simulation on), on every hub of the model
-    var lit={};if(st==='on') [0,1,2].forEach(function(q){if(C.hubs[q]>=0) lit[q]=true});window.mk6HubOn=lit;
+    var lit={};if(hubLinkUp()) [0,1,2].forEach(function(q){if(C.hubs[q]>=0) lit[q]=true});window.mk6HubOn=lit;
     var whL=document.getElementById('wrHost');if(whL&&whL.shadowRoot) whL.shadowRoot.querySelectorAll('.hubled').forEach(function(g){var v=lit[+g.getAttribute('data-slot')]?'':'none';if(g.style.display!==v) g.style.display=v});
     if(!sl.length) return;
     var d=LK.d||{},act=activeIdx();
