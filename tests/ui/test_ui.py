@@ -2211,6 +2211,12 @@ async def t_wire2(b):
     await pg.evaluate("window.MK6Bridge.send=function(){};document.getElementById('hubConn').click();onHubState('ready');mk6Go('hub')"); await pg.wait_for_timeout(1500)
     r = await pg.evaluate("getComputedStyle(document.getElementById('wrHost').shadowRoot.querySelector('.hubled')).display")
     check('hub LED lights once the hub is active', r != 'none', r)
+    await pg.evaluate("mk6Go('home');document.getElementById('wrHost').scrollIntoView()")
+    seen = set()
+    for _ in range(36):
+        seen.add(await pg.evaluate("(document.getElementById('wrHost').shadowRoot.querySelector('.hubled .lb')||{style:{}}).style.opacity"))
+        await pg.wait_for_timeout(70)
+    check('hub LED really blinks (opacity goes on and off)', '0' in seen and any(v not in ('0', '', None) for v in seen), sorted(map(str, seen)))
     await pg.evaluate("document.getElementById('hubConn').click()"); await pg.wait_for_timeout(600)
     r = await pg.evaluate("getComputedStyle(document.getElementById('wrHost').shadowRoot.querySelector('.hubled')).display")
     check('hub LED goes dark when the link is turned off', r == 'none', r)

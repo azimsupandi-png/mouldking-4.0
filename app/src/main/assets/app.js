@@ -6483,21 +6483,23 @@ function hubLed(){var h=HUBS[HKIND];if(!h||!h.led) return '';var n=Math.max(1,Ma
  for(var i=0;i<n;i++){var t=i*step;kt.push((t)/dur,(t+rise)/dur,(t+rise+hold)/dur,(t+rise+hold+fall)/dur);vs.push(0,1,1,0)}
  kt.push(1);vs.push(0);
  var KT=kt.map(function(v){return v.toFixed(4)}).join(';');
- function an(attr,lo,hi){return '<animate attributeName="'+attr+'" dur="'+dur+'s" repeatCount="indefinite" calcMode="linear" keyTimes="'+KT+'" values="'+vs.map(function(v){return (lo+(hi-lo)*v).toFixed(2)}).join(';')+'"/>'}
+ WR.ledK={kt:kt,vs:vs,dur:dur};
+ // the blink is driven from the frame loop (style.opacity), so it runs the same on every WebView; data-hi is the peak opacity
+ function an(attr,lo,hi){return ''}
  var big=h.ledPoly?2.6:7.5,id='led'+HKIND,cx=c[0].toFixed(1),cy=c[1].toFixed(1);
  var o='<g class="hubled" data-slot="'+(WR.slot|0)+'" pointer-events="none" style="display:'+(window.mk6HubOn&&window.mk6HubOn[WR.slot|0]?'':'none')+'"><defs>'+
   '<radialGradient id="'+id+'h"><stop offset="0" stop-color="#5fd4ff" stop-opacity=".9"/><stop offset=".35" stop-color="#1f7bff" stop-opacity=".55"/><stop offset=".7" stop-color="#2b3cff" stop-opacity=".18"/><stop offset="1" stop-color="#2b3cff" stop-opacity="0"/></radialGradient>'+
   '<radialGradient id="'+id+'c"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#d8f4ff"/><stop offset=".75" stop-color="#3fb6ff"/><stop offset="1" stop-color="#0a6cff"/></radialGradient>'+
   '<filter id="'+id+'b" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="'+(rx*.9).toFixed(1)+'"/></filter></defs>';
  // wide soft halo and a tighter bloom, both breathing with each blink
- o+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+(rx*big*1.5).toFixed(1)+'" ry="'+(rx*big*1.1).toFixed(1)+'" fill="url(#'+id+'h)" opacity="0">'+an('opacity',0,.85)+'</ellipse>';
- o+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+(rx*2.2).toFixed(1)+'" ry="'+(ry*2.2).toFixed(1)+'" fill="#3aa8ff" filter="url(#'+id+'b)" opacity="0">'+an('opacity',0,.9)+'</ellipse>';
+ o+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+(rx*big*1.5).toFixed(1)+'" ry="'+(rx*big*1.1).toFixed(1)+'" fill="url(#'+id+'h)" class="lb" data-hi=".85" opacity="0">'+an('opacity',0,.85)+'</ellipse>';
+ o+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+(rx*2.2).toFixed(1)+'" ry="'+(ry*2.2).toFixed(1)+'" fill="#3aa8ff" filter="url(#'+id+'b)" class="lb" data-hi=".9" opacity="0">'+an('opacity',0,.9)+'</ellipse>';
  if(h.ledPoly){var pts=h.ledPoly.map(function(q){return (HP[0]+HK*q[0]).toFixed(1)+','+(HP[1]+HK*q[1]).toFixed(1)}).join(' ');
   // 4.0: the LED lights the push button from inside
-  o+='<polygon points="'+pts+'" fill="url(#'+id+'c)" stroke="#7fd8ff" stroke-width="1.2" stroke-linejoin="round" opacity="0">'+an('opacity',0,.92)+'</polygon>';}
+  o+='<polygon points="'+pts+'" fill="url(#'+id+'c)" stroke="#7fd8ff" stroke-width="1.2" stroke-linejoin="round" class="lb" data-hi=".92" opacity="0">'+an('opacity',0,.92)+'</polygon>';}
  else{
   o+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+rx.toFixed(1)+'" ry="'+ry.toFixed(1)+'" fill="#0b2f6b" stroke="#0b0c0e" stroke-width="1"/>';
-  o+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+rx.toFixed(1)+'" ry="'+ry.toFixed(1)+'" fill="url(#'+id+'c)" opacity="0">'+an('opacity',0,1)+'</ellipse>';
+  o+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+rx.toFixed(1)+'" ry="'+ry.toFixed(1)+'" fill="url(#'+id+'c)" class="lb" data-hi="1" opacity="0">'+an('opacity',0,1)+'</ellipse>';
   o+='<ellipse cx="'+(c[0]-rx*.3).toFixed(1)+'" cy="'+(c[1]-ry*.35).toFixed(1)+'" rx="'+(rx*.35).toFixed(1)+'" ry="'+(ry*.3).toFixed(1)+'" fill="#ffffff" opacity=".35"/>';}
  return o+'</g>'}
 // plug footprint: 2 x 2 studs, width = port pitch so plugs touch; contact half over the port, stud half over the two hub studs
@@ -6742,6 +6744,10 @@ function wrFrame(ts){WR.raf=0;
  if(WR.last&&ts-WR.last<30){WR.raf=requestAnimationFrame(wrFrame);return}
  var dt=Math.min(.05,(ts-(WR.last||ts))/1000),any=false;WR.last=ts;
  Object.keys(ST).forEach(function(k){if(ST[k].t&&animPort(k,ST[k],dt)>.01) any=true});
+ // hub status LED: n quick blinks then a pause (hubLed sets the pattern), while the link is up
+ var hl=WR.root.querySelector('.hubled');if(hl&&hl.style.display!=='none'&&WR.ledK){var K=WR.ledK,u=(ts/1000%K.dur)/K.dur,v=0;
+  for(var j=1;j<K.kt.length;j++){if(u<=K.kt[j]){var a=K.kt[j-1],b2=K.kt[j];v=K.vs[j-1]+(K.vs[j]-K.vs[j-1])*(b2>a?(u-a)/(b2-a):1);break}}
+  var lb=hl.querySelectorAll('.lb');for(var j2=0;j2<lb.length;j2++){var o=(+lb[j2].getAttribute('data-hi')*v).toFixed(2);if(lb[j2]._o!==o){lb[j2]._o=o;lb[j2].style.opacity=o}}}
  var led=WR.root.getElementById('pLed');if(led) led.setAttribute('fill',!S.connected?'#59606c':any?(Math.sin(ts/166)>0?'#3dffb0':'#1D9E75'):'#3b9cff');
  wrPanelPaint();
  WR.raf=requestAnimationFrame(wrFrame)}
