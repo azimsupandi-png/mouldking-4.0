@@ -6853,7 +6853,7 @@ return API;
    WALLI.forEach(function(w){w.tick()})}
   var WIRE={tick:function(){wrShared();wrTabs();wrCtl();wrBudget()}};
   function wesc(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
-  var WR_ADDS={m:['ax','s','f'],l:['ax','s','f'],xl:['ax','lv','f'],bg:['ax','s','f'],sv:['st','s','f'],lt:['t','s']};
+  var WR_ADDS={m:['ax','s','f'],l:['ax','s','f'],xl:['ax','lv','f'],bg:['ax','s','f'],sv:['st','s','f'],lt:['t','s'],mk_m:['ax','s','f'],mk_l:['ax','s','f'],mk_xl:['ax','lv','f'],mk_sv:['st','s','f']};
   // port panel extras (idea 9 and 11): test slider, reverse switch, cable length, add a widget for this port
   function wrPanelMore(box,i,t,cm){var mo=box.querySelector('.wr-more'),tb0=box.querySelector('.wr-tst');if(tb0) tb0.hidden=false;if(!mo) return;mo.hidden=!t;if(!t) return;
    var sw=mo.querySelector('.wr-sw'),inv=!!C.ch[i].inv;sw.classList.toggle('on',inv);sw.setAttribute('aria-checked',String(inv));
@@ -6924,10 +6924,10 @@ return API;
      var pos=WCK.q.indexOf(j);if(pos>=0&&pos<WCK.n){WCK.q.splice(pos,1);WCK.n--;WCK.q.push(j)}WCK.n++;wrChkRun()}})})}
   // idea 2: power budget. Estimated current per port from the part and its live output; hub total against a ~4 A budget;
   // runtime from the hub battery level and the average draw (assumes a 1500 mAh battery). Hubs do not report current.
-  var WAMP={m:.55,l:.85,xl:1.6,bg:1.8,sv:.6,lt:.05},WBUD=4,WBT={t:0,avg:0};
+  var WAMP={m:.55,l:.85,xl:1.6,bg:1.8,sv:.6,lt:.05,mk_m:.55,mk_l:.85,mk_xl:1.6,mk_sv:.6},WBUD=4,WBT={t:0,avg:0};
   function wrBudget(){var box=document.getElementById('wrBud');if(!box) return;var now=performance.now();if(now-WBT.t<250) return;var dt=WBT.t?Math.min(2,(now-WBT.t)/1000):0;WBT.t=now;
    var sl=wrAllOn()?activeSlots():[WR.slot],h='',tot=0,mx=0;
-   sl.forEach(function(s){var a=0,rows='';for(var p=0;p<PER;p++){var i=s*PER+p,t=C.pf&&C.pf[i],f=Math.min(1,Math.abs(+rt.o[i]||0)/100),q=t?WAMP[t]*(t==='lt'?f:f*(.35+.65*f)):0,t2=t&&C.pf2&&C.pf2[i];if(t2) q+=WAMP[t2]*(t2==='lt'?f:f*(.35+.65*f));a+=q;
+   sl.forEach(function(s){var a=0,rows='';for(var p=0;p<PER;p++){var i=s*PER+p,t=C.pf&&C.pf[i],f=Math.min(1,Math.abs(+rt.o[i]||0)/100),q=t?(WAMP[t]||0)*(t==='lt'?f:f*(.35+.65*f)):0,t2=t&&C.pf2&&C.pf2[i];if(t2) q+=(WAMP[t2]||0)*(t2==='lt'?f:f*(.35+.65*f));a+=q;
      rows+='<div class="wr-bp'+(t?'':' no')+'"><span>'+LT.charAt(p)+'</span><i><b style="width:'+Math.round(Math.min(1,q/1.6)*100)+'%;background:'+wcol(q/1.6)+'"></b></i><em>'+(t?q.toFixed(2)+' A':'—')+'</em></div>'}
     tot+=a;var L=a/WBUD;mx=Math.max(mx,L);var seg='';for(var n=0;n<20;n++){var g=(n+.5)/20;seg+='<i style="background:'+(g<=L?wcol(g):'')+'"></i>'}
     h+='<div class="wr-bh"><div class="wr-bt"><b>'+(sl.length>1||activeSlots().length>1?'Hub '+(s+1)+' · ':'')+a.toFixed(1)+' A</b><span>'+Math.round(L*100)+'% '+tr2('of the hub budget')+'</span></div><div class="wr-bseg">'+seg+'</div><div class="wr-bps">'+rows+'</div></div>'});

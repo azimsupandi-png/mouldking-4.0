@@ -2187,7 +2187,7 @@ async def t_stack(b):
     pg.on('pageerror', lambda e: pg.errors.append(str(e)))
     E = ",'','','','','','','','','','','',''"
     seed = ("(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:["
-            "{id:'m1',name:'S6',cfg:{layout:'board',hubs:[0,-1,-1],hubT:[6,6,6],pf:['m','xl','','','',''" + E + "],pf2:['l','','','','',''" + E + "],board:[{k:'s',c:0,w:1}]}},"
+            "{id:'m1',name:'S6',cfg:{layout:'board',hubs:[0,-1,-1],hubT:[6,6,6],pf:['mk_xl','mk_sv','','','',''" + E + "],pf2:['l','','','','',''" + E + "],board:[{k:'s',c:0,w:1}]}},"
             "{id:'m2',name:'S4',cfg:{layout:'board',hubs:[0,-1,-1],hubT:[4,6,6],pf:['mk_m','m','','',''," + "''" + E + "],pf2:['','mk_l','','','',''" + E + "],board:[{k:'s',c:0,w:1}]}}],prefs:{seen:true}}))})();")
     await pg.add_init_script(STUB + seed)
     await pg.goto(HTML + '?mk6test')
@@ -2217,6 +2217,10 @@ async def t_stack(b):
     await pg.evaluate("__t.switchProfile('m2');mk6Go('hub')"); await pg.wait_for_timeout(700)
     r = await pg.evaluate(P)
     check('stack: 4.0 port B shows two plugs', r[0] == 3 and r[1] == 'A,B,B2', r)
+    await pg.evaluate("__t.switchProfile('m1');mk6Go('home')"); await pg.wait_for_timeout(300)
+    await pg.evaluate("window.MK6Bridge.send=function(){};document.getElementById('hubConn').click();onHubState('ready');mk6Go('home')"); await pg.wait_for_timeout(900)
+    r = await pg.evaluate("(document.getElementById('wrBud')||{}).textContent||''")
+    check('power budget shows numbers for MK motors and stacked parts (no NaN)', r and 'NaN' not in r, r[:120])
     check('stack: no page errors', not pg.errors, pg.errors)
     await ctx.close()
 
