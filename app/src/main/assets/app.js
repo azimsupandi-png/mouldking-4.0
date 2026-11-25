@@ -6515,7 +6515,7 @@ function plugExit(k){var g=plg(k),c=LP(g,0,PLO),z=HZ+PZ*.32,p=W(c[0],c[1],z),q=W
  return {x:p[0],y:p[1],ox:dx/l,oy:dy/l,top:!!(SLOT[k]&&SLOT[k].top)}}
 // colour tag on the plug head, drawn in the plug picture's own pixels so it follows the plug exactly
 var PTAG={f:{c:[348,146],a:[100,-54.4],b:[63,32.7],sa:.47,sb:.45},b:{c:[86,46],a:[101.7,-55.3],b:[63,32.7],sa:.45,sb:.40},
- ab:{c:[124,139],a:[106,-55],b:[64,27],sa:.12,sb:.42},cd:{c:[284,100],a:[60,-30],b:[60,30],sa:.34,sb:.34}};   // 4.0: on the plug's cable-end top
+ ab:{c:[130,140],a:[53,28],b:[-38,20],sa:.38,sb:.32},cd:{c:[264.5,102],a:[56,27],b:[-37,23],sa:.4,sb:.4}};   // 4.0: on the plug's cable-end top
 function plugTag(k,T){if(ST[k+'2']&&ST[k+'2'].t) return '';var L0=baseOf(k),t=PTAG[PORTS[k][4]],col=PCOL[L0];if(!t||!col) return '';
  var P=function(i,j){return plugPt(T,t.c[0]+i*t.a[0]+j*t.b[0],t.c[1]+i*t.a[1]+j*t.b[1])},A=t.sa,B=t.sb;
  var q=[P(-A,-B),P(A,-B),P(A,B),P(-A,B)].map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1)}).join(' ');
