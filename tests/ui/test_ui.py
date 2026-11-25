@@ -2181,6 +2181,45 @@ async def t_rings(b):
     check('rings no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
 
+async def t_stack(b):
+    ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    E = ",'','','','','','','','','','','',''"
+    seed = ("(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:["
+            "{id:'m1',name:'S6',cfg:{layout:'board',hubs:[0,-1,-1],hubT:[6,6,6],pf:['m','xl','','','',''" + E + "],pf2:['l','','','','',''" + E + "],board:[{k:'s',c:0,w:1}]}},"
+            "{id:'m2',name:'S4',cfg:{layout:'board',hubs:[0,-1,-1],hubT:[4,6,6],pf:['mk_m','m','','',''," + "''" + E + "],pf2:['','mk_l','','','',''" + E + "],board:[{k:'s',c:0,w:1}]}}],prefs:{seen:true}}))})();")
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("mk6Go('hub')"); await pg.wait_for_timeout(700)
+    P = "(function(){var R=document.getElementById('wrHost').shadowRoot;return [R.querySelectorAll('image[href*=plug_]').length,[...R.querySelectorAll('.pt')].map(g=>g.getAttribute('data-p')).sort().join(',')]})()"
+    r = await pg.evaluate(P)
+    check('stack: 6.0 port A shows two plugs and both parts', r[0] == 3 and r[1] == 'A,A2,B', r)
+    r = await pg.evaluate("[...document.getElementById('wrHost').shadowRoot.querySelectorAll('text')].map(t=>t.textContent).filter(t=>t==='A').length")
+    check('stack: the stacked part uses the same port letter', r >= 2, r)
+    # add a stacked part to port B through the panel
+    await pg.evaluate("document.getElementById('wrHost').shadowRoot.querySelector('.pt[data-p=B]').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:5,clientY:5,pointerId:1}));window.dispatchEvent(new PointerEvent('pointerup',{clientX:5,clientY:5,pointerId:1}))"); await pg.wait_for_timeout(300)
+    await pg.evaluate("document.querySelector('#wrPanel .wr-grid button[data-p=B2]').click()"); await pg.wait_for_timeout(400)
+    r = await pg.evaluate("JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.pf2.slice(0,6)")
+    check('stack: the panel adds a second part on port B', r[1] != '', r)
+    r = await pg.evaluate("[...document.querySelectorAll('#wrPanel .wr-grid button')].filter(b=>b.getAttribute('data-p')==='B2'&&!b.classList.contains('wr-add')).length")
+    check('stack: the panel lists the stacked part as its own card', r == 1, r)
+    # take the bottom part off port A: the stacked one moves down
+    await pg.evaluate("__t.switchProfile('m1');mk6Go('hub')"); await pg.wait_for_timeout(500)
+    await pg.evaluate("document.getElementById('wrHost').shadowRoot.querySelector('.pt[data-p=A]').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:5,clientY:5,pointerId:1}));window.dispatchEvent(new PointerEvent('pointerup',{clientX:5,clientY:5,pointerId:1}))"); await pg.wait_for_timeout(300)
+    for _ in range(20):
+        await pg.evaluate("document.querySelector('#wrPanel .wr-grid button[data-p=A]').click()"); await pg.wait_for_timeout(100)
+        if await pg.evaluate("JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.pf2[0]===''"): break
+    r = await pg.evaluate("(()=>{var c=JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg;return [c.pf[0],c.pf2[0]]})()")
+    check('stack: removing the bottom part moves the stacked one down', r == ['l', ''], r)
+    # 4.0
+    await pg.evaluate("__t.switchProfile('m2');mk6Go('hub')"); await pg.wait_for_timeout(700)
+    r = await pg.evaluate(P)
+    check('stack: 4.0 port B shows two plugs', r[0] == 3 and r[1] == 'A,B,B2', r)
+    check('stack: no page errors', not pg.errors, pg.errors)
+    await ctx.close()
+
 async def t_wire2(b):
     ctx = await b.new_context(viewport={'width': 390, 'height': 844})
     pg = await ctx.new_page(); pg.errors = []
@@ -2226,7 +2265,7 @@ async def t_wire2(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_stage4, t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_mk4oo, t_lpmulti, t_fix5, t_rings, t_wire2, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_stage4, t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_mk4oo, t_lpmulti, t_fix5, t_rings, t_wire2, t_stack, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

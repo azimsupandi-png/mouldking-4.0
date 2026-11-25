@@ -6384,7 +6384,7 @@ var POS={},POS0={},SLOT={},SXS=[40,470,900];
 //   6.0: B D F plugs face the back (parts above the hub), A C E the front (parts below)
 //   4.0: B and A leave toward the A/B end (left), C and D toward the C/D end (right)
 function slotsFor(kind){SLOT={};
- if(kind==='4'){SLOT.B={x:40,y:20,w:420,h:330,top:true};SLOT.C={x:900,y:20,w:420,h:330,top:true};SLOT.A={x:40,y:1130,w:420,h:330,top:false};SLOT.D={x:900,y:1130,w:420,h:330,top:false}}
+ if(kind==='4'){SLOT.B={x:120,y:20,w:420,h:330,top:true};SLOT.C={x:820,y:20,w:420,h:330,top:true};SLOT.A={x:120,y:1130,w:420,h:330,top:false};SLOT.D={x:820,y:1130,w:420,h:330,top:false}}   // closer to the smaller true-scale 4.0 hub
  else{['B','D','F'].forEach(function(k,j){SLOT[k]={x:SXS[j],y:20,w:420,h:330,top:true}});['A','C','E'].forEach(function(k,j){SLOT[k]={x:SXS[j],y:1130,w:420,h:330,top:false}})}
  POS0={};Object.keys(SLOT).forEach(function(k){var sl=SLOT[k];POS0[k]=[sl.x+sl.w/2,sl.y+sl.h/2+(sl.top?-20:20)]})}
 // one stud for every picture in the wiring (real sizes): STUD = svg px per stud upward. Hubs use their own stud height (AZ);
@@ -6588,7 +6588,8 @@ var GR3='<linearGradient id="hTop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" 
  '<linearGradient id="plE" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4c5055"/><stop offset="1" stop-color="#383b40"/></linearGradient>'+
  '<linearGradient id="plT" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6a6e74"/><stop offset="1" stop-color="#585c62"/></linearGradient>';
 // cable length along the drawn route: U scene units = 1 stud = 0.8 cm
-function cableCm(k){var P=ROUTES[k];if(!P) return 0;var L=0;for(var i=1;i<P.length;i++) L+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);return L/U*.8}
+
+function cableCm(k){var P=ROUTES[k];if(!P) return 0;var L=0;for(var i=1;i<P.length;i++) L+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);return L/SU*.8}
 function cableMax(k){var i=ST[k].i;return (Array.isArray(C.pcl)&&C.pcl[i]===50)?50:20}
 function cabSvg(k){if(!ST[k].t||!ROUTES[k]) return '';var g=cableGeom(k),lng=cableCm(k)>cableMax(k),core=lng?['#4a1214','#5e171a','#4a1214','#5e171a']:['#13233a','#172a45','#13233a','#172a45'],s='';
  s+='<path d="'+g.d+'" stroke="#03060a" stroke-width="'+(CW+5)+'" fill="none" stroke-linecap="butt" stroke-linejoin="round" opacity=".6" transform="translate(3 5)"/>'+
