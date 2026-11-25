@@ -6434,7 +6434,7 @@ var HM=[[-0.53579,-0.46667,1307.89668],[0.25023,-0.3043,143.12769]],HK=.6,HWH=[1
 // AZ = picture px per stud upward, K scales the picture. P: centre of each port's contact half on the plan and the way its
 // cable leaves; the stud half of the connector sits on the two hub studs inward.
 var HUBS={
- '6':{led:[325.7,372.4,7.5,4.6],img:'img/pf/hub6.webp',WH:[887,752],M:[[0.384615, 0.390769, -694.551], [-0.196923, 0.181538, 365.845]],K:42/63,AZ:63,
+ '6':{led:[331.5,370.0,7.5,4.6],img:'img/pf/hub6.webp',WH:[890,763],M:[[0.384615, 0.390769, -690.551], [-0.196923, 0.181538, 363.845]],K:42/63,AZ:63,
   P:{A:[1541.74,1382.68,0,1,'f'],B:[1541.74,895.18,0,-1,'b'],C:[1867.6,1382.68,0,1,'f'],D:[1867.6,895.18,0,-1,'b'],E:[2192.03,1382.68,0,1,'f'],F:[2192.03,895.18,0,-1,'b']}},
  '4':{led:[531,227,22,13],ledPoly:[[470,224],[527,199],[594,227],[533,255]],img:'img/pf/hub4.webp',WH:[1003,846],M:[[0.508856, 0.519224, -1521.952875], [-0.248186, 0.252122, 425.916552]],K:42/103.198,AZ:103.198,
   P:{A:[1950.0,1746.15,-1,0,'ab'],B:[1950.0,1420.86,-1,0,'ab'],C:[2762.5,1420.86,1,0,'cd'],D:[2762.5,1746.15,1,0,'cd']}}};
@@ -6444,7 +6444,7 @@ var HUBS={
 // 6.0: b = B D F (cable to the back), f = A C E (to the front); 4.0: ab = A B (mouth to the A/B end), cd = C D (to the C/D end)
 var PLUGS={b:{W:429,H:367,ex:[40,95]},f:{W:439,H:334,ex:[372,252]},cd:{W:394,H:347,ex:[280,140]},ab:{W:391,H:318,ex:[110,184]}};
 // where each port's connector picture sits on the hub picture (svg matrix a b c d e f, hub picture px)
-var PLUGM={'6':{A:[0.5850,0,0,0.5850,280.98,176.00],B:[0.5750,0,0,0.5750,160.98,96.00],C:[0.5800,0,0,0.5800,405.98,112.00],D:[0.5750,0,0,0.5750,284.98,32.00],E:[0.5800,0,0,0.5800,529.98,49.00],F:[0.5750,0,0,0.5750,408.98,-31.00]},'4':{A:[1.5113,0.0000,0.0000,1.5113,130.6452,81.8893],B:[1.5113,0.0000,0.0000,1.5113,-38.1087,-0.0532],C:[1.4500,0.0012,-0.0012,1.4500,301.1719,-181.3803],D:[1.4500,0.0012,-0.0012,1.4500,469.9258,-99.4378]}};
+var PLUGM={'6':{A:[0.5850,0,0,0.5850,284.98,174.00],B:[0.5750,0,0,0.5750,164.98,94.00],C:[0.5800,0,0,0.5800,409.98,110.00],D:[0.5750,0,0,0.5750,288.98,30.00],E:[0.5800,0,0,0.5800,533.98,47.00],F:[0.5750,0,0,0.5750,412.98,-33.00]},'4':{A:[1.5113,0.0000,0.0000,1.5113,130.6452,81.8893],B:[1.5113,0.0000,0.0000,1.5113,-38.1087,-0.0532],C:[1.4500,0.0012,-0.0012,1.4500,301.1719,-181.3803],D:[1.4500,0.0012,-0.0012,1.4500,469.9258,-99.4378]}};
 var HKIND='',HIMG='',PORTS={};
 // stacked connector: a second plug pressed onto the first (same channel); its key is the port letter + '2'
 function isStk(k){return k&&k.length===2&&k.charAt(1)==='2'}
@@ -6514,7 +6514,8 @@ function plugExit(k){var g=plg(k),c=LP(g,0,PLO),z=HZ+PZ*.32,p=W(c[0],c[1],z),q=W
  var T=plugT(k);if(T.P.ex) p=plugPt(T,T.P.ex[0],T.P.ex[1]);
  return {x:p[0],y:p[1],ox:dx/l,oy:dy/l,top:!!(SLOT[k]&&SLOT[k].top)}}
 // colour tag on the plug head, drawn in the plug picture's own pixels so it follows the plug exactly
-var PTAG={f:{c:[348,146],a:[100,-54.4],b:[63,32.7],sa:.47,sb:.45},b:{c:[86,46],a:[101.7,-55.3],b:[63,32.7],sa:.45,sb:.40}};
+var PTAG={f:{c:[348,146],a:[100,-54.4],b:[63,32.7],sa:.47,sb:.45},b:{c:[86,46],a:[101.7,-55.3],b:[63,32.7],sa:.45,sb:.40},
+ ab:{c:[124,139],a:[106,-55],b:[64,27],sa:.12,sb:.42},cd:{c:[284,100],a:[60,-30],b:[60,30],sa:.34,sb:.34}};   // 4.0: on the plug's cable-end top
 function plugTag(k,T){if(ST[k+'2']&&ST[k+'2'].t) return '';var L0=baseOf(k),t=PTAG[PORTS[k][4]],col=PCOL[L0];if(!t||!col) return '';
  var P=function(i,j){return plugPt(T,t.c[0]+i*t.a[0]+j*t.b[0],t.c[1]+i*t.a[1]+j*t.b[1])},A=t.sa,B=t.sb;
  var q=[P(-A,-B),P(A,-B),P(A,B),P(-A,B)].map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1)}).join(' ');
