@@ -6477,7 +6477,7 @@ function hub3d(){var c=[HP[0]+HWH[0]*HK*.5,HP[1]+HWH[1]*HK*.93];
   '<image class="hubg" href="'+HIMG+'" x="'+HP[0].toFixed(1)+'" y="'+HP[1].toFixed(1)+'" width="'+(HWH[0]*HK)+'" height="'+(HWH[1]*HK)+'"/>'+(HKIND==='4'?'':hubLed())}
 // blue status LED next to the USB port (6.0) or inside the middle push button (4.0): it blinks the hub's number (hub 1 once, hub 2 twice, hub 3 three times,
 // quickly) and pauses, with a blue glow pulse on every blink
-function hubLed(){var h=HUBS[HKIND];if(!h||!h.led) return '';var n=Math.max(1,Math.min(3,(WR.slot|0)+1)),c=[HP[0]+HK*h.led[0],HP[1]+HK*h.led[1]],rx=HK*h.led[2],ry=HK*h.led[3];
+function hubLed(){var h=HUBS[HKIND];if(!h||!h.led) return '';var hm=(C.hubs&&C.hubs[WR.slot|0]>=0)?C.hubs[WR.slot|0]:(WR.slot|0),n=Math.max(1,Math.min(3,hm+1)),c=[HP[0]+HK*h.led[0],HP[1]+HK*h.led[1]],rx=HK*h.led[2],ry=HK*h.led[3];
  // smooth blink: quick rise, short hold, soft fall; n blinks then a pause
  var dur=2.4,step=.26,rise=.04,hold=.07,fall=.1,kt=[0],vs=[0];
  for(var i=0;i<n;i++){var t=i*step;kt.push((t)/dur,(t+rise)/dur,(t+rise+hold)/dur,(t+rise+hold+fall)/dur);vs.push(0,1,1,0)}
@@ -6800,7 +6800,7 @@ function wrInit(){if(WR.root) return true;var host=WR.hostEl||document.getElemen
  return true}
 // everything the picture is drawn from; when it changes the picture is drawn again
 function wrKey(){var nm=[];for(var p=0;p<PER;p++) nm.push((C.ch[WR.slot*PER+p]||{}).name);
- return [WR.slot,(C.hubT||[]).join(','),(C.pf||[]).join(','),(C.pf2||[]).join(','),JSON.stringify(C.pfp||{}),store.prefs.lang,store.active,(C.pcl||[]).join(','),nm.join(',')].join('|')}
+ return [WR.slot,(C.hubs||[]).join(','),(C.hubT||[]).join(','),(C.pf||[]).join(','),(C.pf2||[]).join(','),JSON.stringify(C.pfp||{}),store.prefs.lang,store.active,(C.pcl||[]).join(','),nm.join(',')].join('|')}
 function wrTick(){if(!wrInit()) return;WR.on=true;wrLockPaint();var key=wrKey();if(WR.key!==key){WR.key=key;wrRender();wrPanel()}
  if(!WR.raf) WR.raf=requestAnimationFrame(wrFrame)}
 // Tidy: every part glides back to its own side of the hub, the hub to the middle
