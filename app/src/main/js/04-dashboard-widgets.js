@@ -589,9 +589,38 @@
     // upright board: the tools sit on the widget itself (not dimmed with its title when no hub is connected)
     if(bdEditing) (dashOn()?head:el).appendChild(bdToolbar(it));
     else if(withOut){out=document.createElement('output');out.textContent='0';head.appendChild(out)}
+    if(!bdEditing&&it&&GRPK[it.k]) grpLeds(head,it);
     el.appendChild(head);
     return out;
   }
+  // Stick, D-pad and XY pad: swipe the title bar to move the widget to the next pair of ports on the same hub
+  // (AB -> CD -> EF), skipping pairs with nothing plugged in; red LEDs show which pair it drives
+  var GRPK={j:1,dp:1,xy:1};
+  function grpInfo(it){var c=it.c;if(typeof c!=='number'||c<0) return null;var hub=Math.floor(c/PER),P=isMk4(hub)?4:6,G=P/2,base=hub*PER,g0=Math.floor((c%PER)/2);
+    if(g0>=G) return null;
+    var used=function(g){for(var q=0;q<2;q++){var i=base+2*g+q;if((C.pf&&C.pf[i])||(C.pf2&&C.pf2[i])) return true}return false};
+    var gs=[];for(var g=0;g<G;g++) if(g===g0||used(g)) gs.push(g);
+    return {hub:hub,P:P,G:G,base:base,g0:g0,gs:gs}}
+  function grpLeds(head,it){var f=grpInfo(it);if(!f||f.G<2) return;
+    var w=document.createElement('span');w.className='bdw-grp';w.setAttribute('aria-label','Port pair '+(f.g0+1)+' of '+f.G+', swipe the title to change');
+    for(var g=0;g<f.G;g++){var l=document.createElement('i');if(g===f.g0) l.className='on';if(f.gs.indexOf(g)<0) l.classList.add('off');w.appendChild(l)}
+    var t=document.createElement('b');t.textContent=L.charAt(2*f.g0)+L.charAt(2*f.g0+1);w.appendChild(t);head.appendChild(w);
+    var x0=null,y0=0;
+    // the lift is caught on the window: a pad may capture the pointer, so it never comes back to the title
+    var up=function(e){window.removeEventListener('pointerup',up,true);if(x0===null) return;var dx=e.clientX-x0,dy=e.clientY-y0;x0=null;if(Math.abs(dx)<36||Math.abs(dy)>Math.abs(dx)) return;grpGo(it,dx<0?1:-1)};
+    head.addEventListener('pointerdown',function(e){x0=e.clientX;y0=e.clientY;window.addEventListener('pointerup',up,true)});
+    head.addEventListener('pointercancel',function(){x0=null})}
+  function grpGo(it,dir){var f=grpInfo(it);if(!f) return;
+    var chs=[it.c];if(typeof it.d==='number'&&it.d>=0) chs.push(it.d);
+    if(chs.some(function(q){return Math.abs(rt.t[q]||0)>1})) return;   // not while the control is held
+    if(f.gs.length<2){toast('No other port pair on this hub has a part plugged in.');return}
+    var g1=f.gs[(f.gs.indexOf(f.g0)+dir+f.gs.length)%f.gs.length],sh=2*(g1-f.g0);
+    chs.forEach(function(q){setT(q,0,false)});
+    var mv=function(q){if(Math.floor(q/PER)!==f.hub) return q;var p=((q%PER)+sh)%f.P;if(p<0) p+=f.P;return f.base+p};
+    var snap=JSON.parse(JSON.stringify(C.board));
+    it.c=mv(it.c);if(typeof it.d==='number'&&it.d>=0) it.d=mv(it.d);
+    BD_UNDO.push({board:snap,msg:'Port pair change undone.'});if(BD_UNDO.length>20) BD_UNDO.shift();
+    save();syncBoard();feedback('ok');toast(L.charAt(2*g1)+L.charAt(2*g1+1)+' · '+C.ch[it.c].name)}
   // a channel muted on a Levels (EQ) widget stays muted only while that widget is on the board, so a mute is never hidden
   function muteTidy(){
     var eq={};(C.board||[]).forEach(function(it){if(it.k==='lx'&&it.t==='eq'){eq[it.c]=1;(it.cs||[]).forEach(function(q){eq[q]=1})}});

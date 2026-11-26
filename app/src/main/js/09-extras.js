@@ -1,5 +1,6 @@
   // ---- What's new, version and update check ----
   var CHANGES=[
+    {b:131,items:[["new", "Stick, D-pad and XY pad: swipe the title bar to move to the next port pair on the same hub (AB, CD, EF); red LEDs show the pair, empty pairs are skipped"]]},
     {b:128,items:[["better", "Version 1.3. Hub 4.0: plugs A and B sit a little further out so the push button and its LED stay visible"], ["better", "Hub 6.0 picture: push button ring drawn with the same line weight as the hub"]]},
     {b:127,items:[["better", "Wiring: motors turn faster on screen, and slow, medium and fast are clearly different"]]},
     {b:126,items:[["fix", "Wiring: one standard cable width on both hubs"]]},

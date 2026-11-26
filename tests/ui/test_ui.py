@@ -2288,10 +2288,40 @@ async def t_joined(b):
     r = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'tools', 'join_js.py'), '--check'])
     check('app.js matches the parts in app/src/main/js (run tools/join_js.py after editing)', r.returncode == 0, r.returncode)
 
+async def t_swipegrp(b):
+    ctx = await b.new_context(viewport={'width': 1000, 'height': 460})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = ("(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'X',cfg:{layout:'board',hubs:[0,-1,-1],hubT:[6,6,6],"
+            "pf:['m','m','l','l','','','','','','','','','','','','','',''],board:[{k:'j',c:0,d:1,w:1},{k:'dp',c:0,d:1,w:1},{k:'xy',c:0,d:1,w:1}]}}],prefs:{seen:true}}))})();")
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("mk6Go('drive')"); await pg.wait_for_timeout(500)
+    r = await pg.evaluate("[...document.querySelectorAll('.bdw-grp')].map(g=>g.querySelectorAll('i').length+':'+g.querySelectorAll('i.on').length+':'+g.textContent).join(' ')")
+    check('swipe: Stick, D-pad and XY pad show 3 group LEDs with AB lit', r == '3:1:AB 3:1:AB 3:1:AB', r)
+    async def swipe(i, dx):
+        h = (await pg.query_selector_all('.bdw .bdw-grp'))[i]; await h.scroll_into_view_if_needed(); bb = await h.bounding_box()
+        x, y = bb['x'] + bb['width'] * .5, bb['y'] + bb['height'] / 2
+        await pg.mouse.move(x, y); await pg.mouse.down(); await pg.mouse.move(x + dx, y, steps=5); await pg.mouse.up(); await pg.wait_for_timeout(300)
+    await swipe(0, -150)
+    r = await pg.evaluate("__t.C.board.map(x=>x.c+','+x.d).join(' ')")
+    check('swipe: left swipe on the Stick title moves it to C+D', r.startswith('2,3 '), r)
+    await swipe(0, -150)
+    r = await pg.evaluate("__t.C.board[0].c+','+__t.C.board[0].d")
+    check('swipe: the empty E/F pair is skipped (back to A+B)', r == '0,1', r)
+    await swipe(2, 150)
+    r = await pg.evaluate("__t.C.board[2].c+','+__t.C.board[2].d+'|'+document.querySelectorAll('.bdw-grp')[2].textContent")
+    check('swipe: right swipe on the XY pad goes to C+D, LED label follows', r == '2,3|CD', r)
+    r = await pg.evaluate("JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.board[2].c")
+    check('swipe: the new pair is saved with the board', r == 2, r)
+    check('swipe: no page errors', not pg.errors, pg.errors)
+    await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_joined, t_stage4, t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_mk4oo, t_lpmulti, t_fix5, t_rings, t_wire2, t_stack, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_joined, t_swipegrp, t_stage4, t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_mk4oo, t_lpmulti, t_fix5, t_rings, t_wire2, t_stack, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:
