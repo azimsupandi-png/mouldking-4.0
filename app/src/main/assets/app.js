@@ -4004,7 +4004,7 @@ try{
     // upright board: the tools sit on the widget itself (not dimmed with its title when no hub is connected)
     if(bdEditing) (dashOn()?head:el).appendChild(bdToolbar(it));
     else if(withOut){out=document.createElement('output');out.textContent='0';head.appendChild(out)}
-    if(!bdEditing&&it&&GRPK[it.k]) grpBar(el,it);
+    if(!bdEditing&&it&&GRPK[it.k]) grpHead(el,nm,head,it,out);
     el.appendChild(head);
     return out;
   }
@@ -4016,22 +4016,19 @@ try{
     var used=function(g){for(var q=0;q<2;q++){var i=base+2*g+q;if((C.pf&&C.pf[i])||(C.pf2&&C.pf2[i])) return true}return false};
     var gs=[];for(var g=0;g<G;g++) if(g===g0||used(g)) gs.push(g);
     return {hub:hub,P:P,G:G,base:base,g0:g0,gs:gs}}
-  // the pair switcher sits in its own small bar at the bottom of the widget, away from the title and the control:
-  // tap < or >, or swipe along the bar; the title keeps its full text
-  function grpBar(el,it){var f=grpInfo(it);if(!f||f.G<2) return;
-    var w=document.createElement('div');w.className='bdw-grp';w.setAttribute('role','group');w.setAttribute('aria-label','Port pair '+(f.g0+1)+' of '+f.G);
-    var mk=function(t,dir){var b=document.createElement('button');b.type='button';b.className='g-ar';b.textContent=t;b.setAttribute('aria-label',dir>0?'Next port pair':'Previous port pair');
-      b.addEventListener('pointerdown',function(e){e.stopPropagation()});b.addEventListener('click',function(e){e.stopPropagation();e.preventDefault();grpGo(it,dir)});return b};
-    w.appendChild(mk('\u2039',-1));
-    var d=document.createElement('span');d.className='g-d';
-    for(var g=0;g<f.G;g++){var l=document.createElement('i');if(g===f.g0) l.className='on';if(f.gs.indexOf(g)<0) l.classList.add('off');d.appendChild(l)}
-    var t=document.createElement('b');t.textContent=L.charAt(2*f.g0)+L.charAt(2*f.g0+1);d.appendChild(t);w.appendChild(d);
-    w.appendChild(mk('\u203a',1));
-    var x0=null;
-    d.addEventListener('pointerdown',function(e){e.stopPropagation();x0=e.clientX;try{d.setPointerCapture(e.pointerId)}catch(_){}});
-    d.addEventListener('pointerup',function(e){if(x0===null) return;var dx=e.clientX-x0;x0=null;if(Math.abs(dx)>=24) grpGo(it,dx<0?1:-1)});
-    d.addEventListener('pointercancel',function(){x0=null});
-    el.classList.add('has-grp');el.appendChild(w)}
+  // Stick, D-pad and XY pad: the title is the channel chip, then the port pair as glowing letters (tap = next pair),
+  // then the live values of the two channels; the channel names are in the chip's pop-over
+  function grpHead(el,nm,head,it,out){var f=grpInfo(it);if(!f) return;
+    [].slice.call(nm.childNodes).forEach(function(n){if(!(n.classList&&n.classList.contains('bdw-chip'))) nm.removeChild(n)});
+    var k=document.createElement('b');k.className='g-key';k.setAttribute('role','button');k.tabIndex=0;
+    k.textContent=L.charAt(2*f.g0)+L.charAt(2*f.g0+1);k.setAttribute('aria-label','Port pair '+k.textContent+', tap for the next pair');
+    k.addEventListener('pointerdown',function(e){e.stopPropagation()});
+    k.addEventListener('click',function(e){e.stopPropagation();e.preventDefault();grpGo(it,1)});
+    nm.appendChild(k);
+    head.classList.add('g-h');
+    if(!out){out=document.createElement('output');out.className='g-val';head.appendChild(out);el.__gpo=out}
+  }
+  function grpVals(w){var o=w.el&&w.el.__gpo;if(!o) return;var it=w.it,s=fmt(rt.t[it.c]||0)+(typeof it.d==='number'&&it.d>=0?' \u00b7 '+fmt(rt.t[it.d]||0):'');if(o.textContent!==s) o.textContent=s}
   // fingers on the screen: the board is rebuilt only when none is down, so a switch never freezes a control being held
   var GPD={},GPEND=false;
   window.addEventListener('pointerdown',function(e){GPD[e.pointerId]=1},true);
@@ -5042,6 +5039,7 @@ try{
     paintPads();
     lvFrames();
     bdW.forEach(function(w){
+      grpVals(w);
       if(w.es){
         w.es.classList.toggle('on',!!S.estop);
         w.es.textContent=S.estop?'RELEASE':'E-STOP';
@@ -7546,6 +7544,7 @@ return API;
 
   // ---- What's new, version and update check ----
   var CHANGES=[
+    {b:133,items:[["better", "Stick, D-pad and XY pad: the title is now the channel chip and the port pair letters, glowing red; tap the letters for the next pair (AB, CD, EF). The pair bar at the bottom is gone, so the control gets more room"], ["better", "Sideways dashboard: the two channel values show in the title"], ["fix", "Sideways dashboard: nothing covers the bottom of the controls any more"]]},
     {b:132,items:[["fix", "Stick, D-pad and XY pad: the port pair switch moved to a small bar at the bottom of the widget (tap \u2039 \u203a or swipe the dots), so the title shows in full and the control is not switched by mistake"], ["fix", "Switching a pair while holding another control no longer freezes it"]]},
     {b:131,items:[["new", "Stick, D-pad and XY pad: swipe the title bar to move to the next port pair on the same hub (AB, CD, EF); red LEDs show the pair, empty pairs are skipped"]]},
     {b:128,items:[["better", "Version 1.3. Hub 4.0: plugs A and B sit a little further out so the push button and its LED stay visible"], ["better", "Hub 6.0 picture: push button ring drawn with the same line weight as the hub"]]},

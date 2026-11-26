@@ -1,5 +1,6 @@
   // ---- What's new, version and update check ----
   var CHANGES=[
+    {b:133,items:[["better", "Stick, D-pad and XY pad: the title is now the channel chip and the port pair letters, glowing red; tap the letters for the next pair (AB, CD, EF). The pair bar at the bottom is gone, so the control gets more room"], ["better", "Sideways dashboard: the two channel values show in the title"], ["fix", "Sideways dashboard: nothing covers the bottom of the controls any more"]]},
     {b:132,items:[["fix", "Stick, D-pad and XY pad: the port pair switch moved to a small bar at the bottom of the widget (tap \u2039 \u203a or swipe the dots), so the title shows in full and the control is not switched by mistake"], ["fix", "Switching a pair while holding another control no longer freezes it"]]},
     {b:131,items:[["new", "Stick, D-pad and XY pad: swipe the title bar to move to the next port pair on the same hub (AB, CD, EF); red LEDs show the pair, empty pairs are skipped"]]},
     {b:128,items:[["better", "Version 1.3. Hub 4.0: plugs A and B sit a little further out so the push button and its LED stay visible"], ["better", "Hub 6.0 picture: push button ring drawn with the same line weight as the hub"]]},
