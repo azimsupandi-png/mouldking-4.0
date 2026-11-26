@@ -6735,7 +6735,10 @@ function animPort(k,x,dt){var t=x.t,d=IMG[t],R=WR.root;
  var f=Math.abs(x.v)/100,idle=!x.v&&!x.w&&(!isSvT(t)||Math.abs(x.ang)<.05);if(idle&&x.idle) return f;x.idle=idle;
  var trav=0;
  if(isSvT(t)){var step=Math.max(-300*dt,Math.min(300*dt,x.v*.9-x.ang));x.ang+=step;trav=step}
- else if(t!=='lt'){var wt=RPM[t]*6*x.v/100*VSPD;x.w+=(wt-x.w)*Math.min(1,dt/TAU[t]);if(Math.abs(x.w)<12&&!wt) x.w=0;trav=x.w/60;x.ang=(x.ang+x.w*dt)%360}
+ else if(t!=='lt'){var wt=RPM[t]*6*x.v/100*VSPD;x.w+=(wt-x.w)*Math.min(1,dt/TAU[t]);if(Math.abs(x.w)<12&&!wt) x.w=0;var st=x.w*(WR.fdt||dt);
+  // never turn more than 30 degrees between two pictures: the cross looks the same every 90 degrees, so bigger jumps
+  // (a slow phone drawing three hubs) make every speed look alike; the frame's real time is used, not the capped one
+  st=Math.max(-30,Math.min(30,st));trav=st;x.ang=(x.ang+st)%360}
  // axle discs: up to LAY fading copies spread over the turn of this frame (motion blur)
  discsOf(d).forEach(function(e,q){var kk=k+(q?'_'+q:''),n=Math.max(1,Math.min(LAY,Math.ceil(Math.abs(trav)/6)));
   for(var j=0;j<LAY;j++){var el=R.getElementById('ly'+kk+'_'+j);if(!el) continue;
@@ -6751,7 +6754,7 @@ function wrFrame(ts){WR.raf=0;
  if(V2.v!=='home'||document.hidden||!WR.on||WR.vis===false){WR.last=0;return}
  // every changed attribute repaints the whole picture, so it is drawn at most ~30 times a second
  if(WR.last&&ts-WR.last<30){WR.raf=requestAnimationFrame(wrFrame);return}
- var dt=Math.min(.05,(ts-(WR.last||ts))/1000),any=false;WR.last=ts;
+ var dt=Math.min(.05,(ts-(WR.last||ts))/1000),any=false;WR.fdt=Math.min(.25,(ts-(WR.last||ts))/1000);WR.last=ts;
  Object.keys(ST).forEach(function(k){if(ST[k].t&&animPort(k,ST[k],dt)>.01) any=true});
  // hub status LED: n quick blinks then a pause (hubLed sets the pattern), while the link is up
  var hl=WR.root.querySelector('.hubled'),lu=hubLinkUp();
