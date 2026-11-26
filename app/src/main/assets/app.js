@@ -2583,6 +2583,8 @@ try{
   var hubMsg='';
   // hub status LED in the wiring: lit only while the status shows Hub active (link up, pairing done)
   function hubLinkUp(){return !!S.connected&&hubMsg!=='Pairing…'}
+  // what the hub is really driving: nothing until the link is up (Hub active), back to 0 the moment it drops
+  function liveO(i){return hubLinkUp()?(+rt.o[i]||0):0}
   var HUB_TEXT={off:'Bluetooth is off',btoff:'Bluetooth was switched off',denied:'Permission denied',unsupported:'BLE advertising not supported',error:'Bluetooth error'};
   S.bt=true;
   function paintBt(){
@@ -6727,7 +6729,7 @@ function wrLockPaint(){var b=document.getElementById('wrLock'),on=!!store.prefs.
 // (rt.o with reverse applied): axles turn, a servo swings, LEDs glow, the
 // cable shows light running hub -> part (part -> hub in reverse).
 // ======================================================================
-function hubGets(i){return Math.max(-100,Math.min(100,(+rt.o[i]||0)*(C.ch[i]&&C.ch[i].inv?-1:1)))}
+function hubGets(i){return Math.max(-100,Math.min(100,liveO(i)*(C.ch[i]&&C.ch[i].inv?-1:1)))}
 function animPort(k,x,dt){var t=x.t,d=IMG[t],R=WR.root;
  var tgt=hubGets(x.i);x.v+=(tgt-x.v)*Math.min(1,dt*(t==='lt'?14:10));if(Math.abs(x.v)<.3&&!tgt) x.v=0;
  var f=Math.abs(x.v)/100,idle=!x.v&&!x.w&&(!isSvT(t)||Math.abs(x.ang)<.05);if(idle&&x.idle) return f;x.idle=idle;
@@ -6842,7 +6844,7 @@ return API;
     ab.addEventListener('click',function(){store.prefs.wrall=true;save();WR.cur=null;WCUR=null;wrPanelHide();WALLK='';wrTabs();wrCtl()});box.appendChild(ab)}}
   // live output bar under the panel title: what the hub gets on this port (reverse applied), filling from the left going forward and from the right in reverse
   function wrLiveBar(box,i){var lb=box.querySelector('.wr-lb');if(!lb) return;if(!lb.children.length) for(var n=0;n<20;n++) lb.appendChild(document.createElement('i'));
-   var v=Math.round((+rt.o[i]||0)*(C.ch[i]&&C.ch[i].inv?-1:1)),k=String(Math.round(v/5));if(lb._k===k) return;lb._k=k;var ln=Math.round(Math.abs(v)/5);
+   var v=Math.round(liveO(i)*(C.ch[i]&&C.ch[i].inv?-1:1)),k=String(Math.round(v/5));if(lb._k===k) return;lb._k=k;var ln=Math.round(Math.abs(v)/5);
    [].forEach.call(lb.children,function(c,j){var ix=v<0?19-j:j,on=ix<ln;c.style.background=on?wcol((ix+1)/20):''})}
   function wrPanelHide(){var b=document.getElementById('wrPanel');if(b) b.hidden=true;document.documentElement.classList.remove('wr-fl')}
   function wrPanelShow(){var b=document.getElementById('wrPanel');if(b) b.hidden=false;document.documentElement.classList.add('wr-fl')}
@@ -6931,7 +6933,7 @@ return API;
   var WAMP={m:.55,l:.85,xl:1.6,bg:1.8,sv:.6,lt:.05,mk_m:.55,mk_l:.85,mk_xl:1.6,mk_sv:.6},WBUD=4,WBT={t:0,avg:0};
   function wrBudget(){var box=document.getElementById('wrBud');if(!box) return;var now=performance.now();if(now-WBT.t<250) return;var dt=WBT.t?Math.min(2,(now-WBT.t)/1000):0;WBT.t=now;
    var sl=wrAllOn()?activeSlots():[WR.slot],h='',tot=0,mx=0;
-   sl.forEach(function(s){var a=0,rows='';for(var p=0;p<PER;p++){var i=s*PER+p,t=C.pf&&C.pf[i],f=Math.min(1,Math.abs(+rt.o[i]||0)/100),q=t?(WAMP[t]||0)*(t==='lt'?f:f*(.35+.65*f)):0,t2=t&&C.pf2&&C.pf2[i];if(t2) q+=(WAMP[t2]||0)*(t2==='lt'?f:f*(.35+.65*f));a+=q;
+   sl.forEach(function(s){var a=0,rows='';for(var p=0;p<PER;p++){var i=s*PER+p,t=C.pf&&C.pf[i],f=Math.min(1,Math.abs(liveO(i))/100),q=t?(WAMP[t]||0)*(t==='lt'?f:f*(.35+.65*f)):0,t2=t&&C.pf2&&C.pf2[i];if(t2) q+=(WAMP[t2]||0)*(t2==='lt'?f:f*(.35+.65*f));a+=q;
      rows+='<div class="wr-bp'+(t?'':' no')+'"><span>'+LT.charAt(p)+'</span><i><b style="width:'+Math.round(Math.min(1,q/1.6)*100)+'%;background:'+wcol(q/1.6)+'"></b></i><em>'+(t?q.toFixed(2)+' A':'—')+'</em></div>'}
     tot+=a;var L=a/WBUD;mx=Math.max(mx,L);var seg='';for(var n=0;n<20;n++){var g=(n+.5)/20;seg+='<i style="background:'+(g<=L?wcol(g):'')+'"></i>'}
     h+='<div class="wr-bh"><div class="wr-bt"><b>'+(sl.length>1||activeSlots().length>1?'Hub '+(s+1)+' · ':'')+a.toFixed(1)+' A</b><span>'+Math.round(L*100)+'% '+tr2('of the hub budget')+'</span></div><div class="wr-bseg">'+seg+'</div><div class="wr-bps">'+rows+'</div></div>'});

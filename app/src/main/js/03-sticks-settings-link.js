@@ -543,6 +543,8 @@
   var hubMsg='';
   // hub status LED in the wiring: lit only while the status shows Hub active (link up, pairing done)
   function hubLinkUp(){return !!S.connected&&hubMsg!=='Pairing…'}
+  // what the hub is really driving: nothing until the link is up (Hub active), back to 0 the moment it drops
+  function liveO(i){return hubLinkUp()?(+rt.o[i]||0):0}
   var HUB_TEXT={off:'Bluetooth is off',btoff:'Bluetooth was switched off',denied:'Permission denied',unsupported:'BLE advertising not supported',error:'Bluetooth error'};
   S.bt=true;
   function paintBt(){

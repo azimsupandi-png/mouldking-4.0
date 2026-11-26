@@ -2221,6 +2221,23 @@ async def t_stack(b):
     await pg.evaluate("window.MK6Bridge.send=function(){};document.getElementById('hubConn').click();onHubState('ready');mk6Go('home')"); await pg.wait_for_timeout(900)
     r = await pg.evaluate("(document.getElementById('wrBud')||{}).textContent||''")
     check('power budget shows numbers for MK motors and stacked parts (no NaN)', r and 'NaN' not in r, r[:120])
+    # wiring follows the hub link: still while not connected, moves once Hub active, back to still when it drops
+    await pg.evaluate("__t.switchProfile('m1');mk6Go('home');document.getElementById('hubConn').click()"); await pg.wait_for_timeout(300)
+    SPIN = "(()=>{var e=document.getElementById('wrHost').shadowRoot.querySelector('[id^=croA]');return e?e.getAttribute('transform'):''})()"
+    async def spins():
+        await pg.evaluate("__t.rt.o[0]=80;mk6Go('home');document.getElementById('wrHost').scrollIntoView()")
+        a1 = await pg.evaluate(SPIN); await pg.wait_for_timeout(400)
+        await pg.evaluate("__t.rt.o[0]=80"); a2 = await pg.evaluate(SPIN)
+        return a1 != a2
+    r = await pg.evaluate("document.querySelector('#v2Pill .ptx').textContent")
+    s1 = await spins()
+    check('wiring: no motion while the hub is not connected', not s1, r)
+    await pg.evaluate("window.MK6Bridge.send=function(){};document.getElementById('hubConn').click();onHubState('ready')"); await pg.wait_for_timeout(300)
+    s2 = await spins()
+    check('wiring: motors move once the hub is active', s2, s2)
+    await pg.evaluate("onHubState('error')"); await pg.wait_for_timeout(800)
+    s3 = await spins()
+    check('wiring: motion stops when the hub link drops', not s3, s3)
     check('stack: no page errors', not pg.errors, pg.errors)
     await ctx.close()
 
