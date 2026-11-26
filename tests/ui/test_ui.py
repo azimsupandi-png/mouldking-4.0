@@ -2298,10 +2298,10 @@ async def t_swipegrp(b):
     await pg.goto(HTML + '?mk6test')
     await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
     await pg.evaluate("mk6Go('drive')"); await pg.wait_for_timeout(500)
-    r = await pg.evaluate("[...document.querySelectorAll('.bdw-grp')].map(g=>g.querySelectorAll('i').length+':'+g.querySelectorAll('i.on').length+':'+g.textContent).join(' ')")
+    r = await pg.evaluate("[...document.querySelectorAll('.bdw-grp')].map(g=>g.querySelectorAll('i').length+':'+g.querySelectorAll('i.on').length+':'+g.querySelector('b').textContent).join(' ')")
     check('swipe: Stick, D-pad and XY pad show 3 group LEDs with AB lit', r == '3:1:AB 3:1:AB 3:1:AB', r)
     async def swipe(i, dx):
-        h = (await pg.query_selector_all('.bdw .bdw-grp'))[i]; await h.scroll_into_view_if_needed(); bb = await h.bounding_box()
+        h = (await pg.query_selector_all('.bdw .bdw-grp .g-d'))[i]; await h.scroll_into_view_if_needed(); bb = await h.bounding_box()
         x, y = bb['x'] + bb['width'] * .5, bb['y'] + bb['height'] / 2
         await pg.mouse.move(x, y); await pg.mouse.down(); await pg.mouse.move(x + dx, y, steps=5); await pg.mouse.up(); await pg.wait_for_timeout(300)
     await swipe(0, -150)
@@ -2311,10 +2311,26 @@ async def t_swipegrp(b):
     r = await pg.evaluate("__t.C.board[0].c+','+__t.C.board[0].d")
     check('swipe: the empty E/F pair is skipped (back to A+B)', r == '0,1', r)
     await swipe(2, 150)
-    r = await pg.evaluate("__t.C.board[2].c+','+__t.C.board[2].d+'|'+document.querySelectorAll('.bdw-grp')[2].textContent")
+    r = await pg.evaluate("__t.C.board[2].c+','+__t.C.board[2].d+'|'+document.querySelectorAll('.bdw-grp b')[2].textContent")
     check('swipe: right swipe on the XY pad goes to C+D, LED label follows', r == '2,3|CD', r)
     r = await pg.evaluate("JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.board[2].c")
     check('swipe: the new pair is saved with the board', r == 2, r)
+    r = await pg.evaluate("[...document.querySelectorAll('.bdw')].slice(0,3).map(w=>!w.querySelector('.bdw-h .bdw-grp')&&!!w.querySelector(':scope > .bdw-grp')).join()")
+    check('swipe: the pair bar sits at the bottom of the widget, not in the title', r == 'true,true,true', r)
+    a = await pg.query_selector_all('.bdw-grp .g-ar'); await a[1].click(); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("__t.C.board[0].c+','+__t.C.board[0].d")
+    check('swipe: tapping > on the Stick moves it to the next pair', r == '2,3', r)
+    a = await pg.query_selector_all('.bdw-grp .g-ar'); await a[0].click(); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("__t.C.board[0].c+','+__t.C.board[0].d")
+    check('swipe: tapping < goes back', r == '0,1', r)
+    # a finger held on another widget: the switch waits to rebuild the board until it is lifted
+    r = await pg.evaluate("""(()=>{var w=document.querySelectorAll('.bdw')[1];
+      window.dispatchEvent(new PointerEvent('pointerdown',{pointerId:77,bubbles:true}));
+      document.querySelectorAll('.bdw-grp .g-ar')[1].click();
+      var same=document.querySelectorAll('.bdw')[1]===w,c=__t.C.board[0].c;
+      window.dispatchEvent(new PointerEvent('pointerup',{pointerId:77,bubbles:true}));
+      return same+'|'+c+'|'+(document.querySelectorAll('.bdw')[1]!==w)+'|'+document.querySelectorAll('.bdw-grp b')[0].textContent})()""")
+    check('swipe: with a finger down the board is not rebuilt; it is once the finger lifts', r == 'true|2|true|CD', r)
     check('swipe: no page errors', not pg.errors, pg.errors)
     await ctx.close()
 

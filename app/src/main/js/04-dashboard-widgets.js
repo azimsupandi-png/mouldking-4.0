@@ -589,7 +589,7 @@
     // upright board: the tools sit on the widget itself (not dimmed with its title when no hub is connected)
     if(bdEditing) (dashOn()?head:el).appendChild(bdToolbar(it));
     else if(withOut){out=document.createElement('output');out.textContent='0';head.appendChild(out)}
-    if(!bdEditing&&it&&GRPK[it.k]) grpLeds(head,it);
+    if(!bdEditing&&it&&GRPK[it.k]) grpBar(el,it);
     el.appendChild(head);
     return out;
   }
@@ -601,15 +601,27 @@
     var used=function(g){for(var q=0;q<2;q++){var i=base+2*g+q;if((C.pf&&C.pf[i])||(C.pf2&&C.pf2[i])) return true}return false};
     var gs=[];for(var g=0;g<G;g++) if(g===g0||used(g)) gs.push(g);
     return {hub:hub,P:P,G:G,base:base,g0:g0,gs:gs}}
-  function grpLeds(head,it){var f=grpInfo(it);if(!f||f.G<2) return;
-    var w=document.createElement('span');w.className='bdw-grp';w.setAttribute('aria-label','Port pair '+(f.g0+1)+' of '+f.G+', swipe the title to change');
-    for(var g=0;g<f.G;g++){var l=document.createElement('i');if(g===f.g0) l.className='on';if(f.gs.indexOf(g)<0) l.classList.add('off');w.appendChild(l)}
-    var t=document.createElement('b');t.textContent=L.charAt(2*f.g0)+L.charAt(2*f.g0+1);w.appendChild(t);head.appendChild(w);
-    var x0=null,y0=0;
-    // the lift is caught on the window: a pad may capture the pointer, so it never comes back to the title
-    var up=function(e){window.removeEventListener('pointerup',up,true);if(x0===null) return;var dx=e.clientX-x0,dy=e.clientY-y0;x0=null;if(Math.abs(dx)<36||Math.abs(dy)>Math.abs(dx)) return;grpGo(it,dx<0?1:-1)};
-    head.addEventListener('pointerdown',function(e){x0=e.clientX;y0=e.clientY;window.addEventListener('pointerup',up,true)});
-    head.addEventListener('pointercancel',function(){x0=null})}
+  // the pair switcher sits in its own small bar at the bottom of the widget, away from the title and the control:
+  // tap < or >, or swipe along the bar; the title keeps its full text
+  function grpBar(el,it){var f=grpInfo(it);if(!f||f.G<2) return;
+    var w=document.createElement('div');w.className='bdw-grp';w.setAttribute('role','group');w.setAttribute('aria-label','Port pair '+(f.g0+1)+' of '+f.G);
+    var mk=function(t,dir){var b=document.createElement('button');b.type='button';b.className='g-ar';b.textContent=t;b.setAttribute('aria-label',dir>0?'Next port pair':'Previous port pair');
+      b.addEventListener('pointerdown',function(e){e.stopPropagation()});b.addEventListener('click',function(e){e.stopPropagation();e.preventDefault();grpGo(it,dir)});return b};
+    w.appendChild(mk('\u2039',-1));
+    var d=document.createElement('span');d.className='g-d';
+    for(var g=0;g<f.G;g++){var l=document.createElement('i');if(g===f.g0) l.className='on';if(f.gs.indexOf(g)<0) l.classList.add('off');d.appendChild(l)}
+    var t=document.createElement('b');t.textContent=L.charAt(2*f.g0)+L.charAt(2*f.g0+1);d.appendChild(t);w.appendChild(d);
+    w.appendChild(mk('\u203a',1));
+    var x0=null;
+    d.addEventListener('pointerdown',function(e){e.stopPropagation();x0=e.clientX;try{d.setPointerCapture(e.pointerId)}catch(_){}});
+    d.addEventListener('pointerup',function(e){if(x0===null) return;var dx=e.clientX-x0;x0=null;if(Math.abs(dx)>=24) grpGo(it,dx<0?1:-1)});
+    d.addEventListener('pointercancel',function(){x0=null});
+    el.classList.add('has-grp');el.appendChild(w)}
+  // fingers on the screen: the board is rebuilt only when none is down, so a switch never freezes a control being held
+  var GPD={},GPEND=false;
+  window.addEventListener('pointerdown',function(e){GPD[e.pointerId]=1},true);
+  var gpUp=function(e){delete GPD[e.pointerId];if(GPEND&&!Object.keys(GPD).length){GPEND=false;syncBoard()}};
+  window.addEventListener('pointerup',gpUp,true);window.addEventListener('pointercancel',gpUp,true);
   function grpGo(it,dir){var f=grpInfo(it);if(!f) return;
     var chs=[it.c];if(typeof it.d==='number'&&it.d>=0) chs.push(it.d);
     if(chs.some(function(q){return Math.abs(rt.t[q]||0)>1})) return;   // not while the control is held
@@ -620,7 +632,8 @@
     var snap=JSON.parse(JSON.stringify(C.board));
     it.c=mv(it.c);if(typeof it.d==='number'&&it.d>=0) it.d=mv(it.d);
     BD_UNDO.push({board:snap,msg:'Port pair change undone.'});if(BD_UNDO.length>20) BD_UNDO.shift();
-    save();syncBoard();feedback('ok');toast(L.charAt(2*g1)+L.charAt(2*g1+1)+' · '+C.ch[it.c].name)}
+    save();feedback('ok');toast(L.charAt(2*g1)+L.charAt(2*g1+1)+' · '+C.ch[it.c].name);
+    if(Object.keys(GPD).length) GPEND=true; else syncBoard()}
   // a channel muted on a Levels (EQ) widget stays muted only while that widget is on the board, so a mute is never hidden
   function muteTidy(){
     var eq={};(C.board||[]).forEach(function(it){if(it.k==='lx'&&it.t==='eq'){eq[it.c]=1;(it.cs||[]).forEach(function(q){eq[q]=1})}});

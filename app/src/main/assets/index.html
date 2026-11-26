@@ -1986,11 +1986,15 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
 .bdhz>.trmk{top:12%;bottom:12%;width:3px;left:calc(50% + var(--tv,0) * 0.45% * 100 / 100 - 1.5px)}
 .trmk.on{opacity:1}
 .pmw{display:flex;gap:6px;min-width:0}.pmw select{min-width:0;flex:1}.pmw .pmt{flex:0 0 7.6em;color:#ffd84a}.pmw .pmt[hidden]{display:none}
-.bdw-grp{display:inline-flex;align-items:center;gap:5px;margin-left:auto;padding-left:8px;touch-action:pan-y}
+.bdw.has-grp{position:relative;padding-bottom:40px}
+.bdw-grp{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);z-index:2;display:inline-flex;align-items:center;gap:2px;border-radius:999px;background:rgba(0,0,0,.35);border:1px solid #2b313b}
+.bdw-grp .g-ar{width:34px;height:28px;border:0;background:none;color:#9aa3b0;font-size:20px;line-height:1;padding:0;touch-action:manipulation}
+.bdw-grp .g-ar:active{color:#ff6b6b}
+.bdw-grp .g-d{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;touch-action:none}
 .bdw-grp i{width:9px;height:9px;border-radius:50%;background:#3a1414;box-shadow:inset 0 1px 2px #000;flex:none}
 .bdw-grp i.on{background:radial-gradient(circle at 40% 35%,#ffb3b3,#ff3b3b 45%,#a10f0f);box-shadow:0 0 8px #ff3b3b,0 0 14px rgba(255,59,59,.45)}
 .bdw-grp i.off{opacity:.35}
-.bdw-grp b{color:#ff6b6b;font-size:10px;font-weight:800;letter-spacing:.05em}
+.bdw-grp b{color:#ff6b6b;font-size:10px;font-weight:800;letter-spacing:.05em;margin-left:2px}
 </style>
 </head>
 <body>
