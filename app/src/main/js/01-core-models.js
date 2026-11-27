@@ -190,7 +190,7 @@ try{
         if(c>=0&&c<NMAX) out.push({k:x.k,c:c,w:w,hold:x.hold===true,v:x.v===true});
       }else if(x.k==='j'){
         var ja=Math.round(+x.c), jb=Math.round(+x.d);
-        if(ja>=0&&ja<NMAX&&jb>=-1&&jb<NMAX){var jo={k:'j',c:ja,d:jb,m:x.m==='tank'?'tank':'axis',w:w,hold:x.hold===true},jj=cleanJc(x.jc);if(jj) jo.jc=jj;if(x.sw===1||x.sw===true) jo.sw=1;out.push(jo)}
+        if(ja>=0&&ja<NMAX&&jb>=-1&&jb<NMAX){var jo={k:'j',c:ja,d:jb,m:x.m==='tank'?'tank':'axis',w:w,hold:x.hold===true},jj=cleanJc(x.jc);if(jj) jo.jc=jj;if(x.sw===1||x.sw===true) jo.sw=1;if(+x.ng===1) jo.ng=1;out.push(jo)}
       }else if(x.k==='d'){
         var da=Math.round(+x.c), db=Math.round(+x.d), dc=Math.round(+x.e), dd=Math.round(+x.f);
         if(da>=0&&da<NMAX&&dc>=0&&dc<NMAX&&db>=-1&&db<NMAX&&dd>=-1&&dd<NMAX){var dobj={k:'d',c:da,d:db,e:dc,f:dd,m:x.m==='tank'?'tank':'axis',w:2,hold:x.hold===true},dj=cleanJc(x.jc);if(dj) dobj.jc=dj;out.push(dobj)}
@@ -232,7 +232,7 @@ try{
       }else if(x.k==='xy'||x.k==='xf'){
         var xa=Math.round(+x.c),xb=Math.round(+x.d);
         if(xa>=0&&xa<NMAX&&xb>=0&&xb<NMAX&&xa!==xb){var xo={k:x.k,c:xa,d:xb,w:w};
-          if(x.k==='xy'){if(x.hd===1||x.hd===true) xo.hd=1;if(+x.ng===1) xo.ng=1;if(+x.nr===1) xo.nr=1}
+          if(x.k==='xy'){if(x.hd===1||x.hd===true) xo.hd=1;if(+x.ng===1) xo.ng=1;if(+x.nr===1) xo.nr=1;var xj=cleanJc(x.jc);if(xj) xo.jc=xj;if(x.sw===1||x.sw===true) xo.sw=1}
           else{var xp=Math.round(+x.p);if(xp>=10&&xp<100) xo.p=xp;if(+x.md===1) xo.md=1;if(+x.rc===1) xo.rc=1;if(+x.rd===1) xo.rd=1}
           out.push(xo)}
       }else if(x.k==='tl'){
@@ -268,6 +268,7 @@ try{
           var dpo={k:'dp',c:dpa,d:dpb,w:w,m:x.m==='car'?'car':'tank',p:(dpp>=10&&dpp<=100)?dpp:70};
           if(x.rt!==undefined&&dpr>=0&&dpr<=3&&dpr!==0.3) dpo.rt=dpr;
           if(x.tg===1||x.tg===true) dpo.tg=1;
+          if(x.hold===true) dpo.hold=true;if(x.sw===1||x.sw===true) dpo.sw=1;
           out.push(dpo);
         }
       }else if(x.k==='rs'){

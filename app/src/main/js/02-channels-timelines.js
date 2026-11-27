@@ -560,7 +560,11 @@
         for(var i=1;i<8;i++){if(i===4) continue;sv('line',{x1:X0+W*i/8,y1:Y0+8,x2:X0+W*i/8,y2:Y0+H-8},gg);sv('line',{x1:X0+8,y1:Y0+H*i/8,x2:X0+W-8,y2:Y0+H*i/8},gg)}}
       sv('line',{x1:cx,y1:Y0+8,x2:cx,y2:Y0+H-8,stroke:'rgba(255,255,255,.16)'},svg);sv('line',{x1:X0+8,y1:cy,x2:X0+W-8,y2:cy,stroke:'rgba(255,255,255,.16)'},svg);
       sv('rect',{x:cx-R,y:cy-R,width:2*R,height:2*R,rx:10,fill:'none',stroke:'rgba(245,197,24,.35)','stroke-dasharray':'3 4'},svg);
-      ['M'+(cx-6)+' '+(Y0+16)+'l6 -8 6 8z','M'+(cx-6)+' '+(Y0+H-16)+'l6 8 6 -8z','M'+(X0+16)+' '+(cy-6)+'l-8 6 8 6z','M'+(X0+W-16)+' '+(cy-6)+'l8 6 -8 6z'].forEach(function(d){sv('path',{d:d,fill:'#d9a400',opacity:.85},svg)});
+      var agl=sv('filter',{id:id+'a',x:'-250%',y:'-250%',width:'600%',height:'600%'},df);sv('feGaussianBlur',{stdDeviation:5},agl);
+      var ARW=['M'+(cx-6)+' '+(Y0+16)+'l6 -8 6 8z','M'+(cx-6)+' '+(Y0+H-16)+'l6 8 6 -8z','M'+(X0+16)+' '+(cy-6)+'l-8 6 8 6z','M'+(X0+W-16)+' '+(cy-6)+'l8 6 -8 6z'].map(function(d){
+        var g=sv('g',{},svg),hl=sv('path',{d:d,fill:'#ffd84a',stroke:'#ffc400','stroke-width':7,'stroke-linejoin':'round',opacity:0,filter:'url(#'+id+'a)'},g);sv('path',{d:d,fill:'#d9a400',opacity:.85},g);var lit=sv('path',{d:d,fill:'#ffe27a',opacity:0},g);return {hl:hl,lit:lit,v:-1}});
+      // up, down, left, right: lit in the direction the pad is pushed
+      function arrows(x,y){[y,-y,-x,x].forEach(function(v,j){var a=ARW[j],o=Math.max(0,Math.min(1,(v-3)/60));o=Math.round(o*20)/20;if(a.v===o) return;a.v=o;a.hl.setAttribute('opacity',o);a.lit.setAttribute('opacity',o)})}
       var gx=sv('line',{y1:Y0+6,y2:Y0+H-6,stroke:'rgba(245,197,24,.45)','stroke-dasharray':'4 4'},svg),gy=sv('line',{x1:X0+6,x2:X0+W-6,stroke:'rgba(245,197,24,.45)','stroke-dasharray':'4 4'},svg);
       var LX=[],LY=[],N=20;
       if(!it.nr){for(i=0;i<N;i++){LX.push(sv('rect',{x:X0+4+i*(W-8)/N+1,y:Y0+H+12,width:(W-8)/N-2,height:9,rx:2,fill:OFF},svg));LY.push(sv('rect',{x:X0-26,y:Y0+4+i*(H-8)/N+1,width:9,height:(H-8)/N-2,rx:2,fill:OFF},svg))}
@@ -568,8 +572,8 @@
       var kn=knob(R),dx=0,dy=0,pid=null;
       function rail(L,val,horiz){var n=L.length,h=n/2,q=Math.round(Math.abs(val)/100*h);L.forEach(function(r,j){var ix=horiz?j:n-1-j,on=val>=0?(ix>=h&&ix<h+q):(ix<h&&ix>=h-q),p=Math.abs(ix<h?h-ix:ix-h+1)/h*100,f=on?(val<0?PAL.b:col(p)):(ix===h||ix===h-1?'rgba(200,208,220,.3)':OFF);if(r.__f!==f){r.__f=f;r.setAttribute('fill',f)}})}
       function place(x,y){var px=cx+x/100*MV,py=cy-y/100*MV;kn.setAttribute('transform','translate('+px.toFixed(1)+' '+py.toFixed(1)+')');gx.setAttribute('x1',px);gx.setAttribute('x2',px);gy.setAttribute('y1',py);gy.setAttribute('y2',py);gx.style.opacity=gy.style.opacity=(Math.abs(x)>1||Math.abs(y)>1)?1:0}
-      function from(e){var p=pt(e);var x=Math.max(-100,Math.min(100,(p.x-cx)/MV*100)),y=Math.max(-100,Math.min(100,-(p.y-cy)/MV*100));return [x,y]}
-      function send(x,y){noteInput();delete RAMP[it.c];delete RAMP[it.d];setT(it.c,x*z(),false);setT(it.d,y*z(),false)}
+      function from(e){var p=pt(e);var x=Math.max(-100,Math.min(100,(p.x-cx)/MV*100)),y=Math.max(-100,Math.min(100,-(p.y-cy)/MV*100));var jx=it.jc&&it.jc.ax;if(jx==='x') y=0;if(jx==='y') x=0;return [x,y]}
+      function send(x,y){noteInput();delete RAMP[it.c];delete RAMP[it.d];var sh=jshape(x/100,y/100,it.jc);setT(it.c,sh[0]*100*z(),false);setT(it.d,sh[1]*100*z(),false)}
       svg.style.touchAction='none';
       svg.addEventListener('pointerdown',function(e){if(bdEditing||S.estop||S.play) return;e.preventDefault();pid=e.pointerId;try{svg.setPointerCapture(pid)}catch(_){}var v=from(e);dx=v[0];dy=v[1];place(dx,dy);send(dx,dy)});
       svg.addEventListener('pointermove',function(e){if(e.pointerId!==pid) return;var v=from(e);dx=v[0];dy=v[1];place(dx,dy);send(dx,dy)});
@@ -577,6 +581,7 @@
       var sx=0,sy=0;
       m.upd=function(){var tx=(rt.t[it.c]||0)/z(),ty=(rt.t[it.d]||0)/z();if(pid===null){sx+=(tx-sx)*.55;sy+=(ty-sy)*.55;if(Math.abs(sx-tx)<.5) sx=tx;if(Math.abs(sy-ty)<.5) sy=ty;place(sx,sy)}else{sx=dx;sy=dy}
         if(LX.length){rail(LX,rt.t[it.c]||0,true);rail(LY,rt.t[it.d]||0,false)}
+        arrows(sx,sy);
         if(hd){var s=fmt(rt.t[it.c]||0)+' · '+fmt(rt.t[it.d]||0);if(hd.textContent!==s) hd.textContent=s}};
     }else if(k==='xf'){
       // ---- Crossfader (mixer desk): master fader = throttle (starts at 0 each time), two VU columns, presets, reverse per side ----
@@ -1082,6 +1087,24 @@
   var F_PC={k:'pc',l:'Also drive channel (same hub)',ch:[-1,0,1,2,3,4,5],lab:['Off','A','B','C','D','E','F'],only:true,def:-1,g:function(it){return it.pc===undefined?-1:it.pc%PER},s:function(it,v){if(v<0||v===it.c%PER){delete it.pc;delete it.pi}else it.pc=Math.floor(it.c/PER)*PER+v}};
   var F_PI={k:'pi',l:'Second channel direction',ch:[0,1],lab:['Same','Opposite'],only:true,def:0,g:function(it){return it.pi?1:0},s:function(it,v){if(v&&it.pc!==undefined) it.pi=1; else delete it.pi}};
   var F_CAP={k:'cap',l:'Power limit',u:'%',min:10,max:100,st:5,ch:[25,50,75,100],def:100};
+  // Stick, XY pad (and D-pad): the same settings, kept in the same places on both widgets
+  // (it.jc = deadzone/sensitivity/power limit/axis lock; let go: it.hold on Stick and D-pad, it.hd on the XY pad;
+  //  grid off: it.ng; LED rails (XY pad only): it.nr = off)
+  function jcF(k,v){return function(it,x){var o=cleanJc(Object.assign({dz:0,sn:100,lm:100,ax:'f'},it.jc||{},(function(){var q={};q[k]=x;return q})()));if(o) it.jc=o; else delete it.jc}}
+  function jcG(k,d){return function(it){return it.jc&&it.jc[k]!==undefined?it.jc[k]:d}}
+  var F_LETGO={k:'hd',l:'When you let go',ch:[0,1],lab:['Back to the centre','Stay where it is'],only:true,def:0,
+    g:function(it){return (it.k==='xy'?it.hd:it.hold)?1:0},s:function(it,v){if(it.k==='xy'){if(v) it.hd=1; else delete it.hd}else{if(v) it.hold=true; else delete it.hold}}};
+  var F_SWP={k:'sw',l:'Swipe to other pairs',ch:[0,1],lab:['Off','On'],only:true,def:0,g:function(it){return it.sw?1:0},s:function(it,v){if(v) it.sw=1; else delete it.sw}};
+  var F_RAIL={k:'nr',l:'LED rails',ch:[0,1],lab:['On','Off'],only:true,def:0};
+  var F_JDRV={k:'m',l:'Drive mode',ch:[0,1],lab:['Tank (2 motors)','Car (drive + steer)'],only:true,def:1,g:function(it){return it.m==='tank'?0:1},s:function(it,v){it.m=v?'axis':'tank'}};
+  var JXF=[{k:'dz',l:'Deadzone',u:'%',min:0,max:40,st:1,ch:[0,5,10,20],def:0,g:jcG('dz',0),s:jcF('dz')},
+    {k:'sn',l:'Sensitivity',u:'%',min:50,max:150,st:5,ch:[75,100,125,150],def:100,g:jcG('sn',100),s:jcF('sn')},
+    {k:'lm',l:'Power limit',u:'%',min:20,max:100,st:5,ch:[50,75,100],def:100,g:jcG('lm',100),s:jcF('lm')},
+    {k:'ax',l:'Axis lock',ch:[0,1,2],lab:['Free','Left / right','Up / down'],only:true,def:0,g:function(it){return ['f','x','y'].indexOf(jcG('ax','f')(it))},s:function(it,v){jcF('ax')(it,['f','x','y'][v]||'f')}},
+    F_LETGO,F_SWP,
+    {k:'ng',l:'Grid',ch:[0,1],lab:['On','Off'],only:true,def:0,g:function(it){return it.ng?1:0},s:function(it,v){if(v) it.ng=1; else delete it.ng}},
+    F_RAIL];
+  var JSF=[F_JDRV].concat(JXF.filter(function(f){return f!==F_RAIL}));
   // the scope can draw up to 3 more channels of the same hub (yellow, blue, grey)
   function F_KC(j){return {k:'cs'+j,l:['Also show (yellow line)','Also show (blue line)','Also show (grey line)'][j],ch:[-1,0,1,2,3,4,5],lab:['Off','A','B','C','D','E','F'],only:true,def:-1,
     g:function(it){var v=(it.cs||[])[j];return v===undefined?-1:v%PER},
@@ -1138,7 +1161,8 @@
     dp:{t:'D-pad settings',f:[{k:'p',l:'Power',u:'%',min:10,max:100,st:5,ch:[40,70,100],def:70},
       {k:'m',l:'Drive mode',ch:[0,1],lab:['Tank (2 motors)','Car (drive + steer)'],only:true,def:0,g:function(it){return it.m==='car'?1:0},s:function(it,v){it.m=v?'car':'tank'}},
       {k:'rt',l:'Ramp time (0 = instant)',u:'s',min:0,max:3,st:0.1,ch:[0,0.3,1],def:0.3},
-      {k:'tg',l:'Control',ch:[0,1],lab:['Hold to move','Tap to toggle'],only:true,def:0,g:function(it){return it.tg?1:0},s:function(it,v){if(v) it.tg=1; else delete it.tg}}]},
+      {k:'tg',l:'Control',ch:[0,1],lab:['Hold to move','Tap to toggle'],only:true,def:0,g:function(it){return it.tg?1:0},s:function(it,v){if(v) it.tg=1; else delete it.tg}},
+      F_LETGO,F_SWP]},
     b:{t:'Button settings',f:[{k:'p',l:'Turbo power',u:'%',min:30,max:100,st:5,ch:[50,75,100],def:100},
       {k:'bt',l:'Button type',ch:[0,1,2,3],lab:['Hold','Toggle','PingPong','Accelerator'],only:true,def:0,g:function(it){return ['','t','p','a'].indexOf(it.bt||'')},s:function(it,v){delete it.lock;if(v) it.bt=['','t','p','a'][v]; else delete it.bt;if(v!==3){delete it.ar;delete it.af}}},
       {k:'ar',l:'Accelerator: time to full power',ch:[0.5,1,2,3],lab:['0.5 s','1 s','2 s','3 s'],only:true,def:1,dep:{k:'bt',v:3},g:function(it){return it.ar||1},s:function(it,v){if(v===1) delete it.ar; else it.ar=v}},
@@ -1158,8 +1182,8 @@
       {k:'ra',l:'Reverse output A',ch:[0,1],lab:['Off','On'],only:true,def:0,g:function(it){return it.ra?1:0},s:function(it,v){if(v) it.ra=1; else delete it.ra}},
       {k:'rb',l:'Reverse output B',ch:[0,1],lab:['Off','On'],only:true,def:0,g:function(it){return it.rb?1:0},s:function(it,v){if(v) it.rb=1; else delete it.rb}}]},
     ps:{t:'Start / stop button settings',f:[{k:'hd',l:'Hold time before it switches',ch:[300,500,800,1200],lab:['0.3 s','0.5 s','0.8 s','1.2 s'],only:true,def:500},{k:'md',l:'What it controls',ch:[0,1],lab:['Hub link','Output only'],only:true,def:0}].concat('ABCDEF'.split('').map(function(c,j){return {k:'o'+j,l:'Output only: channel '+c,ch:[1,0],lab:['Stopped','Left running'],only:true,def:1,dep:{k:'md',v:1}}}))},
-    xy:{t:'XY pad settings',f:[{k:'hd',l:'When you let go',ch:[0,1],lab:['Back to the centre','Stay where it is'],only:true,def:0},
-      {k:'ng',l:'Grid',ch:[0,1],lab:['On','Off'],only:true,def:0},{k:'nr',l:'LED rails',ch:[0,1],lab:['On','Off'],only:true,def:0}]},
+    j:{t:'Joystick settings',f:JSF},
+    xy:{t:'XY pad settings',f:JXF},
     xf:{t:'Crossfader settings',f:[{k:'p',l:'Full power (top of the fader)',u:'%',min:10,max:100,st:5,ch:[50,80,100],def:100},
       {k:'md',l:'In the centre',ch:[0,1],lab:['Both channels at full power','Half power each'],only:true,def:0},
       {k:'rc',l:'Reverse the left side',ch:[0,1],lab:['Off','On'],only:true,def:0},{k:'rd',l:'Reverse the right side',ch:[0,1],lab:['Off','On'],only:true,def:0},

@@ -190,7 +190,7 @@ try{
         if(c>=0&&c<NMAX) out.push({k:x.k,c:c,w:w,hold:x.hold===true,v:x.v===true});
       }else if(x.k==='j'){
         var ja=Math.round(+x.c), jb=Math.round(+x.d);
-        if(ja>=0&&ja<NMAX&&jb>=-1&&jb<NMAX){var jo={k:'j',c:ja,d:jb,m:x.m==='tank'?'tank':'axis',w:w,hold:x.hold===true},jj=cleanJc(x.jc);if(jj) jo.jc=jj;if(x.sw===1||x.sw===true) jo.sw=1;out.push(jo)}
+        if(ja>=0&&ja<NMAX&&jb>=-1&&jb<NMAX){var jo={k:'j',c:ja,d:jb,m:x.m==='tank'?'tank':'axis',w:w,hold:x.hold===true},jj=cleanJc(x.jc);if(jj) jo.jc=jj;if(x.sw===1||x.sw===true) jo.sw=1;if(+x.ng===1) jo.ng=1;out.push(jo)}
       }else if(x.k==='d'){
         var da=Math.round(+x.c), db=Math.round(+x.d), dc=Math.round(+x.e), dd=Math.round(+x.f);
         if(da>=0&&da<NMAX&&dc>=0&&dc<NMAX&&db>=-1&&db<NMAX&&dd>=-1&&dd<NMAX){var dobj={k:'d',c:da,d:db,e:dc,f:dd,m:x.m==='tank'?'tank':'axis',w:2,hold:x.hold===true},dj=cleanJc(x.jc);if(dj) dobj.jc=dj;out.push(dobj)}
@@ -232,7 +232,7 @@ try{
       }else if(x.k==='xy'||x.k==='xf'){
         var xa=Math.round(+x.c),xb=Math.round(+x.d);
         if(xa>=0&&xa<NMAX&&xb>=0&&xb<NMAX&&xa!==xb){var xo={k:x.k,c:xa,d:xb,w:w};
-          if(x.k==='xy'){if(x.hd===1||x.hd===true) xo.hd=1;if(+x.ng===1) xo.ng=1;if(+x.nr===1) xo.nr=1}
+          if(x.k==='xy'){if(x.hd===1||x.hd===true) xo.hd=1;if(+x.ng===1) xo.ng=1;if(+x.nr===1) xo.nr=1;var xj=cleanJc(x.jc);if(xj) xo.jc=xj;if(x.sw===1||x.sw===true) xo.sw=1}
           else{var xp=Math.round(+x.p);if(xp>=10&&xp<100) xo.p=xp;if(+x.md===1) xo.md=1;if(+x.rc===1) xo.rc=1;if(+x.rd===1) xo.rd=1}
           out.push(xo)}
       }else if(x.k==='tl'){
@@ -268,6 +268,7 @@ try{
           var dpo={k:'dp',c:dpa,d:dpb,w:w,m:x.m==='car'?'car':'tank',p:(dpp>=10&&dpp<=100)?dpp:70};
           if(x.rt!==undefined&&dpr>=0&&dpr<=3&&dpr!==0.3) dpo.rt=dpr;
           if(x.tg===1||x.tg===true) dpo.tg=1;
+          if(x.hold===true) dpo.hold=true;if(x.sw===1||x.sw===true) dpo.sw=1;
           out.push(dpo);
         }
       }else if(x.k==='rs'){
@@ -1092,7 +1093,11 @@ try{
         for(var i=1;i<8;i++){if(i===4) continue;sv('line',{x1:X0+W*i/8,y1:Y0+8,x2:X0+W*i/8,y2:Y0+H-8},gg);sv('line',{x1:X0+8,y1:Y0+H*i/8,x2:X0+W-8,y2:Y0+H*i/8},gg)}}
       sv('line',{x1:cx,y1:Y0+8,x2:cx,y2:Y0+H-8,stroke:'rgba(255,255,255,.16)'},svg);sv('line',{x1:X0+8,y1:cy,x2:X0+W-8,y2:cy,stroke:'rgba(255,255,255,.16)'},svg);
       sv('rect',{x:cx-R,y:cy-R,width:2*R,height:2*R,rx:10,fill:'none',stroke:'rgba(245,197,24,.35)','stroke-dasharray':'3 4'},svg);
-      ['M'+(cx-6)+' '+(Y0+16)+'l6 -8 6 8z','M'+(cx-6)+' '+(Y0+H-16)+'l6 8 6 -8z','M'+(X0+16)+' '+(cy-6)+'l-8 6 8 6z','M'+(X0+W-16)+' '+(cy-6)+'l8 6 -8 6z'].forEach(function(d){sv('path',{d:d,fill:'#d9a400',opacity:.85},svg)});
+      var agl=sv('filter',{id:id+'a',x:'-250%',y:'-250%',width:'600%',height:'600%'},df);sv('feGaussianBlur',{stdDeviation:5},agl);
+      var ARW=['M'+(cx-6)+' '+(Y0+16)+'l6 -8 6 8z','M'+(cx-6)+' '+(Y0+H-16)+'l6 8 6 -8z','M'+(X0+16)+' '+(cy-6)+'l-8 6 8 6z','M'+(X0+W-16)+' '+(cy-6)+'l8 6 -8 6z'].map(function(d){
+        var g=sv('g',{},svg),hl=sv('path',{d:d,fill:'#ffd84a',stroke:'#ffc400','stroke-width':7,'stroke-linejoin':'round',opacity:0,filter:'url(#'+id+'a)'},g);sv('path',{d:d,fill:'#d9a400',opacity:.85},g);var lit=sv('path',{d:d,fill:'#ffe27a',opacity:0},g);return {hl:hl,lit:lit,v:-1}});
+      // up, down, left, right: lit in the direction the pad is pushed
+      function arrows(x,y){[y,-y,-x,x].forEach(function(v,j){var a=ARW[j],o=Math.max(0,Math.min(1,(v-3)/60));o=Math.round(o*20)/20;if(a.v===o) return;a.v=o;a.hl.setAttribute('opacity',o);a.lit.setAttribute('opacity',o)})}
       var gx=sv('line',{y1:Y0+6,y2:Y0+H-6,stroke:'rgba(245,197,24,.45)','stroke-dasharray':'4 4'},svg),gy=sv('line',{x1:X0+6,x2:X0+W-6,stroke:'rgba(245,197,24,.45)','stroke-dasharray':'4 4'},svg);
       var LX=[],LY=[],N=20;
       if(!it.nr){for(i=0;i<N;i++){LX.push(sv('rect',{x:X0+4+i*(W-8)/N+1,y:Y0+H+12,width:(W-8)/N-2,height:9,rx:2,fill:OFF},svg));LY.push(sv('rect',{x:X0-26,y:Y0+4+i*(H-8)/N+1,width:9,height:(H-8)/N-2,rx:2,fill:OFF},svg))}
@@ -1100,8 +1105,8 @@ try{
       var kn=knob(R),dx=0,dy=0,pid=null;
       function rail(L,val,horiz){var n=L.length,h=n/2,q=Math.round(Math.abs(val)/100*h);L.forEach(function(r,j){var ix=horiz?j:n-1-j,on=val>=0?(ix>=h&&ix<h+q):(ix<h&&ix>=h-q),p=Math.abs(ix<h?h-ix:ix-h+1)/h*100,f=on?(val<0?PAL.b:col(p)):(ix===h||ix===h-1?'rgba(200,208,220,.3)':OFF);if(r.__f!==f){r.__f=f;r.setAttribute('fill',f)}})}
       function place(x,y){var px=cx+x/100*MV,py=cy-y/100*MV;kn.setAttribute('transform','translate('+px.toFixed(1)+' '+py.toFixed(1)+')');gx.setAttribute('x1',px);gx.setAttribute('x2',px);gy.setAttribute('y1',py);gy.setAttribute('y2',py);gx.style.opacity=gy.style.opacity=(Math.abs(x)>1||Math.abs(y)>1)?1:0}
-      function from(e){var p=pt(e);var x=Math.max(-100,Math.min(100,(p.x-cx)/MV*100)),y=Math.max(-100,Math.min(100,-(p.y-cy)/MV*100));return [x,y]}
-      function send(x,y){noteInput();delete RAMP[it.c];delete RAMP[it.d];setT(it.c,x*z(),false);setT(it.d,y*z(),false)}
+      function from(e){var p=pt(e);var x=Math.max(-100,Math.min(100,(p.x-cx)/MV*100)),y=Math.max(-100,Math.min(100,-(p.y-cy)/MV*100));var jx=it.jc&&it.jc.ax;if(jx==='x') y=0;if(jx==='y') x=0;return [x,y]}
+      function send(x,y){noteInput();delete RAMP[it.c];delete RAMP[it.d];var sh=jshape(x/100,y/100,it.jc);setT(it.c,sh[0]*100*z(),false);setT(it.d,sh[1]*100*z(),false)}
       svg.style.touchAction='none';
       svg.addEventListener('pointerdown',function(e){if(bdEditing||S.estop||S.play) return;e.preventDefault();pid=e.pointerId;try{svg.setPointerCapture(pid)}catch(_){}var v=from(e);dx=v[0];dy=v[1];place(dx,dy);send(dx,dy)});
       svg.addEventListener('pointermove',function(e){if(e.pointerId!==pid) return;var v=from(e);dx=v[0];dy=v[1];place(dx,dy);send(dx,dy)});
@@ -1109,6 +1114,7 @@ try{
       var sx=0,sy=0;
       m.upd=function(){var tx=(rt.t[it.c]||0)/z(),ty=(rt.t[it.d]||0)/z();if(pid===null){sx+=(tx-sx)*.55;sy+=(ty-sy)*.55;if(Math.abs(sx-tx)<.5) sx=tx;if(Math.abs(sy-ty)<.5) sy=ty;place(sx,sy)}else{sx=dx;sy=dy}
         if(LX.length){rail(LX,rt.t[it.c]||0,true);rail(LY,rt.t[it.d]||0,false)}
+        arrows(sx,sy);
         if(hd){var s=fmt(rt.t[it.c]||0)+' · '+fmt(rt.t[it.d]||0);if(hd.textContent!==s) hd.textContent=s}};
     }else if(k==='xf'){
       // ---- Crossfader (mixer desk): master fader = throttle (starts at 0 each time), two VU columns, presets, reverse per side ----
@@ -1614,6 +1620,24 @@ try{
   var F_PC={k:'pc',l:'Also drive channel (same hub)',ch:[-1,0,1,2,3,4,5],lab:['Off','A','B','C','D','E','F'],only:true,def:-1,g:function(it){return it.pc===undefined?-1:it.pc%PER},s:function(it,v){if(v<0||v===it.c%PER){delete it.pc;delete it.pi}else it.pc=Math.floor(it.c/PER)*PER+v}};
   var F_PI={k:'pi',l:'Second channel direction',ch:[0,1],lab:['Same','Opposite'],only:true,def:0,g:function(it){return it.pi?1:0},s:function(it,v){if(v&&it.pc!==undefined) it.pi=1; else delete it.pi}};
   var F_CAP={k:'cap',l:'Power limit',u:'%',min:10,max:100,st:5,ch:[25,50,75,100],def:100};
+  // Stick, XY pad (and D-pad): the same settings, kept in the same places on both widgets
+  // (it.jc = deadzone/sensitivity/power limit/axis lock; let go: it.hold on Stick and D-pad, it.hd on the XY pad;
+  //  grid off: it.ng; LED rails (XY pad only): it.nr = off)
+  function jcF(k,v){return function(it,x){var o=cleanJc(Object.assign({dz:0,sn:100,lm:100,ax:'f'},it.jc||{},(function(){var q={};q[k]=x;return q})()));if(o) it.jc=o; else delete it.jc}}
+  function jcG(k,d){return function(it){return it.jc&&it.jc[k]!==undefined?it.jc[k]:d}}
+  var F_LETGO={k:'hd',l:'When you let go',ch:[0,1],lab:['Back to the centre','Stay where it is'],only:true,def:0,
+    g:function(it){return (it.k==='xy'?it.hd:it.hold)?1:0},s:function(it,v){if(it.k==='xy'){if(v) it.hd=1; else delete it.hd}else{if(v) it.hold=true; else delete it.hold}}};
+  var F_SWP={k:'sw',l:'Swipe to other pairs',ch:[0,1],lab:['Off','On'],only:true,def:0,g:function(it){return it.sw?1:0},s:function(it,v){if(v) it.sw=1; else delete it.sw}};
+  var F_RAIL={k:'nr',l:'LED rails',ch:[0,1],lab:['On','Off'],only:true,def:0};
+  var F_JDRV={k:'m',l:'Drive mode',ch:[0,1],lab:['Tank (2 motors)','Car (drive + steer)'],only:true,def:1,g:function(it){return it.m==='tank'?0:1},s:function(it,v){it.m=v?'axis':'tank'}};
+  var JXF=[{k:'dz',l:'Deadzone',u:'%',min:0,max:40,st:1,ch:[0,5,10,20],def:0,g:jcG('dz',0),s:jcF('dz')},
+    {k:'sn',l:'Sensitivity',u:'%',min:50,max:150,st:5,ch:[75,100,125,150],def:100,g:jcG('sn',100),s:jcF('sn')},
+    {k:'lm',l:'Power limit',u:'%',min:20,max:100,st:5,ch:[50,75,100],def:100,g:jcG('lm',100),s:jcF('lm')},
+    {k:'ax',l:'Axis lock',ch:[0,1,2],lab:['Free','Left / right','Up / down'],only:true,def:0,g:function(it){return ['f','x','y'].indexOf(jcG('ax','f')(it))},s:function(it,v){jcF('ax')(it,['f','x','y'][v]||'f')}},
+    F_LETGO,F_SWP,
+    {k:'ng',l:'Grid',ch:[0,1],lab:['On','Off'],only:true,def:0,g:function(it){return it.ng?1:0},s:function(it,v){if(v) it.ng=1; else delete it.ng}},
+    F_RAIL];
+  var JSF=[F_JDRV].concat(JXF.filter(function(f){return f!==F_RAIL}));
   // the scope can draw up to 3 more channels of the same hub (yellow, blue, grey)
   function F_KC(j){return {k:'cs'+j,l:['Also show (yellow line)','Also show (blue line)','Also show (grey line)'][j],ch:[-1,0,1,2,3,4,5],lab:['Off','A','B','C','D','E','F'],only:true,def:-1,
     g:function(it){var v=(it.cs||[])[j];return v===undefined?-1:v%PER},
@@ -1670,7 +1694,8 @@ try{
     dp:{t:'D-pad settings',f:[{k:'p',l:'Power',u:'%',min:10,max:100,st:5,ch:[40,70,100],def:70},
       {k:'m',l:'Drive mode',ch:[0,1],lab:['Tank (2 motors)','Car (drive + steer)'],only:true,def:0,g:function(it){return it.m==='car'?1:0},s:function(it,v){it.m=v?'car':'tank'}},
       {k:'rt',l:'Ramp time (0 = instant)',u:'s',min:0,max:3,st:0.1,ch:[0,0.3,1],def:0.3},
-      {k:'tg',l:'Control',ch:[0,1],lab:['Hold to move','Tap to toggle'],only:true,def:0,g:function(it){return it.tg?1:0},s:function(it,v){if(v) it.tg=1; else delete it.tg}}]},
+      {k:'tg',l:'Control',ch:[0,1],lab:['Hold to move','Tap to toggle'],only:true,def:0,g:function(it){return it.tg?1:0},s:function(it,v){if(v) it.tg=1; else delete it.tg}},
+      F_LETGO,F_SWP]},
     b:{t:'Button settings',f:[{k:'p',l:'Turbo power',u:'%',min:30,max:100,st:5,ch:[50,75,100],def:100},
       {k:'bt',l:'Button type',ch:[0,1,2,3],lab:['Hold','Toggle','PingPong','Accelerator'],only:true,def:0,g:function(it){return ['','t','p','a'].indexOf(it.bt||'')},s:function(it,v){delete it.lock;if(v) it.bt=['','t','p','a'][v]; else delete it.bt;if(v!==3){delete it.ar;delete it.af}}},
       {k:'ar',l:'Accelerator: time to full power',ch:[0.5,1,2,3],lab:['0.5 s','1 s','2 s','3 s'],only:true,def:1,dep:{k:'bt',v:3},g:function(it){return it.ar||1},s:function(it,v){if(v===1) delete it.ar; else it.ar=v}},
@@ -1690,8 +1715,8 @@ try{
       {k:'ra',l:'Reverse output A',ch:[0,1],lab:['Off','On'],only:true,def:0,g:function(it){return it.ra?1:0},s:function(it,v){if(v) it.ra=1; else delete it.ra}},
       {k:'rb',l:'Reverse output B',ch:[0,1],lab:['Off','On'],only:true,def:0,g:function(it){return it.rb?1:0},s:function(it,v){if(v) it.rb=1; else delete it.rb}}]},
     ps:{t:'Start / stop button settings',f:[{k:'hd',l:'Hold time before it switches',ch:[300,500,800,1200],lab:['0.3 s','0.5 s','0.8 s','1.2 s'],only:true,def:500},{k:'md',l:'What it controls',ch:[0,1],lab:['Hub link','Output only'],only:true,def:0}].concat('ABCDEF'.split('').map(function(c,j){return {k:'o'+j,l:'Output only: channel '+c,ch:[1,0],lab:['Stopped','Left running'],only:true,def:1,dep:{k:'md',v:1}}}))},
-    xy:{t:'XY pad settings',f:[{k:'hd',l:'When you let go',ch:[0,1],lab:['Back to the centre','Stay where it is'],only:true,def:0},
-      {k:'ng',l:'Grid',ch:[0,1],lab:['On','Off'],only:true,def:0},{k:'nr',l:'LED rails',ch:[0,1],lab:['On','Off'],only:true,def:0}]},
+    j:{t:'Joystick settings',f:JSF},
+    xy:{t:'XY pad settings',f:JXF},
     xf:{t:'Crossfader settings',f:[{k:'p',l:'Full power (top of the fader)',u:'%',min:10,max:100,st:5,ch:[50,80,100],def:100},
       {k:'md',l:'In the centre',ch:[0,1],lab:['Both channels at full power','Half power each'],only:true,def:0},
       {k:'rc',l:'Reverse the left side',ch:[0,1],lab:['Off','On'],only:true,def:0},{k:'rd',l:'Reverse the right side',ch:[0,1],lab:['Off','On'],only:true,def:0},
@@ -3938,7 +3963,7 @@ try{
       (it.t?it.t.map(function(z){return z.c}):[it.c,it.d,it.e,it.f]).forEach(function(q){if(q!==undefined&&q>=0) setT(q,0,false)});
       save();syncBoard();
     },!it.hold]);
-    if(it.k==='j'||it.k==='d') defs.push(['\u2699','Joystick settings',function(){jcShow(it)}]);
+    if(it.k==='d') defs.push(['\u2699','Joystick settings',function(){jcShow(it)}]);
     if(it.k==='tl') defs.push(['\u223F','Edit timeline',function(){tlEdit(it)}]);
     if(dashOn()&&it[DG.k]) defs.push(['\u25A3','Match size',function(){matchStart(it)}]);
     if(it.k==='g'||it.k==='lv') defs.push(['\u2699','Gear settings',function(){gearEdit(it)}]);
@@ -4004,48 +4029,43 @@ try{
     // upright board: the tools sit on the widget itself (not dimmed with its title when no hub is connected)
     if(bdEditing) (dashOn()?head:el).appendChild(bdToolbar(it));
     else if(withOut){out=document.createElement('output');out.textContent='0';head.appendChild(out)}
-    if(!bdEditing&&it&&GRPK[it.k]) grpHead(el,nm,head,it,out);
     el.appendChild(head);
     return out;
   }
-  // Stick, D-pad and XY pad: swipe the title bar to move the widget to the next pair of ports on the same hub
-  // (AB -> CD -> EF), skipping pairs with nothing plugged in; red LEDs show which pair it drives
-  var GRPK={j:1,dp:1,xy:1};
-  function grpInfo(it){var c=it.c;if(typeof c!=='number'||c<0) return null;var hub=Math.floor(c/PER),P=isMk4(hub)?4:6,G=P/2,base=hub*PER,g0=Math.floor((c%PER)/2);
-    if(g0>=G) return null;
-    var used=function(g){for(var q=0;q<2;q++){var i=base+2*g+q;if((C.pf&&C.pf[i])||(C.pf2&&C.pf2[i])) return true}return false};
-    var gs=[];for(var g=0;g<G;g++) if(g===g0||used(g)) gs.push(g);
-    return {hub:hub,P:P,G:G,base:base,g0:g0,gs:gs}}
-  // Stick, D-pad and XY pad: the title is the channel chip, then the port pair as glowing letters (tap = next pair),
-  // then the live values of the two channels; the channel names are in the chip's pop-over
-  function grpHead(el,nm,head,it,out){var f=grpInfo(it);if(!f) return;
-    [].slice.call(nm.childNodes).forEach(function(n){if(!(n.classList&&n.classList.contains('bdw-chip'))) nm.removeChild(n)});
-    var k=document.createElement('b');k.className='g-key';k.setAttribute('role','button');k.tabIndex=0;
-    k.textContent=L.charAt(2*f.g0)+L.charAt(2*f.g0+1);k.setAttribute('aria-label','Port pair '+k.textContent+', tap for the next pair');
-    k.addEventListener('pointerdown',function(e){e.stopPropagation()});
-    k.addEventListener('click',function(e){e.stopPropagation();e.preventDefault();grpGo(it,1)});
-    nm.appendChild(k);
-    head.classList.add('g-h');
-    if(!out){out=document.createElement('output');out.className='g-val';head.appendChild(out);el.__gpo=out}
-  }
-  function grpVals(w){var o=w.el&&w.el.__gpo;if(!o) return;var it=w.it,s=fmt(rt.t[it.c]||0)+(typeof it.d==='number'&&it.d>=0?' \u00b7 '+fmt(rt.t[it.d]||0):'');if(o.textContent!==s) o.textContent=s}
   // fingers on the screen: the board is rebuilt only when none is down, so a switch never freezes a control being held
   var GPD={},GPEND=false;
   window.addEventListener('pointerdown',function(e){GPD[e.pointerId]=1},true);
   var gpUp=function(e){delete GPD[e.pointerId];if(GPEND&&!Object.keys(GPD).length){GPEND=false;syncBoard()}};
   window.addEventListener('pointerup',gpUp,true);window.addEventListener('pointercancel',gpUp,true);
-  function grpGo(it,dir){var f=grpInfo(it);if(!f) return;
-    var chs=[it.c];if(typeof it.d==='number'&&it.d>=0) chs.push(it.d);
-    if(chs.some(function(q){return Math.abs(rt.t[q]||0)>1})) return;   // not while the control is held
-    if(f.gs.length<2){toast('No other port pair on this hub has a part plugged in.');return}
-    var g1=f.gs[(f.gs.indexOf(f.g0)+dir+f.gs.length)%f.gs.length],sh=2*(g1-f.g0);
-    chs.forEach(function(q){setT(q,0,false)});
-    var mv=function(q){if(Math.floor(q/PER)!==f.hub) return q;var p=((q%PER)+sh)%f.P;if(p<0) p+=f.P;return f.base+p};
-    var snap=JSON.parse(JSON.stringify(C.board));
-    it.c=mv(it.c);if(typeof it.d==='number'&&it.d>=0) it.d=mv(it.d);
-    BD_UNDO.push({board:snap,msg:'Port pair change undone.'});if(BD_UNDO.length>20) BD_UNDO.shift();
-    save();feedback('ok');toast(L.charAt(2*g1)+L.charAt(2*g1+1)+' · '+C.ch[it.c].name);
-    if(Object.keys(GPD).length) GPEND=true; else syncBoard()}
+  function bdRebuild(){if(Object.keys(GPD).length) GPEND=true; else syncBoard()}
+  // Stick, XY pad and D-pad: "Swipe to other pairs" - swipe sideways on the card (not on the control) to move the
+  // widget to the next pair of channels; the dots show which pair it drives
+  function swPairs(el,it,ctl){
+    var ch=activeIdx(),prs=[];
+    for(var q=0;q<ch.length;q+=2) prs.push([ch[q],ch[q+1]===undefined?-1:ch[q+1]]);
+    var cur=-1;prs.forEach(function(pr,qi){if(pr[0]===it.c) cur=qi});
+    if(!it.sw||prs.length<2||cur<0) return;
+    var dg=document.createElement('div');dg.className='dialdots';
+    prs.forEach(function(pr,qi){var di=document.createElement('i');if(qi===cur) di.className='on';di.title=tagOf(pr[0])+(pr[1]>=0?'+'+tagOf(pr[1]):'');if(qi>0&&((pr[0]/PER)|0)!==((prs[qi-1][0]/PER)|0)) di.style.marginLeft='6px';dg.appendChild(di)});
+    el.appendChild(dg);
+    var sx=null,sy=0;el.style.touchAction='pan-y';
+    el.addEventListener('pointerdown',function(e){if(bdEditing||(e.target.closest&&e.target.closest(ctl))){sx=null;return}sx=e.clientX;sy=e.clientY});
+    el.addEventListener('pointerup',function(e){
+      if(sx===null) return;var dx=e.clientX-sx,dy=e.clientY-sy;sx=null;
+      if(Math.abs(dx)>36&&Math.abs(dx)>1.6*Math.abs(dy)&&!S.estop&&!S.play){
+        if([it.c,it.d].some(function(c){return c>=0&&Math.abs(rt.t[c]||0)>1})&&!it.hold&&!it.hd) return;
+        var nx=(cur+(dx<0?1:prs.length-1))%prs.length,np=prs[nx];
+        CRZ.skip=true;[it.c,it.d].forEach(function(c){if(c>=0){delete CRZ.v[c];setT(c,0,false)}});CRZ.skip=false;
+        it.c=np[0];it.d=np[1];BD_SL={it:it,d:dx<0?1:-1};save();feedback('ok');bdRebuild();
+      }
+    });
+    el.addEventListener('pointercancel',function(){sx=null});
+  }
+  // XY pad: the pair dots sit just under the pad's bottom LED rail, wherever the pad is drawn in its card
+  function xyDots(w){var el=w.el,dg=el&&el.__xyd,sg=el&&el.querySelector('svg.xwv');if(!dg||!sg||!el.isConnected) return;
+    var eb=el.getBoundingClientRect(),b=sg.getBoundingClientRect(),k=Math.min(b.width/300,b.height/260),bot=w.it.nr?222:236;
+    var y=b.top-eb.top-el.clientTop+(b.height-260*k)/2+bot*k+4,key=Math.round(y)+','+Math.round(eb.width);
+    if(dg.__k!==key){dg.__k=key;dg.style.top=Math.round(y)+'px'}}
   // a channel muted on a Levels (EQ) widget stays muted only while that widget is on the board, so a mute is never hidden
   function muteTidy(){
     var eq={};(C.board||[]).forEach(function(it){if(it.k==='lx'&&it.t==='eq'){eq[it.c]=1;(it.cs||[]).forEach(function(q){eq[q]=1})}});
@@ -4100,26 +4120,8 @@ try{
         var tp=C.tilt.all||!tiltTaken;tiltTaken=true;
         el.appendChild(bdPad(it.c,it.d,it.m,it.hold,tp,it));
         if(BD_SL&&BD_SL.it===it){el.classList.add(BD_SL.d>0?'slL':'slR');BD_SL=null}
-        var jch=activeIdx(),jprs=[];
-        for(var jq=0;jq<jch.length;jq+=2) jprs.push([jch[jq],jch[jq+1]===undefined?-1:jch[jq+1]]);
-        var jcur=-1;jprs.forEach(function(pr,qi){if(pr[0]===it.c) jcur=qi});
-        if(it.sw&&jprs.length>1&&jcur>=0){
-          // Swipe sideways on the card (outside the pad) to move the joystick to the next pair of channels.
-          var jdg=document.createElement('div');jdg.className='dialdots';
-          jprs.forEach(function(pr,qi){var di=document.createElement('i');if(qi===jcur) di.className='on';di.title=tagOf(pr[0])+(pr[1]>=0?'+'+tagOf(pr[1]):'');if(qi>0&&((pr[0]/PER)|0)!==((jprs[qi-1][0]/PER)|0)) di.style.marginLeft='6px';jdg.appendChild(di)});
-          el.appendChild(jdg);
-          var jsx=null,jsy=0;el.style.touchAction='pan-y';
-          el.addEventListener('pointerdown',function(e){if(bdEditing||(e.target.closest&&e.target.closest('.pad'))){jsx=null;return}jsx=e.clientX;jsy=e.clientY});
-          el.addEventListener('pointerup',function(e){
-            if(jsx===null) return;var dx=e.clientX-jsx,dy=e.clientY-jsy;jsx=null;
-            if(Math.abs(dx)>36&&Math.abs(dx)>1.6*Math.abs(dy)&&!S.estop&&!S.play){
-              var nx=(jcur+(dx<0?1:jprs.length-1))%jprs.length,np=jprs[nx];
-              CRZ.skip=true;[it.c,it.d].forEach(function(c){if(c>=0){delete CRZ.v[c];setT(c,0,false)}});CRZ.skip=false;
-              it.c=np[0];it.d=np[1];BD_SL={it:it,d:dx<0?1:-1};save();syncBoard();feedback('ok');
-            }
-          });
-          el.addEventListener('pointercancel',function(){jsx=null});
-        }
+        var jpad=el.querySelector('.pad');if(it.ng&&jpad) jpad.classList.add('nog');
+        swPairs(el,it,'.pad');
       }else if(it.k==='d'){
         var all=[it.c,it.d,it.e,it.f];
         for(var q=0;q<4;q++) if(all[q]>=0&&!isActive(all[q])) return;
@@ -4571,15 +4573,19 @@ try{
             if(S.estop||S.play) return;
             e.preventDefault();try{b.setPointerCapture(e.pointerId)}catch(_){}
             if(it.tg){var was=!!dpr[q[0]];dpr={};if(!was) dpr[q[0]]=1}
+            else if(it.hold){dpr={};dpr[q[0]]=1}
             else dpr[q[0]]=1;
             dpApply();
           });
-          if(!it.tg) ['pointerup','pointercancel'].forEach(function(ev){b.addEventListener(ev,function(){if(dpr[q[0]]){delete dpr[q[0]];dpApply()}})});
+          if(!it.tg&&!it.hold) ['pointerup','pointercancel'].forEach(function(ev){b.addEventListener(ev,function(){if(dpr[q[0]]){delete dpr[q[0]];dpApply()}})});
           b.addEventListener('contextmenu',function(e){e.preventDefault()});
           dbx.appendChild(b);dbs[q[0]]=b;
         });
         var dph=document.createElement('div');dph.className='dphub';dbx.appendChild(dph);
+        // "Stay where it is": the last arrow keeps running; tap the centre to stop
+        if(it.hold||it.tg){dph.setAttribute('role','button');dph.setAttribute('aria-label','Stop');dph.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();if(S.estop||S.play) return;dpClear()})}
         dww.appendChild(dbx);el.appendChild(dww);w.dpd={bs:dbs,r:function(){return dpr},clr:dpClear};
+        swPairs(el,it,'.dpbox');
       }else if(it.k==='ps'){
         el.classList.add('psw');
         bdHead(el,'',it,false);
@@ -4625,9 +4631,10 @@ try{
         var swhd=bdHead(el,'Swing \u00b7 '+tagOf(it.c)+' '+C.ch[it.c].name,it,true);el.classList.add('mtrw');w.mtr=swBuild(el,it,swhd);
       }else if(it.k==='xy'||it.k==='xf'||it.k==='ro'||it.k==='ax'){
         if(!isActive(it.c)||(it.k!=='ro'&&it.k!=='ax'&&!isActive(it.d))) return;
-        var xhd=bdHead(el,it.k==='xy'?'XY pad \u00b7 '+tagOf(it.c)+'+'+tagOf(it.d):it.k==='xf'?'Crossfader \u00b7 '+tagOf(it.c)+'\u21c4'+tagOf(it.d):(it.k==='ax'?'Motor axle':'Rotor')+' \u00b7 '+tagOf(it.c)+' \u00b7 '+C.ch[it.c].name,it,true);
+        var xhd=bdHead(el,it.k==='xy'?'XY pad \u00b7 '+tagOf(it.c)+'+'+tagOf(it.d):it.k==='xf'?'Crossfader \u00b7 '+tagOf(it.c)+'\u21c4'+tagOf(it.d):(it.k==='ax'?'Motor axle':'Rotor')+' \u00b7 '+tagOf(it.c)+' \u00b7 '+C.ch[it.c].name,it,it.k!=='xy');
         el.classList.add('mtrw');
         w.mtr=xwBuild(el,it,xhd);
+        if(it.k==='xy'){swPairs(el,it,'svg');var xdg=el.querySelector(':scope>.dialdots');if(xdg){xdg.classList.add('xyd');el.classList.add('xyw');el.__xyd=xdg}}
       }else if(it.k==='z'){
         bdHead(el,'Session timer',it,false);
         var zd=document.createElement('button');zd.type='button';zd.className='sesst';
@@ -5039,7 +5046,7 @@ try{
     paintPads();
     lvFrames();
     bdW.forEach(function(w){
-      grpVals(w);
+      if(w.el&&w.el.__xyd) xyDots(w);
       if(w.es){
         w.es.classList.toggle('on',!!S.estop);
         w.es.textContent=S.estop?'RELEASE':'E-STOP';
@@ -7544,6 +7551,7 @@ return API;
 
   // ---- What's new, version and update check ----
   var CHANGES=[
+    {b:134,items:[["better", "Stick, D-pad and XY pad: the titles show the widget and channel names again; the pair letters and values are gone"], ["new", "Stick and XY pad share one settings list: deadzone, sensitivity, power limit, axis lock, when you let go, swipe to other pairs and grid. The Stick also has drive mode (tank or car); the XY pad keeps its LED rails"], ["new", "D-pad: when you let go (stay where it is: tap the centre to stop) and swipe to other pairs"], ["better", "XY pad: the yellow arrows glow toward the push, and the pair dots sit just under the pad"]]},
     {b:133,items:[["better", "Stick, D-pad and XY pad: the title is now the channel chip and the port pair letters, glowing red; tap the letters for the next pair (AB, CD, EF). The pair bar at the bottom is gone, so the control gets more room"], ["better", "Sideways dashboard: the two channel values show in the title"], ["fix", "Sideways dashboard: nothing covers the bottom of the controls any more"]]},
     {b:132,items:[["fix", "Stick, D-pad and XY pad: the port pair switch moved to a small bar at the bottom of the widget (tap \u2039 \u203a or swipe the dots), so the title shows in full and the control is not switched by mistake"], ["fix", "Switching a pair while holding another control no longer freezes it"]]},
     {b:131,items:[["new", "Stick, D-pad and XY pad: swipe the title bar to move to the next port pair on the same hub (AB, CD, EF); red LEDs show the pair, empty pairs are skipped"]]},

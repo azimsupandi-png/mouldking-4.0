@@ -2289,73 +2289,116 @@ async def t_joined(b):
     check('app.js matches the parts in app/src/main/js (run tools/join_js.py after editing)', r.returncode == 0, r.returncode)
 
 async def t_swipegrp(b):
-    ctx = await b.new_context(viewport={'width': 1000, 'height': 460})
+    """Stick, XY pad and D-pad: one settings list; every setting works on every widget it is offered on."""
+    ctx = await b.new_context(viewport={'width': 390, 'height': 1400})
     pg = await ctx.new_page(); pg.errors = []
     pg.on('pageerror', lambda e: pg.errors.append(str(e)))
     seed = ("(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'X',cfg:{layout:'board',hubs:[0,-1,-1],hubT:[6,6,6],"
-            "pf:['m','m','l','l','','','','','','','','','','','','','',''],board:[{k:'j',c:0,d:1,w:1},{k:'dp',c:0,d:1,w:1},{k:'xy',c:0,d:1,w:1}]}}],prefs:{seen:true}}))})();")
+            "pf:['m','m','l','l','','','','','','','','','','','','','',''],board:[{k:'j',c:0,d:1,w:1},{k:'xy',c:0,d:1,w:1},{k:'dp',c:2,d:3,w:1}]}}],prefs:{seen:true}}))})();")
     await pg.add_init_script(STUB + seed)
     await pg.goto(HTML + '?mk6test')
     await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
     await pg.evaluate("mk6Go('drive')"); await pg.wait_for_timeout(500)
-    r = await pg.evaluate("[...document.querySelectorAll('.bdw-h')].slice(0,3).map(h=>h.querySelector('.bdw-chip').textContent+'|'+h.querySelector('.g-key').textContent+'|'+h.querySelector('output').textContent).join(' ')")
-    check('pair: Stick, D-pad and XY pad titles are chip, glowing pair letters and the values', r == 'A+|AB|0 · 0 A+|AB|0 · 0 A+|AB|0 · 0', r)
-    r = await pg.evaluate("[...document.querySelectorAll('.bdw-h')].slice(0,3).some(h=>/Stick|D-pad|XY pad/.test(h.textContent))+'|'+document.querySelectorAll('.bdw-grp').length")
-    check('pair: no widget name and no separate pair bar any more', r == 'false|0', r)
-    async def tap(i):
-        k = (await pg.query_selector_all('.bdw .g-key'))[i]; await k.scroll_into_view_if_needed(); await k.click(); await pg.wait_for_timeout(300)
-    await tap(0)
-    r = await pg.evaluate("__t.C.board.map(x=>x.c+','+x.d).join(' ')")
-    check('pair: tapping the letters on the Stick moves it to C+D', r.startswith('2,3 '), r)
-    await tap(0)
-    r = await pg.evaluate("__t.C.board[0].c+','+__t.C.board[0].d")
-    check('pair: the empty E/F pair is skipped (back to A+B)', r == '0,1', r)
-    await tap(2)
-    r = await pg.evaluate("__t.C.board[2].c+','+__t.C.board[2].d+'|'+document.querySelectorAll('.g-key')[2].textContent")
-    check('pair: tapping the XY pad letters goes to C+D and the letters follow', r == '2,3|CD', r)
-    r = await pg.evaluate("JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.board[2].c")
-    check('pair: the new pair is saved with the board', r == 2, r)
-    await pg.evaluate("__t.rt.t[0]=40;__t.rt.t[1]=-25"); await pg.wait_for_timeout(250)
-    r = await pg.evaluate("document.querySelectorAll('.bdw-h output')[0].textContent")
-    check('pair: the Stick title shows the live values of its two channels', r.replace(' ', '') == '+40·-25' or r.replace(' ', '') == '40·-25', r)
-    r = await pg.evaluate("__t.C.board[0].c")
-    await tap(0)
-    r2 = await pg.evaluate("__t.C.board[0].c")
-    check('pair: no switch while the control is driving its channels', r == r2 == 0, (r, r2))
-    await pg.evaluate("__t.rt.t[0]=0;__t.rt.t[1]=0"); await pg.wait_for_timeout(200)
-    # a finger held on another widget: the switch waits to rebuild the board until it is lifted
-    r = await pg.evaluate("""(()=>{var w=document.querySelectorAll('.bdw')[1];
-      window.dispatchEvent(new PointerEvent('pointerdown',{pointerId:77,bubbles:true}));
-      document.querySelectorAll('.g-key')[0].click();
-      var same=document.querySelectorAll('.bdw')[1]===w,c=__t.C.board[0].c;
-      window.dispatchEvent(new PointerEvent('pointerup',{pointerId:77,bubbles:true}));
-      return same+'|'+c+'|'+(document.querySelectorAll('.bdw')[1]!==w)+'|'+document.querySelectorAll('.g-key')[0].textContent})()""")
-    check('pair: with a finger down the board is not rebuilt; it is once the finger lifts', r == 'true|2|true|CD', r)
+    r = await pg.evaluate("[...document.querySelectorAll('.bdw-h')].slice(0,3).map(h=>h.textContent).join(' | ')")
+    check('pair: titles show the widget and channel names again, no pair letters or values', r == 'AStick · A+B | AXY pad · A+B | CD-pad · C+D'.replace('AStick','A+Stick').replace('AXY','A+XY').replace('CD-pad','C+D-pad') and not await pg.evaluate("!!document.querySelector('.g-key,.bdw-grp')"), r)
+    async def setf(i, picks, nums=None):
+        await pg.evaluate("__t.wsEdit(__t.C.board[%d])" % i); await pg.wait_for_timeout(150)
+        for lab, opt in picks:
+            await pg.evaluate("""([l,o])=>{var f=[...document.querySelectorAll('#gEdit .wsf')].find(x=>x.querySelector('.wsl')&&x.querySelector('.wsl').textContent===l);
+              [...f.querySelectorAll('.wsc .btn')].find(b=>b.textContent===o).click()}""", [lab, opt])
+        for lab, v in (nums or []):
+            await pg.evaluate("""([l,v])=>{var f=[...document.querySelectorAll('#gEdit .wsf')].find(x=>x.querySelector('.wsl')&&x.querySelector('.wsl').textContent===l);
+              var i=f.querySelector('input');i.value=String(v);i.dispatchEvent(new Event('input',{bubbles:true}))}""", [lab, v])
+        await pg.evaluate("[...document.querySelectorAll('#gEdit .gact .btn')].find(b=>b.textContent==='Save').click()"); await pg.wait_for_timeout(300)
+    labs = await pg.evaluate("""(()=>{var o=[];[0,1].forEach(i=>{__t.wsEdit(__t.C.board[i]);o.push([...document.querySelectorAll('#gEdit .wsl')].map(x=>x.textContent).join(','));document.getElementById('gEdit').remove()});return o})()""")
+    check('pair: Stick settings: drive mode, no LED rails; XY pad: same list plus LED rails, no drive mode',
+          labs[0] == 'Channels,Drive mode,Deadzone,Sensitivity,Power limit,Axis lock,When you let go,Swipe to other pairs,Grid'
+          and labs[1] == 'Channels,Deadzone,Sensitivity,Power limit,Axis lock,When you let go,Swipe to other pairs,Grid,LED rails', labs)
+    # XY pad: axis lock + power limit shape what is sent
+    await setf(1, [('Axis lock', 'Left / right')], [('Power limit', 50)])
+    bx = await (await pg.query_selector_all('.bdw svg.xwv'))[0].bounding_box()
+    r = await pg.evaluate("[...document.querySelectorAll('.bdw svg.xwv rect')].filter(e=>+e.getAttribute('width')===200)[0].getBoundingClientRect().toJSON()")
+    await pg.mouse.move(r['x'] + r['width'] - 2, r['y'] + 2); await pg.mouse.down(); await pg.wait_for_timeout(100)
+    v = await pg.evaluate("[Math.round(__t.rt.t[0]),Math.round(__t.rt.t[1])]")
+    await pg.mouse.up(); await pg.wait_for_timeout(100)
+    check('pair: XY pad axis lock "Left / right" and power limit 50% (corner -> X 50, Y 0)', v == [50, 0], v)
+    # XY pad: deadzone
+    await setf(1, [('Axis lock', 'Free')], [('Power limit', 100), ('Deadzone', 30)])
+    await pg.mouse.move(r['x'] + r['width'] / 2 + r['width'] * 0.1, r['y'] + r['height'] / 2); await pg.mouse.down(); await pg.wait_for_timeout(100)
+    v = await pg.evaluate("Math.round(__t.rt.t[0])"); await pg.mouse.up()
+    check('pair: XY pad deadzone 30% ignores a small push', v == 0, v)
+    # Stick: grid off; drive mode tank
+    await setf(0, [('Grid', 'Off'), ('Drive mode', 'Tank (2 motors)')])
+    r = await pg.evaluate("var w=document.querySelectorAll('.bdw')[0];[w.querySelector('.pad').classList.contains('nog'),w.querySelectorAll('.brail').length,getComputedStyle(w.querySelector('.pad'),'::after').display,__t.C.board[0].m,w.querySelector('.bdw-h').textContent].join()")
+    check('pair: Stick grid off hides the cross and ring; drive mode Tank is saved; no LED rails', r == 'true,0,none,tank,A+Tank · A+B', r)
+    await setf(0, [('Drive mode', 'Car (drive + steer)')])
+    r = await pg.evaluate("__t.C.board[0].m")
+    check('pair: Stick drive mode back to Car (drive + steer)', r == 'axis', r)
+    # XY pad: grid and rails off
+    await setf(1, [('Grid', 'Off'), ('LED rails', 'Off')], [('Deadzone', 0)])
+    r = await pg.evaluate("var b=__t.C.board[1];[!!b.ng,!!b.nr,!b.jc].join()")
+    check('pair: XY pad grid and LED rails off are saved', r == 'true,true,true', r)
+    # D-pad: stay where it is, tap centre to stop, rails
+    await setf(2, [('When you let go', 'Stay where it is')])
+    up = (await pg.query_selector_all('.bdw .dpb.u'))[0]
+    await up.scroll_into_view_if_needed()
+    ub = await up.bounding_box()
+    await pg.mouse.move(ub['x'] + 5, ub['y'] + 5); await pg.mouse.down(); await pg.wait_for_timeout(500); await pg.mouse.up(); await pg.wait_for_timeout(600)
+    v = await pg.evaluate("Math.round(__t.rt.t[2])")
+    check('pair: D-pad "Stay where it is" keeps running after the arrow is let go', v == 70, v)
+    hb = await (await pg.query_selector('.bdw .dphub')).bounding_box()
+    await pg.mouse.move(hb['x'] + hb['width'] / 2, hb['y'] + hb['height'] / 2); await pg.mouse.down(); await pg.mouse.up(); await pg.wait_for_timeout(600)
+    v = await pg.evaluate("Math.round(__t.rt.t[2])")
+    check('pair: tapping the D-pad centre stops it', v == 0, v)
+    r = await pg.evaluate("[...document.querySelectorAll('#gEdit .wsl')].length+'|'+document.querySelectorAll('.bdw')[2].querySelectorAll('.brail').length")
+    await pg.evaluate("__t.wsEdit(__t.C.board[2])")
+    r = await pg.evaluate("var l=[...document.querySelectorAll('#gEdit .wsl')].map(x=>x.textContent);document.getElementById('gEdit').remove();l.join(',')")
+    check('pair: D-pad settings have drive mode, let go and swipe, no LED rails', 'Drive mode' in r and 'When you let go' in r and 'Swipe to other pairs' in r and 'LED rails' not in r, r)
+    # swipe to other pairs on all three
+    for i in (0, 1, 2):
+        await setf(i, [('Swipe to other pairs', 'On')])
+    async def swipe(i):
+        h = (await pg.query_selector_all('.bdw .bdw-h'))[i]; await h.scroll_into_view_if_needed(); hb = await h.bounding_box()
+        y = hb['y'] + hb['height'] / 2
+        await pg.mouse.move(hb['x'] + hb['width'] - 10, y); await pg.mouse.down(); await pg.mouse.move(hb['x'] + 10, y, steps=5); await pg.mouse.up(); await pg.wait_for_timeout(400)
+    before = await pg.evaluate("__t.C.board.map(x=>x.c).join()")
+    await swipe(0); await swipe(1); await swipe(2)
+    after = await pg.evaluate("__t.C.board.map(x=>x.c).join()")
+    check('pair: swiping each widget moves it to the next pair', before == '0,0,2' and after == '2,2,4', (before, after))
+    r = await pg.evaluate("[...document.querySelectorAll('.bdw')].slice(0,3).map(w=>!!w.querySelector('.dialdots')).join()")
+    check('pair: all three show the pair dots', r == 'true,true,true', r)
+    r = await pg.evaluate("JSON.parse(localStorage.getItem('mk6v2')).profiles[0].cfg.board.map(x=>[x.sw,x.ng||0,x.nr||0,x.hold?1:0].join('/')).join()")
+    check('pair: the settings survive a save and reload', r == '1/1/0/0,1/1/1/0,1/0/0/1', r)
+    # XY pad dots sit just under the pad, not at the bottom of the card
+    r = await pg.evaluate("""(()=>{var w=document.querySelectorAll('.bdw')[1],d=w.querySelector('.dialdots').getBoundingClientRect(),s=w.querySelector('svg.xwv').getBoundingClientRect(),k=Math.min(s.width/300,s.height/260),bot=s.top+(s.height-260*k)/2+222*k;return Math.round(d.top-bot)})()""")
+    check('pair: XY pad pair dots sit just under the pad', 0 <= r <= 16, r)
+    # XY pad arrows glow toward the push
+    await setf(1, [('LED rails', 'On')])
+    await pg.evaluate("__t.rt.t[2]=80;__t.rt.t[3]=0"); await pg.wait_for_timeout(500)
+    r = await pg.evaluate("var a=[...document.querySelectorAll('.bdw')[1].querySelectorAll('svg.xwv path[fill=\"#ffe27a\"]')].map(p=>+p.getAttribute('opacity'));a.map(v=>v>0.5?1:0).join()")
+    check('pair: XY pad arrows glow toward the push (right lit, others dark)', r == '0,0,0,1', r)
+    await pg.evaluate("__t.rt.t[2]=0")
     check('pair: no page errors', not pg.errors, pg.errors)
     await ctx.close()
 
 async def t_grpdash(b):
-    pg_ok = []
-    for vp, dash in (({'width': 900, 'height': 400}, 'true'), ({'width': 390, 'height': 844}, 'false')):
-        ctx = await b.new_context(viewport=vp)
-        pg = await ctx.new_page(); pg.errors = []
-        pg.on('pageerror', lambda e: pg.errors.append(str(e)))
-        seed = ("(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'X',cfg:{layout:'board',dash:" + dash + ",hubs:[0,1,2],hubT:[6,6,6],"
-                "pf:['m','m','l','l','','','','','','','','','','','','','',''],board:[{k:'j',c:2,d:3,w:1},{k:'dp',c:2,d:3,w:1},{k:'xy',c:0,d:1,w:1}]}}],prefs:{seen:true,practice:true}}))})();")
-        await pg.add_init_script(STUB + seed)
-        await pg.goto(HTML + '?mk6test')
-        await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
-        await pg.evaluate("mk6Go('drive');var g=document.querySelector('#boardGrid');g&&g.scrollIntoView()"); await pg.wait_for_timeout(900)
-        await pg.evaluate("__t.rt.t[2]=45;__t.rt.t[3]=-30"); await pg.wait_for_timeout(250)
-        r = await pg.evaluate("""var DASH=""" + dash + """;[...document.querySelectorAll('#boardGrid .bdw')].slice(0,3).map(w=>{var wb=w.getBoundingClientRect(),h=w.querySelector('.bdw-h');
-          var o=h.querySelector('output');if(getComputedStyle(o).display==='none') o=null;
-          if(DASH!==!!o) return 'values '+(o?'shown':'hidden');
-          var parts=[h.querySelector('.bdw-chip'),h.querySelector('.g-key')].concat(o?[o]:[]);
-          return parts.every(x=>{var q=x.getBoundingClientRect();return x.scrollWidth<=x.clientWidth+1&&q.left>=wb.left&&q.right<=wb.right+.5&&q.width>0})?'ok':'cut'}).join()""")
-        check('pair: ' + ('sideways dashboard: chip, letters and values fit in the title' if dash == 'true' else 'upright board: chip and letters fit, no values'), r == 'ok,ok,ok', r)
-        pg_ok.append(not pg.errors)
-        await ctx.close()
-    check('pair: title layout no page errors', all(pg_ok), pg_ok)
+    """Sideways dashboard: the rails and pair dots never cover the controls."""
+    ctx = await b.new_context(viewport={'width': 900, 'height': 400})
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    seed = ("(function(){localStorage.setItem('mk6v2',JSON.stringify({active:'m1',profiles:[{id:'m1',name:'X',cfg:{layout:'board',dash:true,hubs:[0,1,2],hubT:[6,6,6],"
+            "pf:['m','m','l','l','','','','','','','','','','','','','',''],board:[{k:'j',c:0,d:1,w:1,sw:1},{k:'dp',c:2,d:3,w:1,sw:1},{k:'xy',c:6,d:7,w:1,sw:1}]}}],prefs:{seen:true,practice:true}}))})();")
+    await pg.add_init_script(STUB + seed)
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    await pg.evaluate("mk6Go('drive')"); await pg.wait_for_timeout(900)
+    r = await pg.evaluate("""[...document.querySelectorAll('.dw')].map(w=>{var c=w.querySelector('.pad,.dpbox,svg.xwv'),cb=c.getBoundingClientRect().toJSON(),wb=w.getBoundingClientRect();if(c.tagName==='svg'){var k=Math.min(cb.width/300,cb.height/260),t0=cb.top+(cb.height-260*k)/2;cb={left:cb.left+(cb.width-300*k)/2,right:cb.left+(cb.width+300*k)/2,top:t0,bottom:t0+236*k}}
+      var bad=[...w.querySelectorAll('.brail,.dialdots')].some(x=>{var q=x.getBoundingClientRect();return q.bottom>wb.bottom+1||q.right>wb.right+1||(q.top<cb.bottom-1&&q.bottom>cb.top+1&&q.left<cb.right-1&&q.right>cb.left+1)});
+      var dots=w.querySelector('.dialdots'),hr=w.querySelector('.brail.h');if(dots&&hr){var a=dots.getBoundingClientRect(),h=hr.getBoundingClientRect();if(a.top<h.bottom-1&&a.bottom>h.top+1) bad=true}
+      return bad?'bad':'ok'}).join()""")
+    check('pair: sideways dashboard pair dots do not cover the controls', r == 'ok,ok,ok', r)
+    check('pair: dashboard no page errors', not pg.errors, pg.errors)
+    await ctx.close()
 
 async def main():
     async with async_playwright() as p:

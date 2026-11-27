@@ -523,7 +523,7 @@
       (it.t?it.t.map(function(z){return z.c}):[it.c,it.d,it.e,it.f]).forEach(function(q){if(q!==undefined&&q>=0) setT(q,0,false)});
       save();syncBoard();
     },!it.hold]);
-    if(it.k==='j'||it.k==='d') defs.push(['\u2699','Joystick settings',function(){jcShow(it)}]);
+    if(it.k==='d') defs.push(['\u2699','Joystick settings',function(){jcShow(it)}]);
     if(it.k==='tl') defs.push(['\u223F','Edit timeline',function(){tlEdit(it)}]);
     if(dashOn()&&it[DG.k]) defs.push(['\u25A3','Match size',function(){matchStart(it)}]);
     if(it.k==='g'||it.k==='lv') defs.push(['\u2699','Gear settings',function(){gearEdit(it)}]);
@@ -589,48 +589,43 @@
     // upright board: the tools sit on the widget itself (not dimmed with its title when no hub is connected)
     if(bdEditing) (dashOn()?head:el).appendChild(bdToolbar(it));
     else if(withOut){out=document.createElement('output');out.textContent='0';head.appendChild(out)}
-    if(!bdEditing&&it&&GRPK[it.k]) grpHead(el,nm,head,it,out);
     el.appendChild(head);
     return out;
   }
-  // Stick, D-pad and XY pad: swipe the title bar to move the widget to the next pair of ports on the same hub
-  // (AB -> CD -> EF), skipping pairs with nothing plugged in; red LEDs show which pair it drives
-  var GRPK={j:1,dp:1,xy:1};
-  function grpInfo(it){var c=it.c;if(typeof c!=='number'||c<0) return null;var hub=Math.floor(c/PER),P=isMk4(hub)?4:6,G=P/2,base=hub*PER,g0=Math.floor((c%PER)/2);
-    if(g0>=G) return null;
-    var used=function(g){for(var q=0;q<2;q++){var i=base+2*g+q;if((C.pf&&C.pf[i])||(C.pf2&&C.pf2[i])) return true}return false};
-    var gs=[];for(var g=0;g<G;g++) if(g===g0||used(g)) gs.push(g);
-    return {hub:hub,P:P,G:G,base:base,g0:g0,gs:gs}}
-  // Stick, D-pad and XY pad: the title is the channel chip, then the port pair as glowing letters (tap = next pair),
-  // then the live values of the two channels; the channel names are in the chip's pop-over
-  function grpHead(el,nm,head,it,out){var f=grpInfo(it);if(!f) return;
-    [].slice.call(nm.childNodes).forEach(function(n){if(!(n.classList&&n.classList.contains('bdw-chip'))) nm.removeChild(n)});
-    var k=document.createElement('b');k.className='g-key';k.setAttribute('role','button');k.tabIndex=0;
-    k.textContent=L.charAt(2*f.g0)+L.charAt(2*f.g0+1);k.setAttribute('aria-label','Port pair '+k.textContent+', tap for the next pair');
-    k.addEventListener('pointerdown',function(e){e.stopPropagation()});
-    k.addEventListener('click',function(e){e.stopPropagation();e.preventDefault();grpGo(it,1)});
-    nm.appendChild(k);
-    head.classList.add('g-h');
-    if(!out){out=document.createElement('output');out.className='g-val';head.appendChild(out);el.__gpo=out}
-  }
-  function grpVals(w){var o=w.el&&w.el.__gpo;if(!o) return;var it=w.it,s=fmt(rt.t[it.c]||0)+(typeof it.d==='number'&&it.d>=0?' \u00b7 '+fmt(rt.t[it.d]||0):'');if(o.textContent!==s) o.textContent=s}
   // fingers on the screen: the board is rebuilt only when none is down, so a switch never freezes a control being held
   var GPD={},GPEND=false;
   window.addEventListener('pointerdown',function(e){GPD[e.pointerId]=1},true);
   var gpUp=function(e){delete GPD[e.pointerId];if(GPEND&&!Object.keys(GPD).length){GPEND=false;syncBoard()}};
   window.addEventListener('pointerup',gpUp,true);window.addEventListener('pointercancel',gpUp,true);
-  function grpGo(it,dir){var f=grpInfo(it);if(!f) return;
-    var chs=[it.c];if(typeof it.d==='number'&&it.d>=0) chs.push(it.d);
-    if(chs.some(function(q){return Math.abs(rt.t[q]||0)>1})) return;   // not while the control is held
-    if(f.gs.length<2){toast('No other port pair on this hub has a part plugged in.');return}
-    var g1=f.gs[(f.gs.indexOf(f.g0)+dir+f.gs.length)%f.gs.length],sh=2*(g1-f.g0);
-    chs.forEach(function(q){setT(q,0,false)});
-    var mv=function(q){if(Math.floor(q/PER)!==f.hub) return q;var p=((q%PER)+sh)%f.P;if(p<0) p+=f.P;return f.base+p};
-    var snap=JSON.parse(JSON.stringify(C.board));
-    it.c=mv(it.c);if(typeof it.d==='number'&&it.d>=0) it.d=mv(it.d);
-    BD_UNDO.push({board:snap,msg:'Port pair change undone.'});if(BD_UNDO.length>20) BD_UNDO.shift();
-    save();feedback('ok');toast(L.charAt(2*g1)+L.charAt(2*g1+1)+' · '+C.ch[it.c].name);
-    if(Object.keys(GPD).length) GPEND=true; else syncBoard()}
+  function bdRebuild(){if(Object.keys(GPD).length) GPEND=true; else syncBoard()}
+  // Stick, XY pad and D-pad: "Swipe to other pairs" - swipe sideways on the card (not on the control) to move the
+  // widget to the next pair of channels; the dots show which pair it drives
+  function swPairs(el,it,ctl){
+    var ch=activeIdx(),prs=[];
+    for(var q=0;q<ch.length;q+=2) prs.push([ch[q],ch[q+1]===undefined?-1:ch[q+1]]);
+    var cur=-1;prs.forEach(function(pr,qi){if(pr[0]===it.c) cur=qi});
+    if(!it.sw||prs.length<2||cur<0) return;
+    var dg=document.createElement('div');dg.className='dialdots';
+    prs.forEach(function(pr,qi){var di=document.createElement('i');if(qi===cur) di.className='on';di.title=tagOf(pr[0])+(pr[1]>=0?'+'+tagOf(pr[1]):'');if(qi>0&&((pr[0]/PER)|0)!==((prs[qi-1][0]/PER)|0)) di.style.marginLeft='6px';dg.appendChild(di)});
+    el.appendChild(dg);
+    var sx=null,sy=0;el.style.touchAction='pan-y';
+    el.addEventListener('pointerdown',function(e){if(bdEditing||(e.target.closest&&e.target.closest(ctl))){sx=null;return}sx=e.clientX;sy=e.clientY});
+    el.addEventListener('pointerup',function(e){
+      if(sx===null) return;var dx=e.clientX-sx,dy=e.clientY-sy;sx=null;
+      if(Math.abs(dx)>36&&Math.abs(dx)>1.6*Math.abs(dy)&&!S.estop&&!S.play){
+        if([it.c,it.d].some(function(c){return c>=0&&Math.abs(rt.t[c]||0)>1})&&!it.hold&&!it.hd) return;
+        var nx=(cur+(dx<0?1:prs.length-1))%prs.length,np=prs[nx];
+        CRZ.skip=true;[it.c,it.d].forEach(function(c){if(c>=0){delete CRZ.v[c];setT(c,0,false)}});CRZ.skip=false;
+        it.c=np[0];it.d=np[1];BD_SL={it:it,d:dx<0?1:-1};save();feedback('ok');bdRebuild();
+      }
+    });
+    el.addEventListener('pointercancel',function(){sx=null});
+  }
+  // XY pad: the pair dots sit just under the pad's bottom LED rail, wherever the pad is drawn in its card
+  function xyDots(w){var el=w.el,dg=el&&el.__xyd,sg=el&&el.querySelector('svg.xwv');if(!dg||!sg||!el.isConnected) return;
+    var eb=el.getBoundingClientRect(),b=sg.getBoundingClientRect(),k=Math.min(b.width/300,b.height/260),bot=w.it.nr?222:236;
+    var y=b.top-eb.top-el.clientTop+(b.height-260*k)/2+bot*k+4,key=Math.round(y)+','+Math.round(eb.width);
+    if(dg.__k!==key){dg.__k=key;dg.style.top=Math.round(y)+'px'}}
   // a channel muted on a Levels (EQ) widget stays muted only while that widget is on the board, so a mute is never hidden
   function muteTidy(){
     var eq={};(C.board||[]).forEach(function(it){if(it.k==='lx'&&it.t==='eq'){eq[it.c]=1;(it.cs||[]).forEach(function(q){eq[q]=1})}});
@@ -685,26 +680,8 @@
         var tp=C.tilt.all||!tiltTaken;tiltTaken=true;
         el.appendChild(bdPad(it.c,it.d,it.m,it.hold,tp,it));
         if(BD_SL&&BD_SL.it===it){el.classList.add(BD_SL.d>0?'slL':'slR');BD_SL=null}
-        var jch=activeIdx(),jprs=[];
-        for(var jq=0;jq<jch.length;jq+=2) jprs.push([jch[jq],jch[jq+1]===undefined?-1:jch[jq+1]]);
-        var jcur=-1;jprs.forEach(function(pr,qi){if(pr[0]===it.c) jcur=qi});
-        if(it.sw&&jprs.length>1&&jcur>=0){
-          // Swipe sideways on the card (outside the pad) to move the joystick to the next pair of channels.
-          var jdg=document.createElement('div');jdg.className='dialdots';
-          jprs.forEach(function(pr,qi){var di=document.createElement('i');if(qi===jcur) di.className='on';di.title=tagOf(pr[0])+(pr[1]>=0?'+'+tagOf(pr[1]):'');if(qi>0&&((pr[0]/PER)|0)!==((jprs[qi-1][0]/PER)|0)) di.style.marginLeft='6px';jdg.appendChild(di)});
-          el.appendChild(jdg);
-          var jsx=null,jsy=0;el.style.touchAction='pan-y';
-          el.addEventListener('pointerdown',function(e){if(bdEditing||(e.target.closest&&e.target.closest('.pad'))){jsx=null;return}jsx=e.clientX;jsy=e.clientY});
-          el.addEventListener('pointerup',function(e){
-            if(jsx===null) return;var dx=e.clientX-jsx,dy=e.clientY-jsy;jsx=null;
-            if(Math.abs(dx)>36&&Math.abs(dx)>1.6*Math.abs(dy)&&!S.estop&&!S.play){
-              var nx=(jcur+(dx<0?1:jprs.length-1))%jprs.length,np=jprs[nx];
-              CRZ.skip=true;[it.c,it.d].forEach(function(c){if(c>=0){delete CRZ.v[c];setT(c,0,false)}});CRZ.skip=false;
-              it.c=np[0];it.d=np[1];BD_SL={it:it,d:dx<0?1:-1};save();syncBoard();feedback('ok');
-            }
-          });
-          el.addEventListener('pointercancel',function(){jsx=null});
-        }
+        var jpad=el.querySelector('.pad');if(it.ng&&jpad) jpad.classList.add('nog');
+        swPairs(el,it,'.pad');
       }else if(it.k==='d'){
         var all=[it.c,it.d,it.e,it.f];
         for(var q=0;q<4;q++) if(all[q]>=0&&!isActive(all[q])) return;
@@ -1156,15 +1133,19 @@
             if(S.estop||S.play) return;
             e.preventDefault();try{b.setPointerCapture(e.pointerId)}catch(_){}
             if(it.tg){var was=!!dpr[q[0]];dpr={};if(!was) dpr[q[0]]=1}
+            else if(it.hold){dpr={};dpr[q[0]]=1}
             else dpr[q[0]]=1;
             dpApply();
           });
-          if(!it.tg) ['pointerup','pointercancel'].forEach(function(ev){b.addEventListener(ev,function(){if(dpr[q[0]]){delete dpr[q[0]];dpApply()}})});
+          if(!it.tg&&!it.hold) ['pointerup','pointercancel'].forEach(function(ev){b.addEventListener(ev,function(){if(dpr[q[0]]){delete dpr[q[0]];dpApply()}})});
           b.addEventListener('contextmenu',function(e){e.preventDefault()});
           dbx.appendChild(b);dbs[q[0]]=b;
         });
         var dph=document.createElement('div');dph.className='dphub';dbx.appendChild(dph);
+        // "Stay where it is": the last arrow keeps running; tap the centre to stop
+        if(it.hold||it.tg){dph.setAttribute('role','button');dph.setAttribute('aria-label','Stop');dph.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();if(S.estop||S.play) return;dpClear()})}
         dww.appendChild(dbx);el.appendChild(dww);w.dpd={bs:dbs,r:function(){return dpr},clr:dpClear};
+        swPairs(el,it,'.dpbox');
       }else if(it.k==='ps'){
         el.classList.add('psw');
         bdHead(el,'',it,false);
@@ -1210,9 +1191,10 @@
         var swhd=bdHead(el,'Swing \u00b7 '+tagOf(it.c)+' '+C.ch[it.c].name,it,true);el.classList.add('mtrw');w.mtr=swBuild(el,it,swhd);
       }else if(it.k==='xy'||it.k==='xf'||it.k==='ro'||it.k==='ax'){
         if(!isActive(it.c)||(it.k!=='ro'&&it.k!=='ax'&&!isActive(it.d))) return;
-        var xhd=bdHead(el,it.k==='xy'?'XY pad \u00b7 '+tagOf(it.c)+'+'+tagOf(it.d):it.k==='xf'?'Crossfader \u00b7 '+tagOf(it.c)+'\u21c4'+tagOf(it.d):(it.k==='ax'?'Motor axle':'Rotor')+' \u00b7 '+tagOf(it.c)+' \u00b7 '+C.ch[it.c].name,it,true);
+        var xhd=bdHead(el,it.k==='xy'?'XY pad \u00b7 '+tagOf(it.c)+'+'+tagOf(it.d):it.k==='xf'?'Crossfader \u00b7 '+tagOf(it.c)+'\u21c4'+tagOf(it.d):(it.k==='ax'?'Motor axle':'Rotor')+' \u00b7 '+tagOf(it.c)+' \u00b7 '+C.ch[it.c].name,it,it.k!=='xy');
         el.classList.add('mtrw');
         w.mtr=xwBuild(el,it,xhd);
+        if(it.k==='xy'){swPairs(el,it,'svg');var xdg=el.querySelector(':scope>.dialdots');if(xdg){xdg.classList.add('xyd');el.classList.add('xyw');el.__xyd=xdg}}
       }else if(it.k==='z'){
         bdHead(el,'Session timer',it,false);
         var zd=document.createElement('button');zd.type='button';zd.className='sesst';
@@ -1624,7 +1606,7 @@
     paintPads();
     lvFrames();
     bdW.forEach(function(w){
-      grpVals(w);
+      if(w.el&&w.el.__xyd) xyDots(w);
       if(w.es){
         w.es.classList.toggle('on',!!S.estop);
         w.es.textContent=S.estop?'RELEASE':'E-STOP';
