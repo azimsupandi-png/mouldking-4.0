@@ -232,7 +232,7 @@ try{
       }else if(x.k==='xy'||x.k==='xf'){
         var xa=Math.round(+x.c),xb=Math.round(+x.d);
         if(xa>=0&&xa<NMAX&&xb>=0&&xb<NMAX&&xa!==xb){var xo={k:x.k,c:xa,d:xb,w:w};
-          if(x.k==='xy'){if(x.hd===1||x.hd===true) xo.hd=1;if(+x.ng===1) xo.ng=1;if(+x.nr===1) xo.nr=1;var xj=cleanJc(x.jc);if(xj) xo.jc=xj;if(x.sw===1||x.sw===true) xo.sw=1}
+          if(x.k==='xy'){if(x.hd===1||x.hd===true) xo.hd=1;if(+x.ng===1) xo.ng=1;if(+x.nr===1) xo.nr=1;var xj=cleanJc(x.jc);if(xj) xo.jc=xj;if(x.sw===1||x.sw===true) xo.sw=1;if(x.m==='tank') xo.m='tank'}
           else{var xp=Math.round(+x.p);if(xp>=10&&xp<100) xo.p=xp;if(+x.md===1) xo.md=1;if(+x.rc===1) xo.rc=1;if(+x.rd===1) xo.rd=1}
           out.push(xo)}
       }else if(x.k==='tl'){

@@ -359,7 +359,7 @@
       :[{k:'c',l:'Left stick: up / down'},{k:'d',l:'Left stick: left / right',none:1},{k:'e',l:'Right stick: up / down'},{k:'f',l:'Right stick: left / right',none:1}];
     if(k==='dp') return it.m==='car'?[{k:'c',l:'Drive'},{k:'d',l:'Steer',none:1}]:[{k:'c',l:'Left motor'},{k:'d',l:'Right motor',none:1}];
     if(k==='w') return [{k:'c',l:'Output A'},{k:'d',l:'Output B'}];
-    if(k==='xy') return [{k:'c',l:'X (left / right)'},{k:'d',l:'Y (up / down)'}];
+    if(k==='xy') return it.m==='tank'?[{k:'c',l:'Left motor'},{k:'d',l:'Right motor'}]:[{k:'c',l:'X (left / right)'},{k:'d',l:'Y (up / down)'}];
     if(k==='xf') return [{k:'c',l:'Left side'},{k:'d',l:'Right side'}];
     if(k==='lx') return it.t==='tk'?[]:[{k:'c',l:'Channel'}];
     if(['s','l','b','t','a','y','f','i','k','n','g','lv','st','ro','ax','sw'].indexOf(k)>=0) return [{k:'c',l:k==='l'?'Light channel':k==='sw'?'Swing channel':'Channel'}];

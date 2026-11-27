@@ -573,13 +573,13 @@
       function rail(L,val,horiz){var n=L.length,h=n/2,q=Math.round(Math.abs(val)/100*h);L.forEach(function(r,j){var ix=horiz?j:n-1-j,on=val>=0?(ix>=h&&ix<h+q):(ix<h&&ix>=h-q),p=Math.abs(ix<h?h-ix:ix-h+1)/h*100,f=on?(val<0?PAL.b:col(p)):(ix===h||ix===h-1?'rgba(200,208,220,.3)':OFF);if(r.__f!==f){r.__f=f;r.setAttribute('fill',f)}})}
       function place(x,y){var px=cx+x/100*MV,py=cy-y/100*MV;kn.setAttribute('transform','translate('+px.toFixed(1)+' '+py.toFixed(1)+')');gx.setAttribute('x1',px);gx.setAttribute('x2',px);gy.setAttribute('y1',py);gy.setAttribute('y2',py);gx.style.opacity=gy.style.opacity=(Math.abs(x)>1||Math.abs(y)>1)?1:0}
       function from(e){var p=pt(e);var x=Math.max(-100,Math.min(100,(p.x-cx)/MV*100)),y=Math.max(-100,Math.min(100,-(p.y-cy)/MV*100));var jx=it.jc&&it.jc.ax;if(jx==='x') y=0;if(jx==='y') x=0;return [x,y]}
-      function send(x,y){noteInput();delete RAMP[it.c];delete RAMP[it.d];var sh=jshape(x/100,y/100,it.jc);setT(it.c,sh[0]*100*z(),false);setT(it.d,sh[1]*100*z(),false)}
+      function send(x,y){noteInput();delete RAMP[it.c];delete RAMP[it.d];var sh=jshape(x/100,y/100,it.jc),a=sh[0],b=sh[1];if(it.m==='tank'){a=clamp(sh[1]+sh[0],-1,1);b=clamp(sh[1]-sh[0],-1,1)}setT(it.c,a*100*z(),false);setT(it.d,b*100*z(),false)}
       svg.style.touchAction='none';
       svg.addEventListener('pointerdown',function(e){if(bdEditing||S.estop||S.play) return;e.preventDefault();pid=e.pointerId;try{svg.setPointerCapture(pid)}catch(_){}var v=from(e);dx=v[0];dy=v[1];place(dx,dy);send(dx,dy)});
       svg.addEventListener('pointermove',function(e){if(e.pointerId!==pid) return;var v=from(e);dx=v[0];dy=v[1];place(dx,dy);send(dx,dy)});
       ['pointerup','pointercancel'].forEach(function(ev){svg.addEventListener(ev,function(e){if(e.pointerId!==pid) return;pid=null;if(!it.hd) send(0,0)})});
       var sx=0,sy=0;
-      m.upd=function(){var tx=(rt.t[it.c]||0)/z(),ty=(rt.t[it.d]||0)/z();if(pid===null){sx+=(tx-sx)*.55;sy+=(ty-sy)*.55;if(Math.abs(sx-tx)<.5) sx=tx;if(Math.abs(sy-ty)<.5) sy=ty;place(sx,sy)}else{sx=dx;sy=dy}
+      m.upd=function(){var tx=(rt.t[it.c]||0)/z(),ty=(rt.t[it.d]||0)/z();if(it.m==='tank'){var ta=tx,tb=ty;ty=(ta+tb)/2;tx=(ta-tb)/2}if(pid===null){sx+=(tx-sx)*.55;sy+=(ty-sy)*.55;if(Math.abs(sx-tx)<.5) sx=tx;if(Math.abs(sy-ty)<.5) sy=ty;place(sx,sy)}else{sx=dx;sy=dy}
         if(LX.length){rail(LX,rt.t[it.c]||0,true);rail(LY,rt.t[it.d]||0,false)}
         arrows(sx,sy);
         if(hd){var s=fmt(rt.t[it.c]||0)+' · '+fmt(rt.t[it.d]||0);if(hd.textContent!==s) hd.textContent=s}};
@@ -1096,7 +1096,7 @@
     g:function(it){return (it.k==='xy'?it.hd:it.hold)?1:0},s:function(it,v){if(it.k==='xy'){if(v) it.hd=1; else delete it.hd}else{if(v) it.hold=true; else delete it.hold}}};
   var F_SWP={k:'sw',l:'Swipe to other pairs',ch:[0,1],lab:['Off','On'],only:true,def:0,g:function(it){return it.sw?1:0},s:function(it,v){if(v) it.sw=1; else delete it.sw}};
   var F_RAIL={k:'nr',l:'LED rails',ch:[0,1],lab:['On','Off'],only:true,def:0};
-  var F_JDRV={k:'m',l:'Drive mode',ch:[0,1],lab:['Tank (2 motors)','Car (drive + steer)'],only:true,def:1,g:function(it){return it.m==='tank'?0:1},s:function(it,v){it.m=v?'axis':'tank'}};
+  var F_JDRV={k:'m',l:'Drive mode',ch:[0,1],lab:['Tank (2 motors)','Car (drive + steer)'],only:true,def:1,g:function(it){return it.m==='tank'?0:1},s:function(it,v){if(it.k==='xy'){if(v) delete it.m; else it.m='tank'}else it.m=v?'axis':'tank'}};
   var JXF=[{k:'dz',l:'Deadzone',u:'%',min:0,max:40,st:1,ch:[0,5,10,20],def:0,g:jcG('dz',0),s:jcF('dz')},
     {k:'sn',l:'Sensitivity',u:'%',min:50,max:150,st:5,ch:[75,100,125,150],def:100,g:jcG('sn',100),s:jcF('sn')},
     {k:'lm',l:'Power limit',u:'%',min:20,max:100,st:5,ch:[50,75,100],def:100,g:jcG('lm',100),s:jcF('lm')},
@@ -1104,6 +1104,7 @@
     F_LETGO,F_SWP,
     {k:'ng',l:'Grid',ch:[0,1],lab:['On','Off'],only:true,def:0,g:function(it){return it.ng?1:0},s:function(it,v){if(v) it.ng=1; else delete it.ng}},
     F_RAIL];
+  var JYF=[F_JDRV].concat(JXF);
   var JSF=[F_JDRV].concat(JXF.filter(function(f){return f!==F_RAIL}));
   // the scope can draw up to 3 more channels of the same hub (yellow, blue, grey)
   function F_KC(j){return {k:'cs'+j,l:['Also show (yellow line)','Also show (blue line)','Also show (grey line)'][j],ch:[-1,0,1,2,3,4,5],lab:['Off','A','B','C','D','E','F'],only:true,def:-1,
@@ -1183,7 +1184,7 @@
       {k:'rb',l:'Reverse output B',ch:[0,1],lab:['Off','On'],only:true,def:0,g:function(it){return it.rb?1:0},s:function(it,v){if(v) it.rb=1; else delete it.rb}}]},
     ps:{t:'Start / stop button settings',f:[{k:'hd',l:'Hold time before it switches',ch:[300,500,800,1200],lab:['0.3 s','0.5 s','0.8 s','1.2 s'],only:true,def:500},{k:'md',l:'What it controls',ch:[0,1],lab:['Hub link','Output only'],only:true,def:0}].concat('ABCDEF'.split('').map(function(c,j){return {k:'o'+j,l:'Output only: channel '+c,ch:[1,0],lab:['Stopped','Left running'],only:true,def:1,dep:{k:'md',v:1}}}))},
     j:{t:'Joystick settings',f:JSF},
-    xy:{t:'XY pad settings',f:JXF},
+    xy:{t:'XY pad settings',f:JYF},
     xf:{t:'Crossfader settings',f:[{k:'p',l:'Full power (top of the fader)',u:'%',min:10,max:100,st:5,ch:[50,80,100],def:100},
       {k:'md',l:'In the centre',ch:[0,1],lab:['Both channels at full power','Half power each'],only:true,def:0},
       {k:'rc',l:'Reverse the left side',ch:[0,1],lab:['Off','On'],only:true,def:0},{k:'rd',l:'Reverse the right side',ch:[0,1],lab:['Off','On'],only:true,def:0},

@@ -2311,9 +2311,9 @@ async def t_swipegrp(b):
               var i=f.querySelector('input');i.value=String(v);i.dispatchEvent(new Event('input',{bubbles:true}))}""", [lab, v])
         await pg.evaluate("[...document.querySelectorAll('#gEdit .gact .btn')].find(b=>b.textContent==='Save').click()"); await pg.wait_for_timeout(300)
     labs = await pg.evaluate("""(()=>{var o=[];[0,1].forEach(i=>{__t.wsEdit(__t.C.board[i]);o.push([...document.querySelectorAll('#gEdit .wsl')].map(x=>x.textContent).join(','));document.getElementById('gEdit').remove()});return o})()""")
-    check('pair: Stick settings: drive mode, no LED rails; XY pad: same list plus LED rails, no drive mode',
+    check('pair: Stick and XY pad settings: same list with drive mode; LED rails on the XY pad only',
           labs[0] == 'Channels,Drive mode,Deadzone,Sensitivity,Power limit,Axis lock,When you let go,Swipe to other pairs,Grid'
-          and labs[1] == 'Channels,Deadzone,Sensitivity,Power limit,Axis lock,When you let go,Swipe to other pairs,Grid,LED rails', labs)
+          and labs[1] == 'Channels,Drive mode,Deadzone,Sensitivity,Power limit,Axis lock,When you let go,Swipe to other pairs,Grid,LED rails', labs)
     # XY pad: axis lock + power limit shape what is sent
     await setf(1, [('Axis lock', 'Left / right')], [('Power limit', 50)])
     bx = await (await pg.query_selector_all('.bdw svg.xwv'))[0].bounding_box()
@@ -2334,6 +2334,20 @@ async def t_swipegrp(b):
     await setf(0, [('Drive mode', 'Car (drive + steer)')])
     r = await pg.evaluate("__t.C.board[0].m")
     check('pair: Stick drive mode back to Car (drive + steer)', r == 'axis', r)
+    # XY pad: drive mode tank mixes X/Y into left and right motor
+    await setf(1, [('Drive mode', 'Tank (2 motors)')], [('Deadzone', 0)])
+    xs = await (await pg.query_selector_all('.bdw svg.xwv'))[0].bounding_box(); await pg.mouse.move(xs['x'] + 1, xs['y'] + 1)
+    r = await pg.evaluate("[...document.querySelectorAll('.bdw svg.xwv rect')].filter(e=>+e.getAttribute('width')===200)[0].getBoundingClientRect().toJSON()")
+    await pg.mouse.move(r['x'] + r['width'] / 2, r['y'] + 2); await pg.mouse.down(); await pg.wait_for_timeout(100)
+    v1 = await pg.evaluate("[Math.round(__t.rt.t[0]),Math.round(__t.rt.t[1])]")
+    await pg.mouse.move(r['x'] + r['width'] - 2, r['y'] + r['height'] / 2); await pg.wait_for_timeout(100)
+    v2 = await pg.evaluate("[Math.round(__t.rt.t[0]),Math.round(__t.rt.t[1])]")
+    await pg.mouse.up(); await pg.wait_for_timeout(100)
+    r2 = await pg.evaluate("[__t.C.board[1].m,[...document.querySelectorAll('#gEdit')].length].join()")
+    check('pair: XY pad tank: up drives both motors forward, right spins them opposite', v1 == [100, 100] and v2 == [100, -100] and r2 == 'tank,0', (v1, v2, r2))
+    await setf(1, [('Drive mode', 'Car (drive + steer)')])
+    r2 = await pg.evaluate("'m' in __t.C.board[1]")
+    check('pair: XY pad back to car (X and Y straight to the channels)', r2 is False, r2)
     # XY pad: grid and rails off
     await setf(1, [('Grid', 'Off'), ('LED rails', 'Off')], [('Deadzone', 0)])
     r = await pg.evaluate("var b=__t.C.board[1];[!!b.ng,!!b.nr,!b.jc].join()")
