@@ -7552,6 +7552,7 @@ return API;
 
   // ---- What's new, version and update check ----
   var CHANGES=[
+    {b:136,items:[["fix", "Full screen off: no empty band above the phone's navigation buttons; the bottom bar sits right on them"]]},
     {b:135,items:[["new", "XY pad: drive mode, like the Stick. Car (X and Y go straight to the two channels) or Tank (up and down drive both motors, left and right turn)"]]},
     {b:134,items:[["better", "Stick, D-pad and XY pad: the titles show the widget and channel names again; the pair letters and values are gone"], ["new", "Stick and XY pad share one settings list: deadzone, sensitivity, power limit, axis lock, when you let go, swipe to other pairs and grid. The Stick also has drive mode (tank or car); the XY pad keeps its LED rails"], ["new", "D-pad: when you let go (stay where it is: tap the centre to stop) and swipe to other pairs"], ["better", "XY pad: the yellow arrows glow toward the push, and the pair dots sit just under the pad"]]},
     {b:133,items:[["better", "Stick, D-pad and XY pad: the title is now the channel chip and the port pair letters, glowing red; tap the letters for the next pair (AB, CD, EF). The pair bar at the bottom is gone, so the control gets more room"], ["better", "Sideways dashboard: the two channel values show in the title"], ["fix", "Sideways dashboard: nothing covers the bottom of the controls any more"]]},

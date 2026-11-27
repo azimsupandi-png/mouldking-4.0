@@ -467,6 +467,15 @@ public class MainActivity extends Activity {
                 lp.setMargins(l, t, r, b);
                 web.setLayoutParams(lp);
             }
+            // Full screen off: the page already sits between the bars (the margins above), so the WebView must not
+            // also get the bar insets - newer WebViews turn them into CSS safe-area padding and the page would be
+            // padded twice (an empty band above the navigation buttons).
+            if (!fullScreen) {
+                if (Build.VERSION.SDK_INT >= 30) return WindowInsets.CONSUMED;
+                WindowInsets c = insets.consumeSystemWindowInsets();
+                if (Build.VERSION.SDK_INT >= 28) c = c.consumeDisplayCutout();
+                return c;
+            }
             return insets;
         });
     }
