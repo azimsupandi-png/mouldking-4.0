@@ -2007,8 +2007,19 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
 .camx .cam-btns{position:absolute;right:6px;top:6px;bottom:6px;display:flex;flex-direction:column;gap:6px;overflow:hidden}
 .camx .cam-b{width:30px;height:30px;flex:none;border-radius:50%;display:grid;place-items:center;padding:0;background:rgba(8,10,14,.55);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:13px;font-weight:800;cursor:pointer}
 .camx .cam-b.on{background:#ffc400;color:#141414;border-color:#ffc400}
-.bdw.camw.camfs:not(#z){position:fixed!important;inset:0!important;width:auto!important;height:auto!important;z-index:90;border-radius:0;margin:0;padding:8px}
-.bdw.camw.camfs .camx{aspect-ratio:auto!important}
+.cam-fsl{position:fixed;inset:0;z-index:2147483000;background:#000}
+.cam-fsl .camx{position:absolute;inset:0;margin:0;border-radius:0;box-shadow:none;aspect-ratio:auto!important;min-height:0}
+.cam-fsl .cam-b{width:44px;height:44px}.cam-fsl .cam-btns{right:max(12px,env(safe-area-inset-right));top:12px;bottom:12px;gap:10px}
+.cam-fsl .cam-rail{left:max(12px,env(safe-area-inset-left));width:8px}
+.cam-fsl .cam-rec{left:max(26px,calc(env(safe-area-inset-left) + 14px));top:12px}
+.cam-fsl .cam-rd{font-size:13px;bottom:14px}.cam-fsl .cam-rd b{font-size:15px}
+.camx .cam-b svg{width:58%;height:58%;fill:currentColor;display:block}
+.camx .cam-b.on svg{fill:#141414}
+.camx .cam-b[aria-label="Record video"] svg{fill:#E24B4A}
+/* the camera is not a control: no dimming when no hub is connected */
+:root.dash.nolink .bdw.camw{opacity:1}
+html.v2-nohub #boardGrid > .bdw.camw > *:not(.bdw-ed){opacity:1!important;filter:none!important}
+html.v2-nohub #boardGrid > .bdw.camw::after{display:none!important}
 :root.dash .dw.xyw:not(#z){position:absolute}
 .bdw .dialdots.xyd{position:absolute;left:6px;right:6px;width:auto;margin:0;z-index:1}
 :root[data-skin="studs"] .bdw>.pad.nog:not(#z):not(#y){background-size:calc(20px*var(--s,1)) calc(13px*var(--s,1)),calc(20px*var(--s,1)) calc(13px*var(--s,1)),calc(13px*var(--s,1)) calc(20px*var(--s,1)),calc(13px*var(--s,1)) calc(20px*var(--s,1)),0 0,0 0,auto}

@@ -1,5 +1,6 @@
   // ---- What's new, version and update check ----
   var CHANGES=[
+    {b:138,items:[["fix", "Camera full screen covers the whole app, top bar included; going back to the board turns the camera on again"], ["better", "Camera buttons use Google Material Symbols icons, and the camera picture is no longer dimmed when no hub is connected"]]},
     {b:137,items:[["new", "Camera widget: the phone's camera as a live view on the board, with a speed LED rail, channel readout and path lines that bend with steering (read from your other widgets, it never drives). Full screen, torch, 1\u00d7/2\u00d7 zoom, video recording and photos saved to the gallery (Movies/MK6, Pictures/MK6)"]]},
     {b:136,items:[["fix", "Full screen off: no empty band above the phone's navigation buttons; the bottom bar sits right on them"]]},
     {b:135,items:[["new", "XY pad: drive mode, like the Stick. Car (X and Y go straight to the two channels) or Tank (up and down drive both motors, left and right turn)"]]},

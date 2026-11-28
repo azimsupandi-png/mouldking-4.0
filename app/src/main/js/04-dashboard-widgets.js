@@ -652,7 +652,11 @@
   function camCaps(){try{return (CAM.track&&CAM.track.getCapabilities)?CAM.track.getCapabilities():{}}catch(_){return {}}}
   // the camera stays on only while a Camera widget is on screen and the app is in front
   setInterval(function(){
-    if(!CAM.st) return;
+    if(!CAM.st){
+      // back on a page with a Camera widget: start it again
+      if(!document.hidden&&!CAM.starting&&!bdEditing) [].forEach.call(document.querySelectorAll('.bdw.camw'),function(el){var v=el.querySelector('video.camv')||document.querySelector('.cam-fsl video.camv');if(v&&v.offsetParent!==null&&!v.srcObject&&el.__camStart&&!el.__camErr) el.__camStart()});
+      return;
+    }
     var on=[].some.call(document.querySelectorAll('video.camv'),function(v){return v.isConnected&&v.offsetParent!==null});
     if(on) CAM.lastSeen=Date.now(); else if(!CAM.rec&&Date.now()-CAM.lastSeen>1500) camStop();
   },700);
@@ -708,26 +712,34 @@
     var rd=null;
     if(!offH){rd=document.createElement('div');rd.className='cam-rd'}
     var col=document.createElement('div');col.className='cam-btns';
-    var mkB=function(t,lab,fn){var b=document.createElement('button');b.type='button';b.className='cam-b';b.textContent=t;b.setAttribute('aria-label',lab);
+    var mkB=function(t,lab,fn){var b=document.createElement('button');b.type='button';b.className='cam-b';b.innerHTML=CAMI[t]?camI(t):t;b.setAttribute('aria-label',lab);
       b.addEventListener('pointerdown',function(e){e.stopPropagation()});b.addEventListener('click',function(e){e.stopPropagation();e.preventDefault();fn(b)});col.appendChild(b);return b};
-    var bFs=mkB('⤢','Full screen',function(b){var on=!el.classList.contains('camfs');el.classList.toggle('camfs',on);document.documentElement.classList.toggle('cam-fs',on);b.textContent=on?'⤡':'⤢';b.setAttribute('aria-label',on?'Exit full screen':'Full screen')});
-    var bTo=mkB('⚡','Torch',function(b){var cp=camCaps();if(!CAM.track||!cp.torch){toast('This camera has no torch.');return}
-      var on=!CAM.torch;CAM.track.applyConstraints({advanced:[{torch:on}]}).then(function(){CAM.torch=on;b.classList.toggle('on',on)},function(){toast('This camera has no torch.')})});
+    // full screen: the picture moves into a layer above the whole app (bars included), and comes back on exit
+    var fsL=null;
+    var fsWatch=function(){if(!fsL) return;if(!el.isConnected||el.offsetParent===null){setFs(false);return}setTimeout(fsWatch,500)};
+    var setFs=function(on){
+      if(on&&!fsL){fsL=document.createElement('div');fsL.className='cam-fsl';document.body.appendChild(fsL);fsL.appendChild(box);setTimeout(fsWatch,500)}
+      else if(!on&&fsL){el.appendChild(box);fsL.remove();fsL=null}
+      document.documentElement.classList.toggle('cam-fs',!!fsL);
+      bFs.innerHTML=camI(fsL?'fx':'fs');bFs.setAttribute('aria-label',fsL?'Exit full screen':'Full screen')};
+    var bFs=mkB('fs','Full screen',function(){setFs(!fsL)});
+    var bTo=mkB('tof','Torch',function(b){var cp=camCaps();if(!CAM.track||!cp.torch){toast('This camera has no torch.');return}
+      var on=!CAM.torch;CAM.track.applyConstraints({advanced:[{torch:on}]}).then(function(){CAM.torch=on;b.classList.toggle('on',on);b.innerHTML=camI(on?'ton':'tof')},function(){toast('This camera has no torch.')})});
     var bZm=mkB('1×','Zoom',function(b){var z=CAM.zoom>=2?1:2,cp=camCaps();
       var apply=function(){CAM.zoom=z;b.textContent=z+'×';v.style.transform=(cp.zoom||z===1)?'':'scale('+z+')'};
       if(CAM.track&&cp.zoom&&cp.zoom.max>=cp.zoom.min*z){CAM.track.applyConstraints({advanced:[{zoom:cp.zoom.min*z}]}).then(apply,function(){cp={};apply()})} else {cp={};apply()}});
     var bRec=null;
     if(!it.nr){
-      bRec=mkB('⏺','Record video',function(b){if(CAM.rec) camRecStop(); else camRecStart()});
-      mkB('📷','Take a photo',function(){camShot(v)});
+      bRec=mkB('rec','Record video',function(b){if(CAM.rec) camRecStop(); else camRecStart()});
+      mkB('cam','Take a photo',function(){camShot(v)});
     }
     box.appendChild(v);box.appendChild(hud);box.appendChild(msg);box.appendChild(rec);if(rail) box.appendChild(rail);if(rd) box.appendChild(rd);box.appendChild(col);
     el.appendChild(box);
-    if(CAM.torch) bTo.classList.add('on');if(CAM.zoom>1){bZm.textContent=CAM.zoom+'×'}
+    if(CAM.torch){bTo.classList.add('on');bTo.innerHTML=camI('ton')}if(CAM.zoom>1){bZm.textContent=CAM.zoom+'×'}
     var face=it.fr?'user':'environment',q=+it.q||720;
-    var start=function(){msg.hidden=false;msg.textContent='Starting the camera…';
+    var start=function(){el.__camErr=0;msg.hidden=false;msg.textContent='Starting the camera…';
       camGet(face,q).then(function(st){if(!v.isConnected) return;if(v.srcObject!==st) v.srcObject=st;var pr=v.play&&v.play();if(pr&&pr.catch) pr.catch(function(){});msg.hidden=true;CAM.lastSeen=Date.now()},
-        function(e){if(!v.isConnected) return;var n=e&&e.name;msg.textContent=n==='NotAllowedError'||n==='SecurityError'?'Camera not allowed. Allow the camera for MK6 Console in the phone’s settings, then tap here.':n==='NotFoundError'||(e&&e.message==='nocam')?'No camera found on this phone.':'The camera could not start. Tap to try again.'})};
+        function(e){el.__camErr=1;if(!v.isConnected) return;var n=e&&e.name;msg.textContent=n==='NotAllowedError'||n==='SecurityError'?'Camera not allowed. Allow the camera for MK6 Console in the phone’s settings, then tap here.':n==='NotFoundError'||(e&&e.message==='nocam')?'No camera found on this phone.':'The camera could not start. Tap to try again.'})};
     el.__camStart=start;
     msg.addEventListener('click',function(e){e.stopPropagation();start()});
     if(!bdEditing) start(); else {msg.textContent='Camera (off while editing)'}
@@ -741,10 +753,13 @@
       if(pg){var k=Math.round(sr)/100,sh=-k*60,pd=['M140 225 Q'+(146+sh*.35)+' 172 '+(176+sh)+' 132','M260 225 Q'+(254+sh*.35)+' 172 '+(224+sh)+' 132'].join('|');
         if(pd!==lastP){lastP=pd;var ps=pg.children,pp=pd.split('|');ps[0].setAttribute('d',pp[0]);ps[1].setAttribute('d',pp[1])}}
       var rs=CAM.rec?Math.floor((Date.now()-CAM.recT0)/1000):-1;
-      if(String(rs)!==lastRec){lastRec=String(rs);rec.hidden=rs<0;if(rs>=0) rec.querySelector('b').textContent='REC '+(rs/60<10?'0':'')+Math.floor(rs/60)+':'+(rs%60<10?'0':'')+(rs%60);if(bRec){bRec.classList.toggle('on',rs>=0);bRec.textContent=rs>=0?'⏹':'⏺'}}
+      if(String(rs)!==lastRec){lastRec=String(rs);rec.hidden=rs<0;if(rs>=0) rec.querySelector('b').textContent='REC '+(rs/60<10?'0':'')+Math.floor(rs/60)+':'+(rs%60<10?'0':'')+(rs%60);if(bRec){bRec.classList.toggle('on',rs>=0);bRec.innerHTML=camI(rs>=0?'stop':'rec')}}
       requestAnimationFrame(upd)};
     requestAnimationFrame(upd);
   }
+  // Google Material Symbols (Rounded, filled; Apache License 2.0)
+  var CAMI={"fs": "M150-120q-12.75 0-21.37-8.63Q120-137.25 120-150v-240q0-12.75 8.68-21.38 8.67-8.62 21.5-8.62 12.82 0 21.32 8.62 8.5 8.63 8.5 21.38v168l558-558H570q-12.75 0-21.37-8.68-8.63-8.67-8.63-21.5 0-12.82 8.63-21.32 8.62-8.5 21.37-8.5h240q12.75 0 21.38 8.62Q840-822.75 840-810v240q0 12.75-8.68 21.37-8.67 8.63-21.5 8.63-12.82 0-21.32-8.63-8.5-8.62-8.5-21.37v-168L222-180h168q12.75 0 21.38 8.68 8.62 8.67 8.62 21.5 0 12.82-8.62 21.32-8.63 8.5-21.38 8.5H150Z", "fx": "M420-378 143-101q-9 9-21 9t-21-9q-9-9-9-21t9-21l277-277H190q-13 0-21.5-8.5T160-450q0-13 8.5-21.5T190-480h260q13 0 21.5 8.5T480-450v260q0 13-8.5 21.5T450-160q-13 0-21.5-8.5T420-190v-188Zm162-162h188q13 0 21.5 8.5T800-510q0 13-8.5 21.5T770-480H510q-13 0-21.5-8.5T480-510v-260q0-13 8.5-21.5T510-800q13 0 21.5 8.5T540-770v188l277-277q9-9 21-9t21 9q9 9 9 21t-9 21L582-540Z", "ton": "M240-764v-56q0-24.75 17.63-42.38Q275.25-880 300-880h360q24.75 0 42.38 17.62Q720-844.75 720-820v56H240Zm276 423.18q15-14.83 15-36Q531-398 516.18-413q-14.83-15-36-15Q459-428 444-413.18q-15 14.83-15 36Q429-356 443.82-341q14.83 15 36 15Q501-326 516-340.82ZM330-140v-383l-80-117q-5.38-7.73-7.69-16.23Q240-664.73 240-674v-30h480v30q0 9.27-2.31 17.77T710-640l-80 117v383q0 24.75-17.62 42.37Q594.75-80 570-80H390q-24.75 0-42.37-17.63Q330-115.25 330-140Z", "tof": "M341-140v-423L88-816q-9-9-9-21t9-21q9-9 21.5-9t21.5 9l707 707q9 9 9 21t-9 21q-9 9-21.5 9t-21.5-9L641-263v123q0 25-17.5 42.5T581-80H401q-25 0-42.5-17.5T341-140Zm-30-624-60-60q0-25 17.5-40.5T311-880h360q25 0 42.5 17.5T731-820v56H311Zm330 331L371-704h360v30q0 9-2.5 17.5T721-640l-80 117v90Z", "rec": "M282.5-282.5Q200-365 200-480t82.5-197.5Q365-760 480-760t197.5 82.5Q760-595 760-480t-82.5 197.5Q595-200 480-200t-197.5-82.5Z", "stop": "M240-300v-360q0-24.75 17.63-42.38Q275.25-720 300-720h360q24.75 0 42.38 17.62Q720-684.75 720-660v360q0 24.75-17.62 42.37Q684.75-240 660-240H300q-24.75 0-42.37-17.63Q240-275.25 240-300Z", "cam": "M480-267q72 0 121-49t49-121q0-73-49-121.5T480-607q-73 0-121.5 48.5T310-437q0 72 48.5 121T480-267Zm0-60q-48 0-79-31.5T370-437q0-48 31-79t79-31q47 0 78.5 31t31.5 79q0 47-31.5 78.5T480-327ZM140-120q-24 0-42-18t-18-42v-513q0-23 18-41.5t42-18.5h147l55-66q8-11 20-16t26-5h184q14 0 26 5t20 16l55 66h147q23 0 41.5 18.5T880-693v513q0 24-18.5 42T820-120H140Z"};
+  function camI(k){return '<svg viewBox="0 -960 960 960" aria-hidden="true"><path d="'+CAMI[k]+'"/></svg>'}
   function L1(i){var t=tagOf(i);return t.charAt(t.length-1)}
   function camEsc(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
   // a channel muted on a Levels (EQ) widget stays muted only while that widget is on the board, so a mute is never hidden
