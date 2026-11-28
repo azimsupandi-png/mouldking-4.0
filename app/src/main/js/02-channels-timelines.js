@@ -1128,7 +1128,7 @@
         {k:'ic',l:'Picture',ch:[0,1],lab:['Arrows (follow direction)','My icon'],only:true,def:0},
         {k:'px',l:'My icon (tap the dots to draw)',ed:true,mk:pxEditor,ch:[],dep:{k:'ic',v:1},g:function(it){return (it.px||LXPAT.up).slice()},s:function(it,v){if(it.ic) it.px=v.slice(); else delete it.px}},
         {k:'an',l:'Animation',ch:[0,1],lab:['Blink','Scroll (faster with more power)'],only:true,def:0}]},
-      eq:{t:'LED bars settings',f:[F_CHN('c','Bar 1'),F_CSN(0,'Bar 2'),F_CSN(1,'Bar 3'),F_CSN(2,'Bar 4'),
+      eq:{t:'LED bars settings',f:[F_CHN('c','Bar 1'),F_CSN(0,'Bar 2'),F_CSN(1,'Bar 3'),F_CSN(2,'Bar 4'),F_CSN(3,'Bar 5'),F_CSN(4,'Bar 6'),
         {k:'ow',l:'Direction',ch:[0,1],lab:['Both ways (reverse in blue)','Forward only'],only:true,def:0},
         {k:'mi',l:'Tap a bar',info:function(){return 'Tap a bar to mute its channel (the hub gets 0). Tap again to unmute. Mute ends when the app closes.'}}]},
       ts:{t:'Turn signal settings',f:[F_CHN('c','Steering channel'),{k:'th',l:'Blinks from',ch:[10,20,30],lab:['10%','20%','30%'],only:true,def:20},F_IND(0,'Left indicator light'),F_IND(1,'Right indicator light')]},

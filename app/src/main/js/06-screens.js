@@ -14,6 +14,7 @@
     V2.v=v;R2.setAttribute('data-v',v);
     var t=v2Tab(v);
     if(v!=='drive'&&bdEditing){var be=$('#bdEdit');if(be) be.click()}
+    if(v!=='drive'&&CAM.st&&!CAM.rec) camStop(); // the phone's camera is never left on behind another page
     if(t!==v2LastTab) v2Motion(t);
     Array.prototype.forEach.call(document.querySelectorAll('#tabbar [data-tab]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.tab===t))});
     var sub=!!V2PARENT[v];$('#subHead').hidden=!sub;if(sub) $('#subTitle').textContent=V2TITLE[v];

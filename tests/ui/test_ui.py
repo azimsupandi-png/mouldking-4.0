@@ -886,6 +886,8 @@ async def t_cam(b):
     r = await pg.evaluate("JSON.stringify(__t.cleanBoard([{k:'cam',c:0,d:1,w:2,fr:1,hu:2,q:1080,nr:1,zz:5},{k:'cam',c:0,d:0},{k:'cam',c:2,d:-1,q:333}]))")
     check('CAM cleanBoard keeps the options, drops same-channel pairs and bad quality',
           r == '[{"k":"cam","c":0,"d":1,"w":2,"fr":1,"hu":2,"q":1080,"nr":1},{"k":"cam","c":2,"d":-1,"w":2}]', r)
+    r = await pg.evaluate("JSON.stringify(__t.cleanBoard([{k:'lx',t:'eq',c:0,cs:[1,2,3,4,5]},{k:'lx',t:'lp',c:0,cs:[1,2,3,4,5]}]).map(x=>x.cs))")
+    check('139 LED bars keep 6 channels (light panel stays at 4)', r == '[[1,2,3,4,5],[1,2,3]]', r)
     await pg.evaluate("document.getElementById('hubConn').click();onHubState('ready')")
     await pg.evaluate("(()=>{__t.C.layout='board';__t.C.board=__t.cleanBoard([{k:'cam',c:0,d:1},{k:'j',c:0,d:1}]);__t.syncBoard();mk6Go('drive')})()")
     await pg.wait_for_function("(()=>{var v=document.querySelector('#boardGrid video.camv');return v&&v.videoWidth>0})()", timeout=10000)
@@ -903,6 +905,8 @@ async def t_cam(b):
     check('CAM exit full screen puts the picture back in the widget', r == [False, True], r)
     await pg.evaluate("document.querySelector('.camw .cam-b[aria-label=\"Full screen\"]').click();mk6Go('home')"); await pg.wait_for_timeout(900)
     check('CAM leaving the board closes full screen', await pg.evaluate("!document.querySelector('.cam-fsl')"), '')
+    await pg.wait_for_timeout(200)
+    check('139 the camera is off at once on another page', await pg.evaluate("[...document.querySelectorAll('video.camv')].every(v=>!v.srcObject)"), '')
     await pg.evaluate("mk6Go('drive')"); await pg.wait_for_timeout(600)
     await pg.wait_for_function("(()=>{var v=document.querySelector('#boardGrid video.camv');return v&&v.videoWidth>0&&!!document.querySelector('.camw .cam-b[aria-label=\"Record video\"]')})()", timeout=10000)
     await pg.evaluate("document.querySelector('.camw .cam-b[aria-label=\"Record video\"]').click()"); await pg.wait_for_timeout(1300)

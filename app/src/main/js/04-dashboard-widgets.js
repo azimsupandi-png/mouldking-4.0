@@ -657,8 +657,9 @@
       if(!document.hidden&&!CAM.starting&&!bdEditing) [].forEach.call(document.querySelectorAll('.bdw.camw'),function(el){var v=el.querySelector('video.camv')||document.querySelector('.cam-fsl video.camv');if(v&&v.offsetParent!==null&&!v.srcObject&&el.__camStart&&!el.__camErr) el.__camStart()});
       return;
     }
-    var on=[].some.call(document.querySelectorAll('video.camv'),function(v){return v.isConnected&&v.offsetParent!==null});
-    if(on) CAM.lastSeen=Date.now(); else if(!CAM.rec&&Date.now()-CAM.lastSeen>1500) camStop();
+    // the camera stays on only while its picture is on screen: off at once on another page or while editing
+    var on=!bdEditing&&!document.hidden&&[].some.call(document.querySelectorAll('video.camv'),function(v){return v.isConnected&&v.offsetParent!==null&&v.srcObject===CAM.st});
+    if(on) CAM.lastSeen=Date.now(); else if(!CAM.rec) camStop();
   },700);
   document.addEventListener('visibilitychange',function(){if(document.hidden) camStop(); else setTimeout(camWake,300)});
   function camWake(){[].forEach.call(document.querySelectorAll('.bdw.camw'),function(el){if(el.__camStart) el.__camStart()})}
@@ -2173,7 +2174,7 @@
       var lt=bdPre().t||'mx',lo={k:'lx',t:lt,w:ww};if(lt!=='tk') lo.c=n[0];
       var hb=Math.floor((n[0]||0)/PER)*PER,act=activeIdx().filter(function(i){return i>=hb&&i<hb+PER&&i!==n[0]});
       if(lt==='mx'){var sg=(C.ss&&C.ss.on&&C.ss.st!==n[0])?C.ss.st:-1;if(sg<0){var stw=C.board.filter(function(x){return x.k==='st'&&x.c!==n[0]})[0];if(stw) sg=stw.c}if(sg>=0) lo.d=sg}
-      if(lt==='eq'&&act.length) lo.cs=act.filter(function(i){return C.ch[i].kind!=='light'}).slice(0,3);
+      if(lt==='eq'&&act.length) lo.cs=act.filter(function(i){return C.ch[i].kind!=='light'}).slice(0,5);
       if(lt==='lp'){var ls0=act.filter(function(i){return C.ch[i].kind==='light'}).slice(0,3);if(ls0.length) lo.cs=ls0}
       if(lo.cs&&!lo.cs.length) delete lo.cs;
       C.board.push(lo);

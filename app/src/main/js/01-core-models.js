@@ -286,7 +286,7 @@ try{
         if(lxt&&(lxt==='tk'||(lxc>=0&&lxc<NMAX))){
           var lxo={k:'lx',t:lxt,w:w};if(lxt!=='tk') lxo.c=lxc;
           var lxd=Math.round(+x.d);if(lxt==='mx'&&lxd>=0&&lxd<NMAX&&lxd!==lxc) lxo.d=lxd;
-          if((lxt==='eq'||lxt==='lp')&&Array.isArray(x.cs)){var lcs=[];x.cs.forEach(function(q){q=Math.round(+q);if(q>=0&&q<NMAX&&q!==lxc&&lcs.indexOf(q)<0&&lcs.length<3) lcs.push(q)});if(lcs.length) lxo.cs=lcs}
+          if((lxt==='eq'||lxt==='lp')&&Array.isArray(x.cs)){var lcs=[];x.cs.forEach(function(q){q=Math.round(+q);if(q>=0&&q<NMAX&&q!==lxc&&lcs.indexOf(q)<0&&lcs.length<(lxt==='eq'?5:3)) lcs.push(q)});if(lcs.length) lxo.cs=lcs}
           if(lxt==='mx'){if(+x.ic===1) lxo.ic=1;if(+x.an===1) lxo.an=1;if(Array.isArray(x.px)&&x.px.length===8&&x.px.every(function(r){return typeof r==='string'&&/^[01]{8}$/.test(r)})) lxo.px=x.px.slice()}
           if(lxt==='eq'&&(x.ow===1||x.ow===true)) lxo.ow=1;
           if(lxt==='ts'){var lth=Math.round(+x.th);if([10,30].indexOf(lth)>=0) lxo.th=lth}
