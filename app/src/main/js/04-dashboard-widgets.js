@@ -654,15 +654,17 @@
   setInterval(function(){
     if(!CAM.st){
       // back on a page with a Camera widget: start it again
-      if(!document.hidden&&!CAM.starting&&!bdEditing) [].forEach.call(document.querySelectorAll('.bdw.camw'),function(el){var v=el.querySelector('video.camv')||document.querySelector('.cam-fsl video.camv');if(v&&v.offsetParent!==null&&!v.srcObject&&el.__camStart&&!el.__camErr) el.__camStart()});
+      if(!document.hidden&&!CAM.starting&&!bdEditing) [].forEach.call(document.querySelectorAll('.bdw.camw'),function(el){var v=el.querySelector('video.camv')||document.querySelector('.cam-fsl video.camv');if(v&&!v.srcObject&&el.__camStart&&!el.__camErr&&camCan(el)) el.__camStart()});
       return;
     }
     // the camera stays on only while its picture is on screen: off at once on another page or while editing
-    var on=!bdEditing&&!document.hidden&&[].some.call(document.querySelectorAll('video.camv'),function(v){return v.isConnected&&v.offsetParent!==null&&v.srcObject===CAM.st});
+    var on=!bdEditing&&!document.hidden&&!(typeof V2!=='undefined'&&V2&&V2.v!=='drive')&&[].some.call(document.querySelectorAll('video.camv'),function(v){return v.isConnected&&v.offsetParent!==null&&v.srcObject===CAM.st});
     if(on) CAM.lastSeen=Date.now(); else if(!CAM.rec) camStop();
   },700);
   document.addEventListener('visibilitychange',function(){if(document.hidden) camStop(); else setTimeout(camWake,300)});
-  function camWake(){[].forEach.call(document.querySelectorAll('.bdw.camw'),function(el){if(el.__camStart) el.__camStart()})}
+  // the camera may start only for a widget that is really on screen, on the Drive page, not while editing
+  function camCan(el){return !bdEditing&&!document.hidden&&el.isConnected&&el.offsetParent!==null&&!(typeof V2!=='undefined'&&V2&&V2.v!=='drive')}
+  function camWake(){[].forEach.call(document.querySelectorAll('.bdw.camw'),function(el){if(el.__camStart&&camCan(el)) el.__camStart()})}
   function camName(ext){var d=new Date(),p=function(n){return (n<10?'0':'')+n};return 'MK6_'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())+'.'+ext}
   // saves to the phone's gallery (Pictures/MK6, Movies/MK6) through the app, in pieces; in a browser it downloads
   function camSave(blob,name,mime,done){
@@ -743,7 +745,7 @@
         function(e){el.__camErr=1;if(!v.isConnected) return;var n=e&&e.name;msg.textContent=n==='NotAllowedError'||n==='SecurityError'?'Camera not allowed. Allow the camera for MK6 Console in the phone’s settings, then tap here.':n==='NotFoundError'||(e&&e.message==='nocam')?'No camera found on this phone.':'The camera could not start. Tap to try again.'})};
     el.__camStart=start;
     msg.addEventListener('click',function(e){e.stopPropagation();start()});
-    if(!bdEditing) start(); else {msg.textContent='Camera (off while editing)'}
+    if(bdEditing) msg.textContent='Camera (off while editing)'; else setTimeout(function(){if(camCan(el)) start(); else msg.textContent='Camera (off)'},0);
     var lastP='',lastR='',lastRec='';
     var upd=function(){
       if(!el.isConnected) return;

@@ -1,5 +1,6 @@
   // ---- What's new, version and update check ----
   var CHANGES=[
+    {b:140,items:[["fix", "The camera no longer switches on by itself on other pages (when the board refreshes, the phone turns, or you come back to the app), so Android's green camera dot only shows while the Camera widget is on screen"]]},
     {b:139,items:[["better", "LED bars widget shows up to 6 channels (Bar 1 to Bar 6)"], ["fix", "The phone's camera turns off at once when you leave the board or edit it, so Android's green camera dot goes away"]]},
     {b:138,items:[["fix", "Camera full screen covers the whole app, top bar included; going back to the board turns the camera on again"], ["better", "Camera buttons use Google Material Symbols icons, and the camera picture is no longer dimmed when no hub is connected"]]},
     {b:137,items:[["new", "Camera widget: the phone's camera as a live view on the board, with a speed LED rail, channel readout and path lines that bend with steering (read from your other widgets, it never drives). Full screen, torch, 1\u00d7/2\u00d7 zoom, video recording and photos saved to the gallery (Movies/MK6, Pictures/MK6)"]]},
