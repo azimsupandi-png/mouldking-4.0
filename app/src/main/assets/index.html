@@ -1025,6 +1025,7 @@ html,body{overflow-anchor:none}
 .bdw .bdw-h output{white-space:nowrap}
 
 :root.dash .dw>.bdw-h{font-size:clamp(12px,min(4.6cqw,10cqh),19px)}
+:root.dash .dw.camw>.bdw-h{font-size:clamp(12px,min(2.4cqw,8cqh),15px)}
 .bdw .qbtn.lbtn .lvl{position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;gap:3px;align-items:flex-end;height:18px}
 .bdw .qbtn.lbtn .lvl i{display:block;width:4px;border-radius:2px;background:rgba(127,135,148,.45)}
 .bdw .qbtn.lbtn .lvl i:nth-child(1){height:6px}.bdw .qbtn.lbtn .lvl i:nth-child(2){height:10px}.bdw .qbtn.lbtn .lvl i:nth-child(3){height:14px}.bdw .qbtn.lbtn .lvl i:nth-child(4){height:18px}
@@ -1987,6 +1988,27 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
 .trmk.on{opacity:1}
 .pmw{display:flex;gap:6px;min-width:0}.pmw select{min-width:0;flex:1}.pmw .pmt{flex:0 0 7.6em;color:#ffd84a}.pmw .pmt[hidden]{display:none}
 .bdw.xyw:not(#z){position:relative}
+/* Camera widget */
+.bdw.camw:not(#z){display:flex;flex-direction:column}
+.bdw.camw .bdw-chip.camchip{background:#ffc400!important;color:#141414!important}
+.camx{position:relative;flex:1 1 auto;min-height:170px;margin-top:6px;border-radius:14px;overflow:hidden;background:#05070a;box-shadow:inset 0 0 0 2px #2b303a;touch-action:manipulation}
+:root:not(.dash) .bdw.camw .camx{aspect-ratio:16/10;min-height:0}
+.camx video.camv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform-origin:50% 50%}
+.camx.fit video.camv{object-fit:contain}
+.camx svg.camhud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.camx .cam-msg{position:absolute;inset:0;display:grid;place-items:center;padding:12px;text-align:center;font-size:13px;color:#c9ced8;background:rgba(5,7,10,.75)}
+.camx .cam-rec{position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;background:rgba(8,10,14,.6);border:1px solid rgba(255,255,255,.14);font:700 11px var(--f-body,sans-serif);color:#fff}
+.camx .cam-rec i{width:7px;height:7px;border-radius:50%;background:#E24B4A;animation:camblink 1s steps(2) infinite}
+@keyframes camblink{50%{opacity:.2}}
+.camx .cam-rail{position:absolute;left:8px;top:36px;bottom:40px;width:6px;display:flex;flex-direction:column;gap:2px;pointer-events:none}
+.camx .cam-rail i{flex:1;border-radius:2px;background:rgba(200,205,215,.25)}
+.camx .cam-rd{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);max-width:calc(100% - 60px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:3px 10px;border-radius:999px;background:rgba(8,10,14,.6);border:1px solid rgba(255,255,255,.14);font:600 10.5px var(--f-body,sans-serif);color:#fff;pointer-events:none}
+.camx .cam-rd b{font:800 12px var(--f-mono,monospace);margin-left:2px}.camx .cam-rd i{opacity:.4;margin:0 6px;font-style:normal}
+.camx .cam-btns{position:absolute;right:6px;top:6px;bottom:6px;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.camx .cam-b{width:30px;height:30px;flex:none;border-radius:50%;display:grid;place-items:center;padding:0;background:rgba(8,10,14,.55);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:13px;font-weight:800;cursor:pointer}
+.camx .cam-b.on{background:#ffc400;color:#141414;border-color:#ffc400}
+.bdw.camw.camfs:not(#z){position:fixed!important;inset:0!important;width:auto!important;height:auto!important;z-index:90;border-radius:0;margin:0;padding:8px}
+.bdw.camw.camfs .camx{aspect-ratio:auto!important}
 :root.dash .dw.xyw:not(#z){position:absolute}
 .bdw .dialdots.xyd{position:absolute;left:6px;right:6px;width:auto;margin:0;z-index:1}
 :root[data-skin="studs"] .bdw>.pad.nog:not(#z):not(#y){background-size:calc(20px*var(--s,1)) calc(13px*var(--s,1)),calc(20px*var(--s,1)) calc(13px*var(--s,1)),calc(13px*var(--s,1)) calc(20px*var(--s,1)),calc(13px*var(--s,1)) calc(20px*var(--s,1)),0 0,0 0,auto}
@@ -2328,6 +2350,7 @@ html.wr-fl[data-v=home] main{padding-bottom:calc(var(--nav-h,64px) + 40px + min(
           <button class="btn" id="bdTDP" type="button" aria-pressed="false">D-pad</button>
           <button class="btn" id="bdTXY" type="button" aria-pressed="false">XY pad</button>
           <button class="btn" id="bdTXF" type="button" aria-pressed="false">Crossfader</button>
+          <button class="btn" id="bdTCAM" type="button" aria-pressed="false">Camera</button>
           <button class="btn" id="bdTRO" type="button" aria-pressed="false">Rotor</button>
           <button class="btn" id="bdTAX" type="button" aria-pressed="false">Motor axle</button>
           <button class="btn" id="bdTSW" type="button" aria-pressed="false">Swing angle</button>

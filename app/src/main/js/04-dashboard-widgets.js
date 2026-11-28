@@ -20,6 +20,7 @@
     if(k==='rs') return L?[10,12]:[14,12];
     if(k==='st') return L?[10,12]:[14,12];
     if(k==='xy') return L?[12,14]:[16,16];
+    if(k==='cam') return L?[22,14]:[24,14];
     if(k==='xf') return L?[16,12]:[20,12];
     if(k==='ro') return L?[10,12]:[14,12];
     if(k==='ax') return L?[10,12]:[14,12];
@@ -359,6 +360,7 @@
       :[{k:'c',l:'Left stick: up / down'},{k:'d',l:'Left stick: left / right',none:1},{k:'e',l:'Right stick: up / down'},{k:'f',l:'Right stick: left / right',none:1}];
     if(k==='dp') return it.m==='car'?[{k:'c',l:'Drive'},{k:'d',l:'Steer',none:1}]:[{k:'c',l:'Left motor'},{k:'d',l:'Right motor',none:1}];
     if(k==='w') return [{k:'c',l:'Output A'},{k:'d',l:'Output B'}];
+    if(k==='cam') return [{k:'c',l:'Speed (bar & number)'},{k:'d',l:'Steering (path lines)',none:true}];
     if(k==='xy') return it.m==='tank'?[{k:'c',l:'Left motor'},{k:'d',l:'Right motor'}]:[{k:'c',l:'X (left / right)'},{k:'d',l:'Y (up / down)'}];
     if(k==='xf') return [{k:'c',l:'Left side'},{k:'d',l:'Right side'}];
     if(k==='lx') return it.t==='tk'?[]:[{k:'c',l:'Channel'}];
@@ -626,6 +628,125 @@
     var eb=el.getBoundingClientRect(),b=sg.getBoundingClientRect(),k=Math.min(b.width/300,b.height/260),bot=w.it.nr?222:236;
     var y=b.top-eb.top-el.clientTop+(b.height-260*k)/2+bot*k+4,key=Math.round(y)+','+Math.round(eb.width);
     if(dg.__k!==key){dg.__k=key;dg.style.top=Math.round(y)+'px'}}
+  // ---- Camera widget: the phone's camera as a live view on the board. It never drives a motor: it only reads
+  // the speed and steering channels of the other widgets for its HUD (LED rail, readout, path lines).
+  var CAM={st:null,face:'',q:0,starting:null,track:null,torch:false,zoom:1,rec:null,recT0:0,chunks:[],mime:'',lastSeen:0,err:''};
+  function camStop(){
+    if(CAM.rec){try{CAM.rec.stop()}catch(_){}}
+    if(CAM.st){try{CAM.st.getTracks().forEach(function(t){t.stop()})}catch(_){}}
+    CAM.st=null;CAM.track=null;CAM.torch=false;CAM.zoom=1;CAM.face='';CAM.q=0;
+    [].forEach.call(document.querySelectorAll('video.camv'),function(v){try{v.srcObject=null}catch(_){}});
+  }
+  function camGet(face,q){
+    if(CAM.st&&CAM.face===face&&CAM.q===q) return Promise.resolve(CAM.st);
+    if(CAM.starting) return CAM.starting;
+    if(CAM.rec) return CAM.st?Promise.resolve(CAM.st):Promise.reject(new Error('busy'));
+    camStop();
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) return Promise.reject(new Error('nocam'));
+    var h=q||720;
+    CAM.starting=navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:face},width:{ideal:Math.round(h*16/9)},height:{ideal:h}}}).then(function(st){
+      CAM.starting=null;CAM.st=st;CAM.face=face;CAM.q=q;CAM.track=st.getVideoTracks()[0]||null;CAM.err='';return st},
+      function(e){CAM.starting=null;CAM.err=(e&&e.name)||'error';throw e});
+    return CAM.starting;
+  }
+  function camCaps(){try{return (CAM.track&&CAM.track.getCapabilities)?CAM.track.getCapabilities():{}}catch(_){return {}}}
+  // the camera stays on only while a Camera widget is on screen and the app is in front
+  setInterval(function(){
+    if(!CAM.st) return;
+    var on=[].some.call(document.querySelectorAll('video.camv'),function(v){return v.isConnected&&v.offsetParent!==null});
+    if(on) CAM.lastSeen=Date.now(); else if(!CAM.rec&&Date.now()-CAM.lastSeen>1500) camStop();
+  },700);
+  document.addEventListener('visibilitychange',function(){if(document.hidden) camStop(); else setTimeout(camWake,300)});
+  function camWake(){[].forEach.call(document.querySelectorAll('.bdw.camw'),function(el){if(el.__camStart) el.__camStart()})}
+  function camName(ext){var d=new Date(),p=function(n){return (n<10?'0':'')+n};return 'MK6_'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())+'.'+ext}
+  // saves to the phone's gallery (Pictures/MK6, Movies/MK6) through the app, in pieces; in a browser it downloads
+  function camSave(blob,name,mime,done){
+    if(!NB||!NB.mediaBegin){try{var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href)},4000);done(true)}catch(_){done(false)}return}
+    var id=0;try{id=NB.mediaBegin(name,mime)}catch(_){id=0}
+    if(!id){done(false);return}
+    var CH=393216,off=0;
+    (function next(){
+      if(off>=blob.size){var ok=false;try{ok=NB.mediaEnd(id,true)}catch(_){}done(!!ok);return}
+      var fr=new FileReader();fr.onload=function(){var b=String(fr.result),k=b.indexOf(',');var ok=false;try{ok=NB.mediaChunk(id,b.slice(k+1))}catch(_){}
+        if(!ok){try{NB.mediaEnd(id,false)}catch(_){}done(false);return}off+=CH;setTimeout(next,0)};
+      fr.onerror=function(){try{NB.mediaEnd(id,false)}catch(_){}done(false)};
+      fr.readAsDataURL(blob.slice(off,off+CH));
+    })();
+  }
+  function camRecStart(){
+    if(!CAM.st||CAM.rec||typeof MediaRecorder==='undefined'){if(typeof MediaRecorder==='undefined') toast('Recording is not supported on this phone.');return}
+    var types=['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'],mt='';
+    for(var q=0;q<types.length;q++){try{if(MediaRecorder.isTypeSupported(types[q])){mt=types[q];break}}catch(_){}}
+    try{CAM.rec=new MediaRecorder(CAM.st,mt?{mimeType:mt,videoBitsPerSecond:4000000}:{})}catch(e){CAM.rec=null;toast('Recording is not supported on this phone.');return}
+    CAM.mime=(CAM.rec.mimeType||mt||'video/webm').split(';')[0];CAM.chunks=[];CAM.recT0=Date.now();
+    CAM.rec.ondataavailable=function(e){if(e.data&&e.data.size) CAM.chunks.push(e.data)};
+    CAM.rec.onstop=function(){var b=new Blob(CAM.chunks,{type:CAM.mime}),mime=CAM.mime;CAM.chunks=[];CAM.rec=null;
+      if(!b.size){toast('Nothing was recorded.');return}
+      toast('Saving video…');camSave(b,camName(mime==='video/mp4'?'mp4':'webm'),mime,function(ok){toast(ok?'Video saved to the gallery (Movies/MK6).':'The video could not be saved.')})};
+    try{CAM.rec.start(1000);feedback('ok')}catch(_){CAM.rec=null;toast('Recording is not supported on this phone.')}
+  }
+  function camRecStop(){if(CAM.rec){try{CAM.rec.stop()}catch(_){CAM.rec=null}}}
+  function camShot(v){
+    if(!v||!v.videoWidth){toast('The camera is not ready yet.');return}
+    var c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;
+    try{c.getContext('2d').drawImage(v,0,0)}catch(_){toast('The photo could not be taken.');return}
+    feedback('ok');
+    c.toBlob(function(b){if(!b){toast('The photo could not be taken.');return}camSave(b,camName('jpg'),'image/jpeg',function(ok){toast(ok?'Photo saved to the gallery (Pictures/MK6).':'The photo could not be saved.')})},'image/jpeg',.92);
+  }
+  function camBuild(el,it){
+    el.classList.add('camw');
+    var box=document.createElement('div');box.className='camx'+(it.ct?' fit':'');
+    var v=document.createElement('video');v.className='camv';v.muted=true;v.autoplay=true;v.setAttribute('playsinline','');v.setAttribute('muted','');
+    var NS='http://www.w3.org/2000/svg',hud=document.createElementNS(NS,'svg');hud.setAttribute('class','camhud');hud.setAttribute('viewBox','0 0 400 225');hud.setAttribute('preserveAspectRatio','none');
+    var full=!it.hu,minH=it.hu===1,offH=it.hu===2;
+    hud.innerHTML=(full?'<g class="cx" stroke="#ffd84a" stroke-width="1.4" fill="none" opacity=".85" vector-effect="non-scaling-stroke"><path d="M188 112h-10M212 112h10M200 100v-8M200 124v8" vector-effect="non-scaling-stroke"/><circle cx="200" cy="112" r="5" vector-effect="non-scaling-stroke"/></g>':'')+
+      ((!offH&&!it.np&&it.d>=0)?'<g class="pth" fill="none" stroke="rgba(255,216,74,.8)" stroke-width="2.4" stroke-linecap="round"><path vector-effect="non-scaling-stroke"/><path vector-effect="non-scaling-stroke"/></g>':'');
+    var msg=document.createElement('div');msg.className='cam-msg';msg.textContent='Starting the camera…';
+    var rec=document.createElement('div');rec.className='cam-rec';rec.hidden=true;rec.innerHTML='<i></i><b>REC 00:00</b>';
+    var rail=null,RN=14;
+    if(full){rail=document.createElement('div');rail.className='cam-rail';for(var q=0;q<RN;q++) rail.appendChild(document.createElement('i'))}
+    var rd=null;
+    if(!offH){rd=document.createElement('div');rd.className='cam-rd'}
+    var col=document.createElement('div');col.className='cam-btns';
+    var mkB=function(t,lab,fn){var b=document.createElement('button');b.type='button';b.className='cam-b';b.textContent=t;b.setAttribute('aria-label',lab);
+      b.addEventListener('pointerdown',function(e){e.stopPropagation()});b.addEventListener('click',function(e){e.stopPropagation();e.preventDefault();fn(b)});col.appendChild(b);return b};
+    var bFs=mkB('⤢','Full screen',function(b){var on=!el.classList.contains('camfs');el.classList.toggle('camfs',on);document.documentElement.classList.toggle('cam-fs',on);b.textContent=on?'⤡':'⤢';b.setAttribute('aria-label',on?'Exit full screen':'Full screen')});
+    var bTo=mkB('⚡','Torch',function(b){var cp=camCaps();if(!CAM.track||!cp.torch){toast('This camera has no torch.');return}
+      var on=!CAM.torch;CAM.track.applyConstraints({advanced:[{torch:on}]}).then(function(){CAM.torch=on;b.classList.toggle('on',on)},function(){toast('This camera has no torch.')})});
+    var bZm=mkB('1×','Zoom',function(b){var z=CAM.zoom>=2?1:2,cp=camCaps();
+      var apply=function(){CAM.zoom=z;b.textContent=z+'×';v.style.transform=(cp.zoom||z===1)?'':'scale('+z+')'};
+      if(CAM.track&&cp.zoom&&cp.zoom.max>=cp.zoom.min*z){CAM.track.applyConstraints({advanced:[{zoom:cp.zoom.min*z}]}).then(apply,function(){cp={};apply()})} else {cp={};apply()}});
+    var bRec=null;
+    if(!it.nr){
+      bRec=mkB('⏺','Record video',function(b){if(CAM.rec) camRecStop(); else camRecStart()});
+      mkB('📷','Take a photo',function(){camShot(v)});
+    }
+    box.appendChild(v);box.appendChild(hud);box.appendChild(msg);box.appendChild(rec);if(rail) box.appendChild(rail);if(rd) box.appendChild(rd);box.appendChild(col);
+    el.appendChild(box);
+    if(CAM.torch) bTo.classList.add('on');if(CAM.zoom>1){bZm.textContent=CAM.zoom+'×'}
+    var face=it.fr?'user':'environment',q=+it.q||720;
+    var start=function(){msg.hidden=false;msg.textContent='Starting the camera…';
+      camGet(face,q).then(function(st){if(!v.isConnected) return;if(v.srcObject!==st) v.srcObject=st;var pr=v.play&&v.play();if(pr&&pr.catch) pr.catch(function(){});msg.hidden=true;CAM.lastSeen=Date.now()},
+        function(e){if(!v.isConnected) return;var n=e&&e.name;msg.textContent=n==='NotAllowedError'||n==='SecurityError'?'Camera not allowed. Allow the camera for MK6 Console in the phone’s settings, then tap here.':n==='NotFoundError'||(e&&e.message==='nocam')?'No camera found on this phone.':'The camera could not start. Tap to try again.'})};
+    el.__camStart=start;
+    msg.addEventListener('click',function(e){e.stopPropagation();start()});
+    if(!bdEditing) start(); else {msg.textContent='Camera (off while editing)'}
+    var lastP='',lastR='',lastRec='';
+    var upd=function(){
+      if(!el.isConnected) return;
+      var sp=it.c>=0?(rt.t[it.c]||0):0,sr=it.d>=0?(rt.t[it.d]||0):0;
+      if(rail){var L=rail.children,h=RN,qn=Math.round(Math.abs(sp)/100*h);for(var j=0;j<h;j++){var f=j<qn?(sp<0?PAL.b:(j/h<.6?PAL.g:j/h<.85?PAL.o:PAL.r)):'rgba(200,205,215,.25)';if(L[h-1-j].__f!==f){L[h-1-j].__f=f;L[h-1-j].style.background=f}}}
+      if(rd){var t='<span style="color:'+pcolOf(tagOf(it.c))+'">'+L1(it.c)+'</span> '+camEsc(C.ch[it.c]?C.ch[it.c].name:'')+' <b>'+fmt(Math.round(sp))+'</b>'+(it.d>=0?'<i>|</i><span style="color:'+pcolOf(tagOf(it.d))+'">'+L1(it.d)+'</span> '+camEsc(C.ch[it.d]?C.ch[it.d].name:'')+' <b>'+fmt(Math.round(sr))+'</b>':'');if(t!==lastR){lastR=t;rd.innerHTML=t}}
+      var pg=hud.querySelector('.pth');
+      if(pg){var k=Math.round(sr)/100,sh=-k*60,pd=['M140 225 Q'+(146+sh*.35)+' 172 '+(176+sh)+' 132','M260 225 Q'+(254+sh*.35)+' 172 '+(224+sh)+' 132'].join('|');
+        if(pd!==lastP){lastP=pd;var ps=pg.children,pp=pd.split('|');ps[0].setAttribute('d',pp[0]);ps[1].setAttribute('d',pp[1])}}
+      var rs=CAM.rec?Math.floor((Date.now()-CAM.recT0)/1000):-1;
+      if(String(rs)!==lastRec){lastRec=String(rs);rec.hidden=rs<0;if(rs>=0) rec.querySelector('b').textContent='REC '+(rs/60<10?'0':'')+Math.floor(rs/60)+':'+(rs%60<10?'0':'')+(rs%60);if(bRec){bRec.classList.toggle('on',rs>=0);bRec.textContent=rs>=0?'⏹':'⏺'}}
+      requestAnimationFrame(upd)};
+    requestAnimationFrame(upd);
+  }
+  function L1(i){var t=tagOf(i);return t.charAt(t.length-1)}
+  function camEsc(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
   // a channel muted on a Levels (EQ) widget stays muted only while that widget is on the board, so a mute is never hidden
   function muteTidy(){
     var eq={};(C.board||[]).forEach(function(it){if(it.k==='lx'&&it.t==='eq'){eq[it.c]=1;(it.cs||[]).forEach(function(q){eq[q]=1})}});
@@ -1195,6 +1316,10 @@
         el.classList.add('mtrw');
         w.mtr=xwBuild(el,it,xhd);
         if(it.k==='xy'){swPairs(el,it,'svg');var xdg=el.querySelector(':scope>.dialdots');if(xdg){xdg.classList.add('xyd');el.classList.add('xyw');el.__xyd=xdg}}
+      }else if(it.k==='cam'){
+        bdHead(el,'Camera \u00b7 '+(it.fr?'front':'rear'),it,false);
+        var cch=el.querySelector('.bdw-h .bdw-chip');if(cch){cch.textContent='CAM';cch.classList.add('camchip')}
+        camBuild(el,it);
       }else if(it.k==='z'){
         bdHead(el,'Session timer',it,false);
         var zd=document.createElement('button');zd.type='button';zd.className='sesst';
@@ -2046,6 +2171,7 @@
       if(n[0]===n[1]){bdNote.textContent='Pick two different channels.';return}
       C.board.push({k:bdK,c:n[0],d:n[1],w:ww});
     }
+    else if(bdK==='cam'){if(n[1]>=0&&n[0]===n[1]){bdNote.textContent='Pick two different channels.';return}C.board.push({k:'cam',c:n[0],d:n[1],w:2})}
     else if(bdK==='ro') C.board.push({k:'ro',c:n[0],w:ww});
     else if(bdK==='ax') C.board.push({k:'ax',c:n[0],w:ww});
     else if(bdK==='sw'){if(C.board.some(function(o){return o.k==='sw'&&o.c===n[0]})){bdNote.textContent='This channel already has a swing angle widget.';return}C.board.push({k:'sw',c:n[0],w:ww,a:0})}

@@ -45,6 +45,8 @@ import android.view.WindowInsetsController;
 import android.widget.FrameLayout;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.PermissionRequest;
+import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -91,6 +93,12 @@ public class MainActivity extends Activity {
     private static final int REQ_IMPORT = 43;
     private static final int REQ_WALL = 44;
     private static final int REQ_SCAN = 45;
+    private static final int REQ_CAMERA = 46;
+    /** A camera request from the page waiting for the Android camera permission. */
+    private PermissionRequest pendingCam;
+    /** Photos and videos from the Camera widget being written to the gallery, by id. */
+    private final java.util.Map<Integer, Object[]> media = new java.util.HashMap<>();
+    private int mediaSeq = 0;
 
     private WebView web;
     private FrameLayout root;
@@ -226,6 +234,29 @@ public class MainActivity extends Activity {
                 return !request.getUrl().toString().startsWith(ASSET_PREFIX);
             }
         });
+        // Camera widget: the page asks for the camera (getUserMedia); Android asks the user once
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onPermissionRequest(final PermissionRequest request) {
+                runOnUiThread(() -> {
+                    boolean video = false;
+                    for (String r : request.getResources()) if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) video = true;
+                    if (!video) { request.deny(); return; }
+                    if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                        request.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
+                        return;
+                    }
+                    if (pendingCam != null) { try { pendingCam.deny(); } catch (RuntimeException ignored) { } }
+                    pendingCam = request;
+                    requestPermissions(new String[]{Manifest.permission.CAMERA}, REQ_CAMERA);
+                });
+            }
+
+            @Override
+            public void onPermissionRequestCanceled(PermissionRequest request) {
+                if (pendingCam == request) pendingCam = null;
+            }
+        });
         web.addJavascriptInterface(new Bridge(), "MK6Bridge");
         web.loadUrl(PAGE);
     }
@@ -330,6 +361,18 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_CAMERA) {
+            boolean ok = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            PermissionRequest r = pendingCam;
+            pendingCam = null;
+            if (r != null) {
+                try {
+                    if (ok) r.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE}); else r.deny();
+                } catch (RuntimeException ignored) {
+                }
+            }
+            return;
+        }
         if (requestCode == REQ_SCAN) {
             boolean ok = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
             if (ok) inspector.start();
@@ -755,6 +798,73 @@ public class MainActivity extends Activity {
     // ---------------------------------------------------------------- JS bridge
 
     private final class Bridge {
+
+        /** Camera widget: start writing a photo ("image/jpeg") or a video ("video/mp4", "video/webm") into
+         *  Pictures/MK6 or Movies/MK6. Returns an id for mediaChunk/mediaEnd, or 0 when it cannot be saved. */
+        @JavascriptInterface
+        public int mediaBegin(String name, String mime) {
+            if (Build.VERSION.SDK_INT < 29 || name == null || mime == null) return 0;
+            if (!name.matches("[A-Za-z0-9_.-]{1,80}")) return 0;
+            boolean vid = mime.startsWith("video/");
+            if (!vid && !mime.startsWith("image/")) return 0;
+            try {
+                ContentResolver cr = getContentResolver();
+                Uri col = vid ? MediaStore.Video.Media.EXTERNAL_CONTENT_URI : MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                ContentValues v = new ContentValues();
+                v.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
+                v.put(MediaStore.MediaColumns.MIME_TYPE, mime);
+                v.put(MediaStore.MediaColumns.RELATIVE_PATH, (vid ? Environment.DIRECTORY_MOVIES : Environment.DIRECTORY_PICTURES) + "/MK6");
+                v.put(MediaStore.MediaColumns.IS_PENDING, 1);
+                Uri item = cr.insert(col, v);
+                if (item == null) return 0;
+                OutputStream os = cr.openOutputStream(item, "w");
+                if (os == null) { cr.delete(item, null, null); return 0; }
+                synchronized (media) {
+                    int id = ++mediaSeq;
+                    media.put(id, new Object[]{item, os});
+                    return id;
+                }
+            } catch (Exception e) {
+                return 0;
+            }
+        }
+
+        @JavascriptInterface
+        public boolean mediaChunk(int id, String b64) {
+            Object[] m;
+            synchronized (media) { m = media.get(id); }
+            if (m == null || b64 == null) return false;
+            try {
+                ((OutputStream) m[1]).write(Base64.decode(b64, Base64.DEFAULT));
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        /** Finishes the file (ok) or throws it away. */
+        @JavascriptInterface
+        public boolean mediaEnd(int id, boolean ok) {
+            Object[] m;
+            synchronized (media) { m = media.remove(id); }
+            if (m == null) return false;
+            ContentResolver cr = getContentResolver();
+            Uri item = (Uri) m[0];
+            try {
+                ((OutputStream) m[1]).close();
+            } catch (Exception e) {
+                ok = false;
+            }
+            try {
+                if (!ok) { cr.delete(item, null, null); return false; }
+                ContentValues v = new ContentValues();
+                v.put(MediaStore.MediaColumns.IS_PENDING, 0);
+                cr.update(item, v, null, null);
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
 
         /** @param mods comma separated hub indices, e.g. "0" or "0,1" */
         @JavascriptInterface

@@ -271,7 +271,7 @@ async def t_twelve(b):
     check('9 size: a widget can be made 2x1', 'w2' in r, r)
     # 10 gallery: picture cards and category tabs
     r = await pg.evaluate("var t=[...document.querySelectorAll('.v2-gtabs .btn')].find(b=>b.textContent==='Meters');t.click();[document.querySelectorAll('.bd-types .gt svg').length,[...document.querySelectorAll('.bd-types > .btn')].filter(b=>!b.hidden).length]")
-    check('10 gallery: 35 picture cards, Meters tab shows 7', r == [35, 7], r)
+    check('10 gallery: 36 picture cards, Meters tab shows 8', r == [36, 8], r)
     await pg.evaluate("__ed()")
     # 8 model colour persists and tints the board
     await pg.evaluate("mk6Go('medit');document.querySelectorAll('#swatches .sw')[2].click()")
@@ -872,6 +872,49 @@ async def t_btypes(b):
     check('GPT gamepad Accelerator ramps up while held and down after', 25 <= m1 <= 75 and m2 == 0, [m1, m2])
     check('BT no JS errors', not pg.errors, pg.errors[:3])
     await ctx.close()
+
+async def t_cam(b):
+    # Build 137: Camera widget - live view from the phone camera, HUD reads the other widgets' channels, never drives
+    b2 = await b.browser_type.launch(args=['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'])
+    ctx = await b2.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=1)
+    pg = await ctx.new_page(); pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    await pg.add_init_script(STUB)
+    await pg.route('**/*', lambda r: r.abort() if r.request.url.startswith('http') else r.continue_())
+    await pg.goto(HTML + '?mk6test')
+    await pg.wait_for_function('window.mk6Ready===true', timeout=15000)
+    r = await pg.evaluate("JSON.stringify(__t.cleanBoard([{k:'cam',c:0,d:1,w:2,fr:1,hu:2,q:1080,nr:1,zz:5},{k:'cam',c:0,d:0},{k:'cam',c:2,d:-1,q:333}]))")
+    check('CAM cleanBoard keeps the options, drops same-channel pairs and bad quality',
+          r == '[{"k":"cam","c":0,"d":1,"w":2,"fr":1,"hu":2,"q":1080,"nr":1},{"k":"cam","c":2,"d":-1,"w":2}]', r)
+    await pg.evaluate("document.getElementById('hubConn').click();onHubState('ready')")
+    await pg.evaluate("(()=>{__t.C.layout='board';__t.C.board=__t.cleanBoard([{k:'cam',c:0,d:1},{k:'j',c:0,d:1}]);__t.syncBoard();mk6Go('drive')})()")
+    await pg.wait_for_function("(()=>{var v=document.querySelector('#boardGrid video.camv');return v&&v.videoWidth>0})()", timeout=10000)
+    await pg.evaluate("__t.rt.t[0]=62;__t.rt.t[1]=-35"); await pg.wait_for_timeout(400)
+    r = await pg.evaluate("(()=>{var w=document.querySelector('#boardGrid .bdw.camw');return [w.querySelector('.bdw-chip').textContent,w.querySelector('.cam-msg').hidden,w.querySelector('.cam-rd').textContent.replace(/\\s+/g,' ').trim(),[...w.querySelectorAll('.cam-rail i')].filter(i=>i.style.background&&!/rgba\\(200/.test(i.style.background)).length,w.querySelectorAll('.cam-b').length,!!w.querySelector('.pth path').getAttribute('d')]})()")
+    check('CAM live view, CAM chip, readout, speed rail lit, 5 buttons, path lines', r[0] == 'CAM' and r[1] is True and '+62' in r[2] and '-35' in r[2].replace('\u2212', '-') and r[3] == 9 and r[4] == 5 and r[5], r)
+    await pg.evaluate("__t.rt.t[0]=0;__t.rt.t[1]=0"); await pg.wait_for_timeout(200)
+    r = await pg.evaluate("[Math.round(__t.rt.o[0]||0),Math.round(__t.rt.o[1]||0)]")
+    check('CAM the camera never sends to a channel', r == [0, 0], r)
+    await pg.evaluate("document.querySelector('.camw .cam-b[aria-label=\"Full screen\"]').click()"); await pg.wait_for_timeout(200)
+    r = await pg.evaluate("[document.querySelector('.camw').classList.contains('camfs'),getComputedStyle(document.querySelector('.camw')).position]")
+    check('CAM full screen button fills the screen', r == [True, 'fixed'], r)
+    await pg.evaluate("document.querySelector('.camw .cam-b[aria-label=\"Exit full screen\"]').click()")
+    await pg.evaluate("document.querySelector('.camw .cam-b[aria-label=\"Record video\"]').click()"); await pg.wait_for_timeout(1300)
+    r = await pg.evaluate("[!document.querySelector('.camw .cam-rec').hidden,document.querySelector('.camw .cam-rec b').textContent]")
+    check('CAM record shows the REC timer', r[0] is True and r[1].startswith('REC 00:0'), r)
+    await pg.evaluate("window.__dl=0;HTMLAnchorElement.prototype.click=function(){if(this.download) window.__dl=this.download}")
+    await pg.evaluate("document.querySelector('.camw .cam-b[aria-label=\"Record video\"]').click()")
+    await pg.wait_for_function("!!window.__dl", timeout=5000); await pg.wait_for_timeout(300)
+    r = await pg.evaluate("[window.__dl,document.querySelector('.camw .cam-rec').hidden]")
+    check('CAM stop saves the video file (download in a browser)', r[0].startswith('MK6_') and r[0].endswith(('.webm', '.mp4')) and r[1] is True, r)
+    await pg.evaluate("window.__dl=0;document.querySelector('.camw .cam-b[aria-label=\"Take a photo\"]').click()")
+    await pg.wait_for_function("!!window.__dl", timeout=5000)
+    check('CAM photo saves a JPEG', (await pg.evaluate("window.__dl")).endswith('.jpg'), await pg.evaluate("window.__dl"))
+    await pg.evaluate("mk6Go('home')"); await pg.wait_for_timeout(2600)
+    r = await pg.evaluate("[...document.querySelectorAll('video.camv')].every(v=>!v.srcObject||v.srcObject.getTracks().every(t=>t.readyState==='ended'))")
+    check('CAM camera turns off when the widget is not on screen', r is True, r)
+    check('CAM no JS errors', not pg.errors, pg.errors[:3])
+    await ctx.close(); await b2.close()
 
 async def t_mute(b):
     # Levels (EQ) mutes: shown on the dial, never carried to a board or model that cannot show them
@@ -2417,7 +2460,7 @@ async def t_grpdash(b):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        for t in (t_joined, t_swipegrp, t_grpdash, t_stage4, t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_mk4oo, t_lpmulti, t_fix5, t_rings, t_wire2, t_stack, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
+        for t in (t_joined, t_cam, t_swipegrp, t_grpdash, t_stage4, t_ctrl3, t_hhub, t_loginspect, t_hub_paths, t_hold, t_idle, t_screens, t_features, t_graphics, t_extras, t_light_contrast, t_twelve, t_migrate_and_limit, t_lefty, t_buggy, t_bdlock, t_gpmap, t_mk4, t_mk4oo, t_lpmulti, t_fix5, t_rings, t_wire2, t_stack, t_btypes, t_mute, t_hubrows, t_trimrest, t_wiremap, t_outmap, t_inview, t_seven, t_three, t_led, t_wup, t_xw, t_pro, t_pro2, t_drtl, t_swing, t_newdash, t_recx, t_chmap, t_upg, t_set2, t_ped, t_edlock, t_wire, t_wirelock, t_axle, t_wire12, t_clean91, t_autowire, t_open_relink, t_click_everything):
             try:
                 await t(b)
             except Exception as e:

@@ -1,5 +1,6 @@
   // ---- What's new, version and update check ----
   var CHANGES=[
+    {b:137,items:[["new", "Camera widget: the phone's camera as a live view on the board, with a speed LED rail, channel readout and path lines that bend with steering (read from your other widgets, it never drives). Full screen, torch, 1\u00d7/2\u00d7 zoom, video recording and photos saved to the gallery (Movies/MK6, Pictures/MK6)"]]},
     {b:136,items:[["fix", "Full screen off: no empty band above the phone's navigation buttons; the bottom bar sits right on them"]]},
     {b:135,items:[["new", "XY pad: drive mode, like the Stick. Car (X and Y go straight to the two channels) or Tank (up and down drive both motors, left and right turn)"]]},
     {b:134,items:[["better", "Stick, D-pad and XY pad: the titles show the widget and channel names again; the pair letters and values are gone"], ["new", "Stick and XY pad share one settings list: deadzone, sensitivity, power limit, axis lock, when you let go, swipe to other pairs and grid. The Stick also has drive mode (tank or car); the XY pad keeps its LED rails"], ["new", "D-pad: when you let go (stay where it is: tap the centre to stop) and swipe to other pairs"], ["better", "XY pad: the yellow arrows glow toward the push, and the pair dots sit just under the pad"]]},
@@ -240,8 +241,8 @@
   // ---- 10 · Widget gallery: picture cards with categories instead of a list of names ----
   (function(){
     var box=document.querySelector('#bdEditor .bd-types');if(!box) return;
-    var K={bdTS:'s',bdTJ:'j',bdTD:'d',bdTM:'m',bdTL:'l',bdTT:'t',bdTB:'b',bdTW:'w',bdTA:'a',bdTY:'y',bdTF:'f',bdTFN:'fn',bdTI:'i',bdTXmx:'xmx',bdTXeq:'xeq',bdTXts:'xts',bdTXgi:'xgi',bdTXlp:'xlp',bdTXtk:'xtk',bdTK:'k',bdTN:'n',bdTRS:'rs',bdTG:'g',bdTST:'st',bdTLV:'lv',bdTDP:'dp',bdTZ:'z',bdTE:'e',bdTPS:'ps',bdTXY:'xy',bdTXF:'xf',bdTRO:'ro',bdTAX:'ax',bdTSW:'sw',bdTTL:'tl'};
-    var CAT={drive:['s','j','d','m','st','dp','n','g','lv','rs','y','xy','xf','tl','sw'],light:['l','t','b','w'],meter:['f','fn','i','k','z','ro','ax'],led:['xmx','xeq','xts','xgi','xlp','xtk'],safe:['e','ps','a']};
+    var K={bdTS:'s',bdTJ:'j',bdTD:'d',bdTM:'m',bdTL:'l',bdTT:'t',bdTB:'b',bdTW:'w',bdTA:'a',bdTY:'y',bdTF:'f',bdTFN:'fn',bdTI:'i',bdTXmx:'xmx',bdTXeq:'xeq',bdTXts:'xts',bdTXgi:'xgi',bdTXlp:'xlp',bdTXtk:'xtk',bdTK:'k',bdTN:'n',bdTRS:'rs',bdTG:'g',bdTST:'st',bdTLV:'lv',bdTDP:'dp',bdTZ:'z',bdTE:'e',bdTPS:'ps',bdTXY:'xy',bdTCAM:'cam',bdTXF:'xf',bdTRO:'ro',bdTAX:'ax',bdTSW:'sw',bdTTL:'tl'};
+    var CAT={drive:['s','j','d','m','st','dp','n','g','lv','rs','y','xy','xf','tl','sw'],light:['l','t','b','w'],meter:['cam','f','fn','i','k','z','ro','ax'],led:['xmx','xeq','xts','xgi','xlp','xtk'],safe:['e','ps','a']};
     box.classList.add('v2-gal2');
     Array.prototype.forEach.call(box.querySelectorAll('button'),function(b){
       var k=K[b.id];if(!k) return;b.setAttribute('data-cat',Object.keys(CAT).filter(function(c){return CAT[c].indexOf(k)>=0})[0]||'drive');
@@ -292,6 +293,7 @@
       case 'st': o='<circle cx="24" cy="12" r="9" fill="none" stroke="#6b7280" stroke-width="2.4"/><circle cx="24" cy="12" r="2.6" fill="'+Y+'"/><path d="M15.2 12h6.2M26.6 12h6.2M24 14.6v6" stroke="#6b7280" stroke-width="2"/>';break;
       case 'lv': o='<rect x="22.5" y="3" width="3" height="18" rx="1.5" fill="#3a414d"/><text x="31" y="7" font-size="4" fill="#8a93a0">1</text><text x="31" y="13" font-size="4" fill="#8a93a0">N</text><text x="31" y="19" font-size="4" fill="#8a93a0">R</text>'+kn(24,9,3.2);break;
       case 'dp': o='<path d="M20 3h8v6h6v8h-6v6h-8v-6h-6V9h6z" fill="#2a303b" stroke="'+S+'" stroke-width=".5"/><path d="M24 5l2 3h-4z" fill="'+Y+'"/>';break;
+      case 'cam': o='<rect x="8" y="3" width="32" height="18" rx="3" fill="'+D+'" stroke="'+S+'" stroke-width=".5"/><path d="M14 21 Q16 14 21 10M34 21 Q32 14 27 10" stroke="#ffd84a" stroke-width=".8" fill="none"/><circle cx="24" cy="9" r="1.6" fill="none" stroke="#ffd84a" stroke-width=".5"/><circle cx="12" cy="6.5" r="1.3" fill="#E24B4A"/>';break;
       case 'xy': o='<rect x="14" y="2" width="20" height="20" rx="3" fill="'+D+'" stroke="'+S+'" stroke-width=".5"/><path d="M24 4v16M16 12h16" stroke="#2a303b" stroke-width=".5"/>'+kn(29,8,3.4);break;
       case 'xf': o='<rect x="5" y="4" width="4" height="16" rx="1" fill="#2a303b"/><rect x="5" y="10" width="4" height="10" rx="1" fill="'+G+'"/><rect x="39" y="4" width="4" height="16" rx="1" fill="#2a303b"/><rect x="39" y="13" width="4" height="7" rx="1" fill="'+G+'"/><rect x="12" y="10" width="24" height="5" rx="2.5" fill="'+D+'" stroke="'+S+'" stroke-width=".4"/>'+kn(20,12.5,3.4);break;
       case 'tl': o='<rect x="4" y="3" width="40" height="18" rx="3" fill="'+D+'" stroke="'+S+'" stroke-width=".5"/><path d="M7 15 C12 15 12 7 18 7 S24 13 30 13 S36 6 41 6" fill="none" stroke="'+Y+'" stroke-width="1.3"/><path d="M7 18 C14 18 16 11 24 11 S34 17 41 17" fill="none" stroke="#4DA3E0" stroke-width="1.1"/><path d="M21 4v16" stroke="#fff" stroke-width=".7"/>';break;
